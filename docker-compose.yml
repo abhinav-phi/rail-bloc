@@ -1,0 +1,108 @@
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./data/sql:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      retries: 12
+    ports: ["5432:5432"]
+
+  seeder:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command: python -m data.generators.seed_all
+    environment: &appenv
+      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL_SYNC: ${DATABASE_URL_SYNC}
+      REDIS_URL: ${REDIS_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES}
+      INGEST_KEY_TMS: ${INGEST_KEY_TMS}
+      INGEST_KEY_TDMS: ${INGEST_KEY_TDMS}
+      INGEST_KEY_SMMS: ${INGEST_KEY_SMMS}
+      INGEST_KEY_FOIS: ${INGEST_KEY_FOIS}
+      IMD_API_KEY: ${IMD_API_KEY}
+      COA_BRIDGE_SECRET: ${COA_BRIDGE_SECRET}
+      SOLVER_MAX_TIME_SECONDS: ${SOLVER_MAX_TIME_SECONDS}
+      SOLVER_NUM_WORKERS: ${SOLVER_NUM_WORKERS}
+      OBJECTIVE_WEIGHT_PAX_DELAY: ${OBJECTIVE_WEIGHT_PAX_DELAY}
+      OBJECTIVE_WEIGHT_FRT_DELAY: ${OBJECTIVE_WEIGHT_FRT_DELAY}
+      OBJECTIVE_WEIGHT_SHADOW_REWARD: ${OBJECTIVE_WEIGHT_SHADOW_REWARD}
+      OBJECTIVE_WEIGHT_MACHINE_IDLE: ${OBJECTIVE_WEIGHT_MACHINE_IDLE}
+      OBJECTIVE_WEIGHT_UNADDRESSED_DEFECT: ${OBJECTIVE_WEIGHT_UNADDRESSED_DEFECT}
+      OBJECTIVE_WEIGHT_EARLY_START: ${OBJECTIVE_WEIGHT_EARLY_START}
+      DEMAND_STALENESS_TTL_HOURS: ${DEMAND_STALENESS_TTL_HOURS}
+      WEATHER_STALENESS_TTL_HOURS: ${WEATHER_STALENESS_TTL_HOURS}
+      FREIGHT_HARD_CONFIDENCE: ${FREIGHT_HARD_CONFIDENCE}
+      HEADWAY_HIGH_PRIORITY_MINS: ${HEADWAY_HIGH_PRIORITY_MINS}
+      HEADWAY_DEFAULT_MINS: ${HEADWAY_DEFAULT_MINS}
+      EMERGENCY_SOLVE_BUDGET_SECONDS: ${EMERGENCY_SOLVE_BUDGET_SECONDS}
+      MAX_SENTINEL_RETRIES: ${MAX_SENTINEL_RETRIES}
+      WEEKLY_PLAN_CRON: ${WEEKLY_PLAN_CRON}
+      ENABLE_ML_URGENCY: ${ENABLE_ML_URGENCY}
+      SEED_PASSWORD: ${SEED_PASSWORD}
+    depends_on:
+      postgres: { condition: service_healthy }
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command: uvicorn apps.api.main:app --host 0.0.0.0 --port ${API_PORT}
+    environment: *appenv
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_started }
+      seeder: { condition: service_completed_successfully }
+    ports: ["${API_PORT}:8000"]
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request;urllib.request.urlopen('http://localhost:8000/health')\""]
+      interval: 10s
+      retries: 12
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/workers/Dockerfile
+    command: celery -A apps.workers.tasks:app worker --loglevel=info --concurrency=2 -s /tmp/schedule
+    environment: *appenv
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_started }
+      seeder: { condition: service_completed_successfully }
+
+  beat:
+    build:
+      context: .
+      dockerfile: apps/workers/Dockerfile
+    command: celery -A apps.workers.tasks:app beat --loglevel=info -s /tmp/celerybeat-schedule --pidfile=/tmp/celerybeat.pid
+    environment: *appenv
+    depends_on:
+      redis: { condition: service_started }
+      seeder: { condition: service_completed_successfully }
+
+  web:
+    build: ./apps/web
+    ports: ["5173:80"]
+    depends_on:
+      api: { condition: service_started }
+
+  redis:
+    image: redis:7.2
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 12
+
+volumes:
+  pgdata:
