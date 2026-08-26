@@ -132,7 +132,7 @@ If a port is occupied: either stop the conflicting service, or tell me the ports
 
 ### 1.4 First-build time budget
 
-`docker compose up --build` pulls/builds: `python:3.11-slim` + PyTorch (~900 MB wheel) + OR-Tools + PostGIS image + Node build stage. **Expect 10–25 minutes on the first build** with normal broadband. Subsequent builds are cached. Ensure uninterrupted network for the first run.
+`docker compose up --build` pulls/builds: `python:3.11-slim` + PyTorch (~900 MB wheel) + OR-Tools + PostGIS image + Node build stage. **Estimate 10–25 minutes on the first build** with normal broadband (**note: the full `docker compose up --build` has not yet completed end-to-end on the development machine** — api/worker image builds were blocked by a PyPI index filter and are resolved via local wheels in `build_wheels/`; see MANUAL_STEPS §2 for the workaround). Subsequent builds are cached. If your network filters PyPI index pages, confirm `build_wheels/*.whl` exist before starting (see Gate #11). Ensure uninterrupted network for the first run.
 
 ---
 
@@ -312,6 +312,8 @@ Before I resume code generation, run and confirm:
 8. ≥ 15 GB free disk ☐
 9. First-build time budget of 10–25 min accepted ☐
 10. Secrets generated: `JWT_SECRET` (64-hex) and `POSTGRES_PASSWORD` (32-hex) — ready to paste into `.env` ☐
+11. `build_wheels/*.whl` exist (or-tools/PyPI-filter workaround) — run `ls build_wheels/*.whl` — expect 4 files (ortools, absl-py, protobuf, immutabledict) ☐
+12. Dockerfiles reference local wheels — run `grep wheels apps/api/Dockerfile apps/workers/Dockerfile` — expect output containing `build_wheels` ☐
 
 ---
 

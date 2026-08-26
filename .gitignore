@@ -11,6 +11,9 @@ build/
 .vite/
 *.log
 .DS_Store
+# NOTE: build_wheels/ is INTENTIONALLY tracked in git — the pinned or-tools and
+# dependency wheels are required to build on networks that filter PyPI index
+# pages (see MANUAL_STEPS.md section 2 and PREREQUISITES gates 11-12).
 .venv/
 htmlcov/
 .coverage

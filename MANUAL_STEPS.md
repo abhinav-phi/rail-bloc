@@ -200,7 +200,13 @@ WHERE table_schema='optimization' AND table_name='block_plans'
 SELECT conname FROM pg_constraint
 WHERE conrelid='optimization.block_plans'::regclass AND conname='chk_distinct_approvers';
 
--- 7. Row counts (seeded values)
+-- 7. append_event() exists (DB-001b — canonical write path)
+SELECT proname FROM pg_proc
+WHERE proname = 'append_event'
+  AND pronamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'audit');
+-- Expected: one row named append_event
+
+-- 8. Row counts (seeded values)
 SELECT (SELECT count(*) FROM infrastructure.block_sections) AS sections,
        (SELECT count(*) FROM demands.block_demands)         AS demands,
        (SELECT count(*) FROM operations.train_paths)        AS train_paths,
@@ -208,6 +214,8 @@ SELECT (SELECT count(*) FROM infrastructure.block_sections) AS sections,
        (SELECT count(*) FROM audit.action_ledger)           AS ledger_rows;
 SQL
 ```
+
+> **Write-path rule:** all application code MUST write ledger rows via `SELECT audit.append_event(...)`, never raw `INSERT INTO audit.action_ledger`. The trigger alone is insufficient under concurrent writers — under READ COMMITTED the INSERT statement fixes its snapshot before the in-trigger lock wait ends, which forked chains in stress testing (see Schema.md change-log DB-001b).
 
 ### Ledger Tamper Test
 ```bash
@@ -397,6 +405,9 @@ docker compose down                  # evening
 | Seeder duplicates rows | shouldn't happen — upsert keys | `docker compose run --rm seeder` | counts unchanged |
 | Integration tests skip | no reachable DB | set `DATABASE_URL_SYNC`, start postgres | tests run |
 | Solver returns INFEASIBLE often | windows vs traffic too tight for scenario | inspect stats json; widen demand windows | FEASIBLE/OPTIMAL |
+| `docker info` fails with `npipe ... cannot find` | Docker Desktop daemon not running (crashed or never started) | Start the Docker Desktop app manually; wait for the whale icon; if it crashes repeatedly check `wsl --status` and BIOS virtualization | `docker info` returns Server information |
+| Phantom `FLT*` divisions appear in UI after fault tests | fault-test pollution — tests leave throwaway divisions/sections with no teardown | `docker compose exec postgres psql -U rail_admin -d railbloc_db -c "DELETE FROM demands.block_demands WHERE section_id IN (SELECT id FROM infrastructure.block_sections WHERE division LIKE 'FLT_%'); DELETE FROM optimization.block_plans WHERE section_id IN (SELECT id FROM infrastructure.block_sections WHERE division LIKE 'FLT_%'); DELETE FROM infrastructure.block_sections WHERE division LIKE 'FLT_%';"` | `SELECT count(*) FROM infrastructure.block_sections WHERE division LIKE 'FLT_%';` → 0 |
+| SSE endpoint `/stream/live-blocks` returns HTTP 500 on connect | Redis down at connect time (graceful degradation exists only on the publish side, not connect side) | `docker compose start redis`, then refresh the Atlas page | SSE connects; STALE overlay clears within ~30 s |
 
 ## 15. Blocker & Impact Reference Table
 

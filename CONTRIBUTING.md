@@ -160,6 +160,12 @@ npm run build            # tsc --noEmit + vite production build
 
 > **Tooling adoption note (honesty):** ruff/mypy configs and frontend ESLint/Prettier/vitest wiring are the declared standard but CI enforcement is still landing (Tracker TASK-057/059). Until then these gates are reviewer-enforced: expect review comments if skipped. Pydantic v2 schemas are mandatory at every API boundary. Zero-hardcoding policy (`Rules.md §4`): operational parameters, penalty coefficients and scheduling cadences come from env/config — never literals.
 
+> **Known build warning:** Vite produces a bundle-size warning (single JS chunk ~1.02 MB > 500 kB limit). This is acceptable for the hackathon demo. Before production deployment, add `build.rollupOptions.output.manualChunks` to `vite.config.ts` to split vendor/application chunks.
+
+> **Known skip:** `npm audit` was skipped during the hackathon build (`--no-audit` flag) to avoid blocking on advisory vulnerabilities in transitive dependencies. Before any production deployment, run `npm audit --audit-level=moderate` and resolve findings.
+
+> **Known noise:** pytest-asyncio deprecation warnings and redis asyncio `Event loop is closed` `__del__` shutdown noise are present and harmless. Do not chase these during the hackathon.
+
 ---
 
 ## Safety-Critical Change Policy
@@ -181,6 +187,7 @@ This is the heart of this guide. Changes to ANY path below require the **`SAFETY
 | `apps/api/routers/approvals.py` | Distinct approver, hash re-verification, transition legality, idempotency usage |
 | `apps/api/routers/plans.py` | Transmit T−2h gate, acknowledge-signal state flip, lifecycle transitions |
 | `apps/api/services/coa_adapter.py` | Outbox ack-gated TRANSMITTED_COA (never on send) |
+| `apps/web/src/pages/StringChart.tsx` (`kmSpanForSection`) and `apps/web/src/pages/CorridorMap.tsx` (`kmToLatLng`) | Hand-copy of `data/generators/corridor_gen.py` corridor geometry — if either side changes, the other MUST be updated in the same PR; map/chart silently drift otherwise |
 
 **Safety Reviewer checklist (paste into the PR description):**
 

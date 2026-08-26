@@ -176,16 +176,85 @@ CP-SAT is warm-started using Baseline 1's ($B_1$) greedy heuristic solution as a
 
 ## 4. API Specification Contract (HARDENED)
 
-| Route Endpoint | HTTP Verb | RBAC Scope | Request Body Summary | Response Summary | Status Codes |
+All routes are versioned under `/api/v1`. Division-scoped object access applies on top of role gating: a non-admin actor may only touch objects whose owning section belongs to the actor's division.
+
+### Auth
+| Route Endpoint | Verb | RBAC | Request | Response | Codes |
 |---|---|---|---|---|---|
-| /api/v1/demands/ingest | POST | **Split auth (XC-011 fix):** system CRON feeds (TMS/TDMS/SMMS) authenticate via per-source machine credentials (API key/mTLS), not a human role; a separate `BDMS_MANUAL` path retains human `ENGINEER` RBAC for manual uploads. | Bulk array of TMS/TDMS/SMMS demand JSONs | Ingested count, assigned UUIDs, per-record staleness/plausibility flags (TEL-001) | 201, 400, 422 |
-| /api/v1/optimize/solve | POST | SR_DOM | Target horizon, section filters, solver timeout | Task ID for async worker queue; acquires a per-corridor solve lock to prevent racing solves (DB-003) | 202, 400, 403 |
-| /api/v1/optimize/status/{task_id} | GET | **Authenticated operations roles only (API-002 fix — was `ALL`, leaking task internals)** | None (URL path parameter) | Job state (RUNNING, COMPLETED, FAILED) | 200, 404 |
-| /api/v1/plans/weekly | GET | ALL, **division-scoped from `section_id → division` join (was query-param-only)** | Query params: division, week_number | Weekly schedule, delay metrics, shadow list | 200, 404 |
-| /api/v1/approvals/decide | POST | SR_DOM, DRM | Plan ID, decision (APPROVE/REJECT), digital signature, **idempotency key (required)** | Updated status, SHA-256 transaction hash. **Server recomputes `content_hash` and rejects (409) on mismatch with `sentinel_hash`; rejects if `decided_by == authorized_by`; rejects double-submission via idempotency key; rejects cross-division object access.** | 200, 400, 403, **409** |
-| /api/v1/emergency/breakdown | POST | CONTROLLER | Section ID, breakdown type, estimated duration, **confirmation flag (blast-radius modal acknowledged), idempotency key** | Immediate diversion plan, affected trains. **Validates the target section actually has an active/planned block before firing; coalesces with any other incident opened on an adjacent section within the same window (SAFE-003).** | 201, 400 |
-| /api/v1/ledger/verify | GET | AUDITOR | None | Chain verification state, unbroken count. **Runs under `REPEATABLE READ` snapshot isolation so a verification pass mid-write sees a consistent snapshot rather than a torn read (API-002 note).** | 200, 409 |
-| /api/v1/stream/live-blocks | GET (SSE) | ALL | None (Server-Sent Events connection) | Real-time stream of block activations/releases. **Re-authenticates on every reconnect; client must show a persistent "STALE DATA" state (Design.md §3) if the stream drops.** | 200 |
+| /api/v1/auth/login | POST | public | username, password | JWT access_token, role, division | 200, 401 |
+| /api/v1/auth/me | GET | any bearer | — | actor claims (username/role/division) | 200 |
+
+### Demands (Nexus)
+| Route Endpoint | Verb | RBAC | Request | Response | Codes |
+|---|---|---|---|---|---|
+| /api/v1/demands/ingest | POST | **Split auth (XC-011 fix):** machine feeds authenticate via per-source key headers (`X-Source-System`, `X-Source-Key`), not a human role; BDMS_MANUAL keeps human RBAC | bulk demand records with `observed_at` | ingested/rejected counts + per-record staleness/plausibility diagnostics (TEL-001); upsert on source reference (DB-006) | 201, 400, 401, 422 |
+| /api/v1/demands | GET | any bearer (division-scoped) | filters: status, department, division | demand list | 200 |
+| /api/v1/demands/manual | POST | ENGINEER, ADMIN | single manual record | ok flag | 200, 400, 403 |
+
+### Optimize
+| Route Endpoint | Verb | RBAC | Request | Response | Codes |
+|---|---|---|---|---|---|
+| /api/v1/optimize/solve | POST | SR_DOM, ADMIN (division match) | horizon, division | task id; per-division Redis solve lock (DB-003 companion) | 202, 400, 403, 409 |
+| /api/v1/optimize/status/{task_id} | GET | operations roles incl. AUDITOR (**API-002 fix — was ALL**) | — | run state + stats JSON | 200, 404 |
+
+### Plans & Lifecycle
+| Route Endpoint | Verb | RBAC | Request | Response | Codes |
+|---|---|---|---|---|---|
+| /api/v1/plans | GET | any bearer (division-scoped) | horizon, division, status, limit | plan list | 200 |
+| /api/v1/plans/weekly | GET | any bearer (division-scoped) | division, week_number | weekly schedule feed | 200 |
+| /api/v1/plans/geo | GET | any bearer | — | GeoJSON sections/blocks/OHE layers | 200 |
+| /api/v1/plans/timetable | GET | any bearer | — | train-path feed for string chart/map | 200 |
+| /api/v1/plans/summary | GET | any bearer | — | KPIs, escalated-overdue list, fleet utilization | 200 |
+| /api/v1/plans/{id} | GET | any bearer (division check) | — | plan bundle: demands, acks, roster | 200, 403, 404 |
+| /api/v1/plans/{id}/sentinel-report | GET | any bearer | — | live re-run of the 10 checks bound to content_hash | 200, 404 |
+| /api/v1/plans/{id}/acknowledge-signal | POST | STATION_MASTER, CONTROLLER, ADMIN | as_role | both_acknowledged flag; flips DRAFT → SENTINEL_PASSED when both exist (SAFE-004/G&SR-2) | 200, 404 |
+| /api/v1/plans/{id}/revise | POST | SR_DOM, ENGINEER, ADMIN | optional new start/end | revision n+1 at DRAFT, sentinel_verified cleared (SAFE-002/FR-026) | 200, 400, 403, 404, 409 |
+| /api/v1/plans/{id}/transmit | POST | SR_DOM, CONTROLLER, ADMIN | — | hash gate vs sentinel_hash (R6.2), T−2h structural re-check, outbox enqueue; TRANSMITTED_COA only on COA ack (SAFE-006) | 200, 403, 404, 409 |
+| /api/v1/plans/{id}/activate | POST | CONTROLLER, ADMIN | — | block start; ACTIVE_GRANTED | 200, 403, 409 |
+| /api/v1/plans/{id}/complete-fitness | POST | ENGINEER, STATION_MASTER, CONTROLLER, ADMIN | — | SSE fitness certification; COMPLETED_FITNESS | 200, 403, 409 |
+| /api/v1/plans/{id}/archive | POST | ADMIN, AUDITOR | — | ARCHIVED_SEALED seal | 200, 403, 409 |
+| /api/v1/plans/{id}/cancel | POST | SR_DOM, DRM, ADMIN | — | CANCELLED (pre-transmission only) | 200, 403, 409 |
+
+### Approvals
+| Route Endpoint | Verb | RBAC | Request | Response | Codes |
+|---|---|---|---|---|---|
+| /api/v1/approvals/decide | POST | SR_DOM, DRM | plan_id, decision, digital signature, **idempotency key (required)** | updated status, ledger transaction hash. **Server recomputes content_hash and rejects (409) on mismatch with sentinel_hash; rejects if decided_by == authorized_by; replays return the stored response via idempotency key; rejects cross-division object access.** | 200, 400, 403, 409 |
+
+### Emergency
+| Route Endpoint | Verb | RBAC | Request | Response | Codes |
+|---|---|---|---|---|---|
+| /api/v1/emergency/blast-radius | GET | CONTROLLER, SR_DOM, DRM, ENGINEER, ADMIN | section_id, duration | trains held, plans superseded, adjacent sections (API-001 modal data) | 200 |
+| /api/v1/emergency/breakdown | POST | CONTROLLER | section_id, type, duration, **confirmation flag (blast-radius acknowledged), idempotency key** | incident id (+coalescing), PROVISIONAL plan within ≤45 s budget incl. synchronous structural checks, measured wall time; fails closed if structural checks fail (SAFE-003/ADR-006) | 201, 400, 500 |
+| /api/v1/emergency/incidents | GET | any bearer | — | incident feed incl. coalescing links and ack state | 200 |
+| /api/v1/emergency/incidents/{id}/acknowledge | POST | CONTROLLER | — | Controller-ack gate enabling outbox transmission of the PROVISIONAL plan | 200, 404 |
+
+### Ledger (Chronicle)
+| Route Endpoint | Verb | RBAC | Request | Response | Codes |
+|---|---|---|---|---|---|
+| /api/v1/ledger/verify | GET | AUDITOR, ADMIN | none | full-chain re-hash under `REPEATABLE READ` snapshot so a verification pass mid-write sees a consistent view rather than a torn read (API-002 note) | 200, 409 |
+| /api/v1/ledger/entries | GET | AUDITOR, ADMIN | limit, offset, event_type | explorer feed | 200 |
+
+### Stream
+| Route Endpoint | Verb | RBAC | Request | Response | Codes |
+|---|---|---|---|---|---|
+| /api/v1/stream/live-blocks | GET (SSE) | any bearer via query token (`?token=`; EventSource cannot set headers) | — | real-time stream of block activations/releases/transmissions; heartbeats between events. **Re-authenticates on every reconnect; client must show a persistent "STALE DATA" state if the stream drops or heartbeats lapse (Design.md §3).** | 200, 401 |
+
+### Weather (FR-019 / TEL-002)
+| Route Endpoint | Verb | RBAC | Request | Response | Codes |
+|---|---|---|---|---|---|
+| /api/v1/weather/alerts | GET | any bearer | — | alerts ∩ sections via PostGIS `ST_Intersects`, plus feed-staleness flag | 200 |
+| /api/v1/weather/deferred-activities | GET | any bearer | — | fail-closed deferred work types (stale/missing feed defers outdoor high-risk work) | 200 |
+
+### Operations
+| Route Endpoint | Verb | RBAC | Request | Response | Codes |
+|---|---|---|---|---|---|
+| /api/v1/operations/timetable/upload | POST | ADMIN, ENGINEER | timetable rows | upsert count keyed on (train_number, section_id, scheduled_entry) — DB-006 | 200, 400 |
+| /api/v1/operations/feeds/wtt-poll | POST | per-source key headers | — | poll readiness report | 200, 401 |
+
+### Health
+| Route Endpoint | Verb | RBAC | Request | Response | Codes |
+|---|---|---|---|---|---|
+| /health | GET | public | — | liveness + database probe (reports degraded, never lies) | 200 |
 
 ## 5. Architectural Decision Records (ADRs)
 

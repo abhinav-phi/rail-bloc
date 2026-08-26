@@ -244,7 +244,7 @@ docker compose exec postgres psql -U rail_admin -d railbloc_db \
 * Authoritative text: [`docs/Rules.md`](docs/Rules.md).
 
 ## Current Roadmap & Implementation Status
-Implemented and verified (evidence: `Tracker.md §4`): DDL+triggers (incl. post-build ledger concurrency fix DB-001b) · generators/seeder · interval CP-SAT solver · Sentinel 10-check module · Plan Lifecycle · Approval Service · Emergency Service · COA outbox bridge · Atlas console (strict build passing) · fixed-seed benchmark harness (measured cell recorded) · ML calibration (ECE 0.0331) · **40 automated tests green** against live containers.
+Implemented and **unit/integration-verified** (evidence: `Tracker.md §4`); **full-stack Docker Compose boot and broker-driven solve are pending** (see `[ ]` items below): DDL+triggers (incl. post-build ledger concurrency fix DB-001b) · generators/seeder · interval CP-SAT solver · Sentinel 10-check module · Plan Lifecycle · Approval Service · Emergency Service · COA outbox bridge · Atlas console (strict build passing) · fixed-seed benchmark harness (measured cell recorded) · ML calibration (ECE 0.0331) · **40 automated tests green against host-started PostgreSQL 16 + Redis 7.2 containers (not the full Docker Compose stack — see `Tracker.md §4.2` TASK-001 `[/]`)**.
 
 Open verifications (honest [/] in Tracker): final `api`/`worker` image rebuild after the or-tools local-wheel fix · first full multi-service `docker compose up --build` boot · broker-driven solve drill · fault-suite clean rerun · browser FPS profiling.
 

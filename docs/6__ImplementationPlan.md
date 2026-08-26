@@ -85,6 +85,10 @@
 | TASK-058 | Performance tuning: domain-restricted solver variables, GiST index verification, FPS profiling on demo scenario | Eng F | P1 | TASK-044, TASK-003 | M | Measured solve time and FPS numbers recorded and reflected in NFR-001/NFR-006 status. | PERF-001, PERF-002, PERF-003 |
 | TASK-059 | Documentation-consistency pass across all 8 documents (Tracker reset, terminology fixes, cross-reference check) | Eng F | P0 | All prior | M | Zero unresolved items remain in the Cross-Document Contradictions register. | DOC-001–006, XC-001–012 |
 | TASK-060 | Hardened End-to-End Verification: full lifecycle + fault injection + measured-claims demo script | All | P0 | TASK-057, TASK-058, TASK-059 | L | Clean `docker compose up` run; full E2E lifecycle including an emergency drill and a rejected modify-after-verify attempt, all with measured (not assumed) evidence. | Section 17 verification list |
+| TASK-061 | Frontend runtime browser smoke: open Atlas in Chrome/Firefox; verify MapLibre renders vectors, login flow, Preview Card 10 checks, SSE connect, STALE overlay on Redis stop, zero JS console errors; record screenshot evidence | Eng C/F | P1 | TASK-054 | M | Browser session recorded with zero console errors and all states exercised. | UX-001 |
+| TASK-062 | FLT* test-data cleanup fixture: conftest teardown deletes throwaway fault-test divisions/sections after suite runs | Eng F | P2 | TASK-057 | S | Post-suite `SELECT count(*) FROM infrastructure.block_sections WHERE division LIKE 'FLT_%'` returns 0. | Test hygiene |
+| TASK-063 | Vite code-splitting via `build.rollupOptions.output.manualChunks` (vendor/app chunks) to clear the >500 kB bundle warning | Eng C | P2 | TASK-026 | S | `npm run build` completes with no chunk-size warning. | PERF-003 prep |
+| TASK-064 | Run `npm audit --audit-level=moderate` and resolve or waive findings (audit was skipped with `--no-audit` during the build) | Eng B | P2 | TASK-037 | S | Audit report archived; findings fixed or explicitly waived in writing. | Security hygiene |
 
 ## 3. Critical Path Directed Acyclic Graph (DAG)
 
