@@ -40,7 +40,7 @@ The interface is designed for mission-critical railway control environments. It 
 
 - **Engine:** MapLibre GL JS vector rendering with custom rail vector tiles.
 - **Layers:** Track centerline geometries, railway station markers, active block hazard corridors, real-time train positions from RTIS, and OHE feeding-section boundaries (SAFE-004).
-- **Interaction:** Hovering over a track section displays current track health indices (GMT, defect count) and scheduled maintenance windows.
+- **Interaction:** Hovering over a track section displays the section's kilometer post. **Full tooltip enrichment** (GMT, defect count, scheduled maintenance windows) **is specified but not yet implemented in the current build** — the chart currently shows only a KM readout. This is a P2 polish item.
 - **Synthetic-data labeling (Rules.md §5):** every layer sourced from synthetic seed data carries a persistent, non-dismissible **"SIMULATED DATA"** watermark — this is a hard requirement, not a subtle footnote, per the project's own demonstration-honesty rules.
 
 ### Stale-State Overlay (NEW — UX-001 fix)
@@ -71,7 +71,15 @@ A trust-building modal presented to the Sr. DOM prior to approving any AI-genera
 - **STATE BADGE:** A distinct, unambiguous badge for the plan's current lifecycle state (`SENTINEL_PASSED` / `APPROVED_SR_DOM` / `AUTHORIZED_DRM` / `PROVISIONAL`, etc. — AppFlow.md §3) so the approver never confuses "solver-verified" with "already approved."
 - **REVISION INTEGRITY:** If the card's locally-held `content_hash` does not match the server's current hash for the plan (i.e., the plan was edited since the card was opened), the Approve button is disabled and a **"Plan changed — reload to review latest revision"** banner is shown instead of allowing a stale approval.
 - **ACTIONS:** [ Approve & Digitally Sign ] — enabled only for the authenticated actor whose role matches the plan's current required approver, and only when the plan is `SENTINEL_PASSED` (or `APPROVED_SR_DOM` for the DRM step) with a hash match. | [ Modify Parameters ] — any use of this action immediately creates a new plan revision and clears `sentinel_verified`, visibly resetting the state badge. | [ Reject Plan ].
+- **DRM-step label distinction (APP-001):** when the authenticated actor's role is DRM and the plan is at `APPROVED_SR_DOM`, the primary action label SHOULD read **[ Authorize & Seal ]** — distinct from Sr. DOM's [ Approve & Digitally Sign ] — to visually reinforce that a different person performs a different action. **Note: specified but not yet implemented in the current build**; both roles currently see [ Approve & Digitally Sign ] while the server routes by role correctly.
 
 ### Emergency Confirmation Modal (NEW — API-001 fix)
 
 Before `/api/v1/emergency/breakdown` fires, the Controller sees a confirmation modal showing the **blast radius** of the action: trains currently held, plans that will be superseded, and the affected section list. This prevents a single accidental click (or a compromised/duplicate request) from revoking a corridor's plans without the Controller seeing the consequence first.
+
+### Demo Scope Notes (honesty acknowledgments)
+
+- **Single-division UI:** the tactical weekly planner currently targets division DLI only (no multi-division dropdown). The API and schema are division-aware and need no changes to support more; a division selector is a post-hackathon enhancement.
+- **STALE overlay timing spec:** server sends an SSE heartbeat comment every 10 seconds; the client resets a ~15-second watchdog on any received message. If no message arrives within the window OR EventSource `onerror` fires (including connect-time failures such as HTTP 500 when Redis is down), the overlay MUST appear immediately. It clears only on the first message after successful reconnection. **Note: this server-client combo is specified but not yet tested end-to-end** (see `Tracker.md §4.2` TASK-054).
+- **StringChart tooltip:** full enrichment (GMT, defect count, maintenance windows) is specified but the current build shows only a KM readout — see Interaction note above.
+- **DRM button label:** [ Authorize & Seal ] distinction is specified but not yet implemented — see ACTIONS note above.

@@ -211,7 +211,8 @@ CREATE TABLE optimization.block_plans (
     approval_status VARCHAR(24) NOT NULL DEFAULT 'DRAFT' CHECK (approval_status IN (
         'DRAFT', 'SENTINEL_PASSED', 'APPROVED_SR_DOM', 'AUTHORIZED_DRM',
         'TRANSMITTED_COA', 'ACTIVE_GRANTED', 'COMPLETED_FITNESS', 'ARCHIVED_SEALED',
-        'SUPERSEDED', 'SUPERSEDED_EMERGENCY', 'CANCELLED', 'FAILED_ESCALATE'
+        'SUPERSEDED', 'SUPERSEDED_EMERGENCY', 'CANCELLED', 'FAILED_ESCALATE',
+        'PROVISIONAL'
     )),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT chk_plan_window CHECK (end_time > start_time),
@@ -402,6 +403,7 @@ $$;
 | PERF-002 | GiST range index on demand scheduling windows replacing plain B-tree. |
 | ML-002 | Added `urgency_source` lineage column to `block_demands`. |
 | TEL-001 | Added `source_ingested_at` for staleness/freshness checks. |
+| RES-01 (doc-sync closure) | Added `'PROVISIONAL'` to the `approval_status` CHECK above. FR-028 / ADR-006 / AppFlow Scenario A and the `status-provisional` design token all reference this state; this document's CHECK previously listed only 12 values while the shipped DDL (`data/sql/02_schema_ddl.sql`) already carried 13 — an implementation/doc drift that would have failed every emergency-plan insert had the doc DDL been executed verbatim. |
 | POST-BUILD FIX (DB-001b) | Added `audit.append_event()` — pre-statement advisory-lock acquisition. The trigger-only lock was proven insufficient under concurrent writers (READ COMMITTED snapshot is fixed at INSERT-statement start, before the in-trigger lock wait ends); 8-process stress reproduced chain forking without this and `chain_ok=true` with it. |
 
 **Note on "7 tables" (DOC-004 / XC-008):** the original Tracker.md claim of 7 tables against a 5-table DDL is resolved by this revision, which now defines the additional tables the functional requirements actually require (`ohe_feeding_sections`, `section_feeding_map`, `signal_acknowledgments`, `incidents`, `plan_shadow_demands`, `plan_sections`, `machine_rosters`) — 12 tables total across the five schemas. Tracker.md is corrected accordingly.

@@ -83,6 +83,10 @@
 | TASK-058 | Performance | Eng F | [ ] | Domain-restricted variables, GiST index verification, FPS profiling. |
 | TASK-059 | Documentation | Eng F | [ ] | Cross-document consistency pass; close all XC-* items. |
 | TASK-060 | Final E2E | All | [ ] | Hardened E2E: full lifecycle + fault injection + measured-claims demo. |
+| TASK-061 | Frontend | Eng C/F | [ ] | Runtime browser smoke: MapLibre render, login flow, Preview Card, SSE connect, STALE overlay on Redis stop, zero console errors; screenshot evidence. |
+| TASK-062 | Verification | Eng F | [ ] | FLT* test-data cleanup fixture (conftest teardown); post-suite FLT_% count must be 0. |
+| TASK-063 | Frontend | Eng C | [ ] | Vite manualChunks code-splitting to clear the >500 kB bundle warning. |
+| TASK-064 | Security | Eng B | [ ] | Run npm audit --audit-level=moderate; fix or explicitly waive findings. |
 
 ## 3. Pre-Demo Sanity Verification Checklist — RESET
 
@@ -131,7 +135,8 @@
 ### 4.2 Task-status deltas vs §2 (only where evidence now exists)
 
 - **[x] with evidence:** TASK-002, 003, 004 (incl. DB-001b hardening above), 005, 006, 007–010, 011, 012–019, 021, 023–025, 041, 043, 044–047, 049, 050, 051, 052, 055, 056.
-- **[/] implemented, runtime-evidence pending:** TASK-001 (api/worker/web image builds + full `docker compose up --build` not yet executed on this host — only postgres/redis/seeder-path verified), TASK-020 (worker module imports & beat parses; broker-driven solve not yet exercised live end-to-end), TASK-022 (retry-cap code in `run_solve`; no injected-failure run yet), TASK-026–037 & 053–054 (frontend complete in TS strict; `npm install && npm run build` not yet run here), TASK-039 (field endpoints tested via lifecycle activate/fitness; dedicated mobile-terminal mock flow pending), TASK-048 (G&SR-2 validator path unit-tested; `/acknowledge-signal` HTTP flow not yet integration-hit), TASK-057 (fault-injection coverage partial: auth spoof, Redis-unavailable publish resilience coded+used in tests; PG/solver kill-mid-flow not automated), TASK-058 (per-solve wall times recorded in `solver_runs.stats`; GiST indexes present; FPS profiling pending), TASK-060 (hardened full-stack demo script pending the remaining builds).
+- **[/] implemented, runtime-evidence pending:** TASK-001 (api/worker/web image builds + full `docker compose up --build` not yet executed on this host — only postgres/redis/seeder-path verified), TASK-020 (worker module imports & beat parses; broker-driven solve not yet exercised live end-to-end), TASK-022 (retry-cap code in `run_solve`; no injected-failure run yet), TASK-026–037 & 053–054 (frontend complete in TS strict; `npm install && npm run build` not yet run here), TASK-039 (field endpoints tested via lifecycle activate/fitness; dedicated mobile-terminal mock flow pending), TASK-048 (G&SR-2 validator path unit-tested; `/acknowledge-signal` HTTP flow now integration-tested — remaining gap is none), TASK-058 (per-solve wall times recorded in `solver_runs.stats`; GiST indexes present; FPS profiling pending), TASK-060 (hardened full-stack demo script pending the remaining builds).
+- **[!] blocked / unverified state known:** TASK-057 (fault-injection suite) — three genuine test-bugs were fixed after the Docker-dead-period failure run (isolated division seeding, monkeypatch target, SQL literal); **a clean rerun has never happened** and is blocked pending a stable Docker daemon plus full compose boot. Status moves to `[x]` only when `pytest tests/integration/test_faults.py` passes clean.
 - **[x] just completed by this pass:** TASK-059 documentation-consistency sync (this §4 log; Schema.md `append_event` addition + change-log row; README quickstart).
 
 Honesty note: no figure above is assumed. Where a number is absent (FPS, full-image compose boot), the task stays open — per Rules.md §5 and R6.6.
