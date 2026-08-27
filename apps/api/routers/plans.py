@@ -40,10 +40,20 @@ async def _bundle(session: AsyncSession, plan: dict) -> dict:
 
 async def _build_sentinel_context(session: AsyncSession) -> SentinelContext:
     now = datetime.now(timezone.utc)
-    trains = [TrainInterval(str(r[0]), int(r[1]), r[2], r[3])
+    trains = [TrainInterval(str(r[0]), int(r[1]), r[2], r[3],
+                            source=str(r[4] or "WTT"),
+                            forecast_confidence=(json.loads(r[5]).get("forecast_confidence")
+                                                 if r[5] else None))
               for r in (await session.execute(text(
-                  "SELECT section_id, priority_rank, scheduled_entry, scheduled_exit "
-                  "FROM operations.train_paths WHERE scheduled_exit > now() - interval '1 day'"))).fetchall()]
+                  """SELECT section_id, priority_rank, scheduled_entry, scheduled_exit,
+                            source, metadata::text
+                     FROM operations.train_paths
+                     WHERE scheduled_exit > now() - interval '1 day'"""))).fetchall()]
+    committed_windows: dict[str, list[tuple[datetime, datetime]]] = {}
+    for sid, pst, pet in (await session.execute(text(
+            "SELECT section_id, start_time, end_time FROM optimization.block_plans "
+            "WHERE approval_status IN ('AUTHORIZED_DRM','TRANSMITTED_COA','ACTIVE_GRANTED')"))).fetchall():
+        committed_windows.setdefault(str(sid), []).append((pst, pet))
     feeds = {}
     for fsid, sec in (await session.execute(text(
             "SELECT f.id, m.section_id FROM infrastructure.ohe_feeding_sections f "
@@ -60,6 +70,7 @@ async def _build_sentinel_context(session: AsyncSession) -> SentinelContext:
     return SentinelContext(train_intervals=trains, feeding_map=feeding, acks=acks,
                            machine_infos=machines, now=now,
                            staleness_ttl=timedelta(hours=settings.demand_staleness_ttl_hours),
+                           committed_windows=committed_windows,
                            headway_high_priority_mins=settings.headway_high_priority_mins)
 
 

@@ -34,13 +34,15 @@ def work(d, start=None):
                          (start or T0 + timedelta(hours=1)) + timedelta(minutes=d.min_duration_mins))
 
 
-def ctx(trains=None, feeding_map=None, acks=None, machine_infos=None, machine_assignments=None):
+def ctx(trains=None, feeding_map=None, acks=None, machine_infos=None,
+        machine_assignments=None, committed_windows=None):
     return SentinelContext(
         train_intervals=trains or [],
         feeding_map=feeding_map or [FeedingMapEntry("F1", frozenset({"S1"}))],
         acks=acks or {},
         machine_infos=machine_infos or [],
         machine_assignments=machine_assignments or {},
+        committed_windows=committed_windows or {},
         now=datetime.now(timezone.utc))
 
 
@@ -83,12 +85,24 @@ def test_gsr4_trd_plan_spilling_feeding_boundary_fails():
     d = demand(dept="TRD")
     p = plan([work(d)])
     spilling = [FeedingMapEntry("F9", frozenset({"S1", "S2"}))]
-    v = validate_plan(p, ctx(feeding_map=spilling))
+    # Spill with an ACTIVE neighbour (train crossing the window) -> FAIL.
+    trains = [TrainInterval("S2", 5, T0 + timedelta(hours=1), T0 + timedelta(hours=2))]
+    v = validate_plan(p, ctx(feeding_map=spilling, trains=trains))
     g = next(r for r in v.results if r.check_id == CheckID.GSR4_POWER_ISOLATION_BOUNDARY)
-    assert not g.passed  # R6.5: boundary set must be coverable by the block
+    assert not g.passed  # R6.5: back-feed source present in spilled member
+    # Spill with a COMMITTED plan on the neighbour -> FAIL as well.
+    v2 = validate_plan(p, ctx(feeding_map=spilling,
+                              committed_windows={"S2": [(p.start_time, p.end_time)]}))
+    g2 = next(r for r in v2.results if r.check_id == CheckID.GSR4_POWER_ISOLATION_BOUNDARY)
+    assert not g2.passed
+    # Spill with a completely idle neighbour -> safe partial isolation, PASS.
+    v3 = validate_plan(p, ctx(feeding_map=spilling))
+    g3 = next(r for r in v3.results if r.check_id == CheckID.GSR4_POWER_ISOLATION_BOUNDARY)
+    assert g3.passed and "idle" in g3.detail
+    # Full containment still passes trivially.
     contained = [FeedingMapEntry("F1", frozenset({"S1"}))]
-    v2 = validate_plan(p, ctx(feeding_map=contained))
-    assert next(r for r in v2.results if r.check_id == CheckID.GSR4_POWER_ISOLATION_BOUNDARY).passed
+    v4 = validate_plan(p, ctx(feeding_map=contained))
+    assert next(r for r in v4.results if r.check_id == CheckID.GSR4_POWER_ISOLATION_BOUNDARY).passed
 
 
 def test_gsr5_headway_margin():

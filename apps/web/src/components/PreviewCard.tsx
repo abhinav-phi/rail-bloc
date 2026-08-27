@@ -23,6 +23,7 @@ export interface PlanDetail {
 
 interface Props {
   plan: PlanDetail;
+  viewerRole: string | null;
   demands: { id: string; external_ref_id?: string; activity_code: string; urgency_score: number; source_ingested_at?: string; features?: Record<string, unknown> }[];
   shadowCount: number;
   checks: SentinelCheck[] | null;
@@ -40,12 +41,14 @@ const durationMins = (a: string, b: string) => Math.round((+new Date(b) - +new D
 /** Design.md §3 — Standardized Action Preview Card (UX-001/DOC-001 rewrite).
  *  The headline count is COMPUTED from the enumerated list — never a hardcoded "N/N". */
 export const PreviewCard: React.FC<Props> = ({
-  plan, demands, shadowCount, checks, serverHash, cardHashRef,
+  plan, viewerRole, demands, shadowCount, checks, serverHash, cardHashRef,
   onApprove, onReject, busy, message,
 }) => {
   const stale = cardHashRef.current !== serverHash && cardHashRef.current !== "";
   const passed = checks?.filter((c) => c.passed).length ?? 0;
   const total = checks?.length ?? 10;
+  const isDrmAuthorizeStep = viewerRole === "DRM" && plan.approval_status === "APPROVED_SR_DOM";
+  const primaryLabel = isDrmAuthorizeStep ? "🔒 Authorize & Seal" : "✔ Approve & Digitally Sign";
 
   return (
     <div className="rounded-lg border border-border-subtle bg-bg-surface">
@@ -128,22 +131,27 @@ export const PreviewCard: React.FC<Props> = ({
       </div>
 
       {/* REVISION INTEGRITY + ACTIONS */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border-subtle px-4 py-3">
-        <div className="font-mono text-[10px] text-text-secondary">
-          REVISION INTEGRITY: local {cardHashRef.current.slice(0, 12) || "—"} · server {serverHash.slice(0, 12)}
-          <br />
-          {plan.decided_by && <span>decided_by: <b className="text-text-primary">{plan.decided_by}</b> </span>}
-          {plan.authorized_by && <span>· authorized_by: <b className="text-text-primary">{plan.authorized_by}</b></span>}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border-subtle px-4 py-3">
+          <div className="font-mono text-[10px] text-text-secondary">
+            REVISION INTEGRITY: local {cardHashRef.current.slice(0, 12) || "—"} · server {serverHash.slice(0, 12)}
+            <br />
+            APPROVAL CHAIN:
+            {plan.decided_by
+              ? <> decided_by: <b className="text-text-primary">{plan.decided_by}</b></>
+              : <> decided_by: <i>pending</i></>}
+            {plan.authorized_by
+              ? <> · authorized_by: <b className="text-text-primary">{plan.authorized_by}</b></>
+              : isDrmAuthorizeStep && <> · authorized_by: <i>— pending (you are the DRM step; must differ from decided_by, APP-001)</i></>}
+          </div>
+          <div className="flex gap-2">
+            <ActionButton data-testid="approve" onClick={onApprove} disabled={stale || busy}>
+              {primaryLabel}
+            </ActionButton>
+            <ActionButton onClick={onReject} disabled={busy} className="bg-status-blocked/20 text-status-blocked hover:bg-status-blocked/30">
+              ✗ Reject Plan
+            </ActionButton>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <ActionButton data-testid="approve" onClick={onApprove} disabled={stale || busy}>
-            ✔ Approve &amp; Digitally Sign
-          </ActionButton>
-          <ActionButton onClick={onReject} disabled={busy} className="bg-status-blocked/20 text-status-blocked hover:bg-status-blocked/30">
-            ✗ Reject Plan
-          </ActionButton>
-        </div>
-      </div>
     </div>
   );
 };
