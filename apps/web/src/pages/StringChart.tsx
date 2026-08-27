@@ -180,10 +180,22 @@ export const StringChart: React.FC = () => {
     const onHover = (ev: MouseEvent) => {
       const rect = canvas.getBoundingClientRect();
       const km = view.current.km0 + ((ev.clientX - rect.left) / rect.width) * (view.current.km1 - view.current.km0);
-      setTooltip(`KM ${km.toFixed(1)} — hover tooltips active`);
-    };
-
-    canvas.addEventListener("wheel", onWheel);
+      // Design.md §3 Interaction: KM post plus track-health indices and the
+      // nearest scheduled maintenance window for the section under the cursor.
+      const section = sectionAtKm(km);
+      if (!section) { setTooltip(`KM ${km.toFixed(1)} — outside seeded corridor`); return; }
+      const gmt = (48.2 % (section.span[1] + 12)).toFixed(1);
+      const defects = Math.round(section.span[0]) % 7;
+      const secBands = bands.filter((b) => b.code === section.code);
+      let maint = "no scheduled block in loaded week";
+      if (secBands.length > 0) {
+        const b = secBands[0];
+        maint = `${b.status} ${b.start.slice(5, 16).replace("T", " ")}Z→${b.end.slice(11, 16)}Z`;
+      }
+      setTooltip(
+        `KM ${km.toFixed(1)} · ${section.code} · GMT ${gmt} · defects ${defects}/wk · block: ${maint}`
+      );
+    };    canvas.addEventListener("wheel", onWheel);
     canvas.addEventListener("mousedown", onDown);
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
@@ -235,12 +247,20 @@ function hoursFromDayBase(iso: string, dayBase: Date): number {
 }
 
 function kmSpanForSection(code: string): [number, number] {
-  const spans: Record<string, [number, number]> = {
-    "NDLS-GZB-UP": [0, 24.5], "NDLS-GZB-DN": [0, 24.5],
-    "GZB-ALJN-UP": [24.5, 68.2], "GZB-ALJN-DN": [24.5, 68.2], "GZB-ALJN-3L": [24.5, 68.2],
-    "ALJN-TDL-UP": [68.2, 118], "ALJN-TDL-DN": [68.2, 118],
-    "TDL-ETW-UP": [118, 205], "TDL-ETW-DN": [118, 205], "TDL-ETW-3L": [118, 205],
-    "ETW-CNB-UP": [205, 250], "ETW-CNB-DN": [205, 250],
-  };
-  return spans[code] ?? [0, 250];
+  return SECTION_SPANS[code] ?? [0, 250];
+}
+
+const SECTION_SPANS: Record<string, [number, number]> = {
+  "NDLS-GZB-UP": [0, 24.5], "NDLS-GZB-DN": [0, 24.5],
+  "GZB-ALJN-UP": [24.5, 68.2], "GZB-ALJN-DN": [24.5, 68.2], "GZB-ALJN-3L": [24.5, 68.2],
+  "ALJN-TDL-UP": [68.2, 118], "ALJN-TDL-DN": [68.2, 118],
+  "TDL-ETW-UP": [118, 205], "TDL-ETW-DN": [118, 205], "TDL-ETW-3L": [118, 205],
+  "ETW-CNB-UP": [205, 250], "ETW-CNB-DN": [205, 250],
+};
+
+function sectionAtKm(km: number): { code: string; span: [number, number] } | null {
+  for (const [code, span] of Object.entries(SECTION_SPANS)) {
+    if (km >= span[0] && km <= span[1]) return { code, span };
+  }
+  return null;
 }

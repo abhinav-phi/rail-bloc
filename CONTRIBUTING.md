@@ -162,7 +162,7 @@ npm run build            # tsc --noEmit + vite production build
 
 > **Known build warning:** Vite produces a bundle-size warning (single JS chunk ~1.02 MB > 500 kB limit). This is acceptable for the hackathon demo. Before production deployment, add `build.rollupOptions.output.manualChunks` to `vite.config.ts` to split vendor/application chunks.
 
-> **Known skip:** `npm audit` was skipped during the hackathon build (`--no-audit` flag) to avoid blocking on advisory vulnerabilities in transitive dependencies. Before any production deployment, run `npm audit --audit-level=moderate` and resolve findings.
+> **Known skip (TASK-064 measured):** `npm audit` reports 4 findings — vite HIGH (path traversal in optimized-deps `.map` handling), esbuild MODERATE (dev-server request exposure) and react-router/react-router-dom MODERATE (open redirect via backslash links). All four are **dev-server advisories**: the shipped production artifact is static files served by nginx and is unaffected. Fixes require major upgrades (`npm audit fix --force` pulls Vite 7 / router v7) which are deliberately deferred past the hackathon demo; re-run and resolve before any production deployment.
 
 > **Known noise:** pytest-asyncio deprecation warnings and redis asyncio `Event loop is closed` `__del__` shutdown noise are present and harmless. Do not chase these during the hackathon.
 

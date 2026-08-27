@@ -24,6 +24,17 @@ export const Approvals: React.FC = () => {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const cardHashRef = useRef<string>("");
+  const viewerRole: string | null = (() => {
+    // Same base64url decode approach as App.tsx; needed for role-aware action label.
+    const tok = localStorage.getItem("railbloc_token");
+    if (!tok) return null;
+    try {
+      const b64 = (tok.split(".")[1] ?? "").replace(/-/g, "+").replace(/_/g, "/");
+      return (JSON.parse(decodeURIComponent(escape(window.atob(b64)))) as { role?: string }).role ?? null;
+    } catch {
+      return null;
+    }
+  })();
 
   const loadPlans = useCallback(() => {
     api.get<PlanRow[]>("/api/v1/plans?horizon=WEEKLY&limit=300")
@@ -136,6 +147,7 @@ export const Approvals: React.FC = () => {
               )}
             <PreviewCard
               plan={detail.plan}
+              viewerRole={viewerRole}
               demands={detail.demands}
               shadowCount={detail.shadow_ids.length}
               checks={checks}

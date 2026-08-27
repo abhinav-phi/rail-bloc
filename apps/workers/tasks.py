@@ -136,6 +136,33 @@ def solver_params(budget_seconds: float | None = None) -> "SolverParams":
 HORIZON_DAYS = {"WEEKLY": 7, "STRATEGIC_26W": 182, "REALTIME": 2}
 
 
+def refresh_weather_alerts_if_stale(conn) -> int:
+    """Simulated IMD feed (FR-005-style poll): when every seeded alert has expired,
+    roll a fresh fixed-seed alert set in so TEL-002 fail-closed deferrals reflect an
+    ACTIVE weather event rather than a permanently stale feed."""
+    now = datetime.now(timezone.utc)
+    fresh = conn.execute(text(
+        "SELECT count(*) FROM operations.weather_alerts WHERE valid_until > :n"),
+        {"n": now}).scalar()
+    if fresh:
+        return 0
+    from data.generators.traffic_gen import gen_weather
+    alerts = gen_weather(now, seed=int(now.timestamp()) // 3600 % 100000)
+    n = 0
+    for a in alerts:
+        poly = json.dumps({"type": "Polygon", "coordinates": [a["polygon"]]})
+        conn.execute(text(
+            """INSERT INTO operations.weather_alerts
+               (alert_type, severity, impact_polygon, precipitation_mm_hr,
+                rail_temperature_celsius, prohibited_work_types, valid_until)
+               VALUES (:t,:s,ST_GeomFromGeoJSON(:g),:p,:rt,CAST(:w AS jsonb),:v)"""),
+            {"t": a["alert_type"], "s": a["severity"], "g": poly,
+             "p": a["precipitation_mm_hr"], "rt": a["rail_temperature_celsius"],
+             "w": json.dumps(a["prohibited_work_types"]), "v": a["valid_until"]})
+        n += 1
+    return n
+
+
 def load_weather_deferrals(conn) -> set[str]:
     """TEL-002 fail-closed: stale/missing IMD feed defers ALL weather-sensitive outdoor
     work; a fresh feed defers exactly the prohibited types of active alerts."""
@@ -198,6 +225,7 @@ def run_solve(self, run_id: str):
             return {"error": "unknown run"}
         horizon, division = run["horizon"], run["division"]
         conn.execute(text("UPDATE optimization.solver_runs SET status='RUNNING' WHERE id=:i"), {"i": run_id})
+        refresh_weather_alerts_if_stale(conn)
 
         now = datetime.now(timezone.utc)
         until = now + timedelta(days=HORIZON_DAYS.get(horizon, 7))
@@ -210,7 +238,10 @@ def run_solve(self, run_id: str):
                FROM demands.block_demands d JOIN infrastructure.block_sections s ON s.id=d.section_id
                WHERE d.section_id = ANY(CAST(:ss AS uuid[])) AND d.status IN ('SUBMITTED','NORMALIZED')
                  AND d.latest_deadline > :n AND d.earliest_start < :u
-               ORDER BY d.urgency_score DESC"""), {"ss": sec_ids, "n": now, "u": until}).mappings().all()
+                 AND (d.source_ingested_at IS NULL OR d.source_ingested_at >= :stale_cut)
+               ORDER BY d.urgency_score DESC"""),
+            {"ss": sec_ids, "n": now, "u": until,
+             "stale_cut": now - timedelta(hours=_env_float("DEMAND_STALENESS_TTL_HOURS", 12.0))}).mappings().all()
 
         deferred = load_weather_deferrals(conn)
         demands_all = []
@@ -228,6 +259,25 @@ def run_solve(self, run_id: str):
                 urgency_score=float(r["urgency_score"]), machinery=list(r["machinery_req"] or []),
                 source_ingested_at=r["source_ingested_at"], features=dict(r["features"] or {})))
         ml_n = maybe_apply_ml_urgency(conn, [dict(r) for r in dem_rows])
+
+        if not demands_all:
+            # Nothing eligible this cycle (everything already scheduled, cancelled,
+            # or deliberately weather-deferred): a no-op COMPLETED run — escalation
+            # is reserved for "we tried and Sentinel rejected", never for empty input.
+            stats = {"status": "OPTIMAL", "objective": 0.0, "bound": 0.0,
+                     "attempts": 0, "ml_updated": ml_n,
+                     "weather_deferred": sorted(deferred_ids)[:20],
+                     "total_demands": 0, "committed_plans": 0, "scheduled": 0,
+                     "unscheduled": 0, "noop": True}
+            conn.execute(text(
+                """UPDATE optimization.solver_runs
+                   SET status='COMPLETED', completed_at=now(), stats=CAST(:st AS jsonb) WHERE id=:i"""),
+                {"st": json.dumps(stats), "i": run_id})
+            conn.execute(text(
+                "SELECT audit.append_event('SOLVE_COMPLETED','worker',CAST(:p AS jsonb))"),
+                {"p": json.dumps({"run_id": run_id, **stats})})
+            _sse_publish("SOLVE_COMPLETED", {"run_id": run_id, "noop": True})
+            return stats
 
         tr_rows = conn.execute(text(
             """SELECT t.* FROM operations.train_paths t
@@ -255,10 +305,19 @@ def run_solve(self, run_id: str):
                    JOIN optimization.block_plans p ON p.id = s.plan_id""")).fetchall():
             acks[str(ch_)] = AckRecord(str(ch_), bool(sm), bool(ctl))
 
+        committed_windows: dict[str, list[tuple[datetime, datetime]]] = {}
+        for sid, pst, pet in conn.execute(text(
+                "SELECT section_id, start_time, end_time FROM optimization.block_plans "
+                "WHERE approval_status IN ('AUTHORIZED_DRM','TRANSMITTED_COA','ACTIVE_GRANTED')")).fetchall():
+            committed_windows.setdefault(str(sid), []).append((pst, pet))
+
     ctx = SentinelContext(train_intervals=[TrainInterval(t.section_id, t.priority_rank,
-                                                         t.scheduled_entry, t.scheduled_exit)
+                                                         t.scheduled_entry, t.scheduled_exit,
+                                                         source=t.source,
+                                                         forecast_confidence=t.forecast_confidence)
                                            for t in trains],
                           feeding_map=feeding_map, acks=acks, machine_infos=machines,
+                          committed_windows=committed_windows,
                           now=datetime.now(timezone.utc),
                           staleness_ttl=timedelta(hours=_env_float("DEMAND_STALENESS_TTL_HOURS", 12)),
                           headway_high_priority_mins=_env_int("HEADWAY_HIGH_PRIORITY_MINS", 15))
@@ -268,26 +327,43 @@ def run_solve(self, run_id: str):
     accepted = None
     attempts_used = 0
     result = None
+    last_rejection: dict = {}
+    attempt_trace: list[dict] = []
     for attempt in range(1, params.max_retries + 1):
         attempts_used = attempt
         result = optima_solve(demands_all, trains, machines, weights, params, horizon=horizon)
         if not result.candidates:
             break  # INFEASIBLE/UNKNOWN — retrying with softer soft-weights will not help
         verdicts = validate_set(result.candidates, ctx)
-        fully_passed = [v for v in verdicts if v.passed]
-        gsr2_pending = [v for v in verdicts if v.only_gsr2_outstanding()]
-        if len(fully_passed) + len(gsr2_pending) == len(verdicts):
+        acceptable = [v for v in verdicts if v.passed or v.only_gsr2_outstanding()]
+        if len(acceptable) == len(verdicts):
             by_hash = {v.content_hash: v for v in verdicts}
             accepted = (result.candidates, by_hash)
             break
+        # Observability: record WHY this attempt was rejected so operators can see
+        # the failing checks in solver_runs.stats instead of a bare FAILED.
+        attempt_trace.append({
+            "attempt": attempt,
+            "verdicts": len(verdicts),
+            "acceptable": len(acceptable),
+            "other_failing": [
+                {"check": r.check_id.value, "detail": r.detail[:120]}
+                for v in verdicts if not (v.passed or v.only_gsr2_outstanding())
+                for r in v.results if not r.passed
+            ][:8],
+        })
         weights = weights.relaxed()  # FSM-002 REJECTED_RETRY
 
     stats = {"status": result.status if result else "UNKNOWN",
              "objective": result.objective if result else 0.0,
              "bound": result.best_bound if result else 0.0,
              "attempts": attempts_used, "ml_updated": ml_n,
-             "weather_deferred": sorted(deferred_ids),
+             "weather_deferred": sorted(deferred_ids)[:20],
              "total_demands": len(demands_all)}
+    if last_rejection:
+        stats["last_rejection"] = last_rejection
+    if attempt_trace:
+        stats["attempt_trace"] = attempt_trace
 
     with eng.begin() as conn:
         if accepted is None:
