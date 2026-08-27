@@ -19,7 +19,7 @@ def insert_feed_batch(eng) -> int:
 
     sections, _, _ = corridor(seed=42)
     now = datetime.now(timezone.utc)
-    stamp = now.strftime("%Y%m%d%H")
+    stamp = now.strftime("%Y%m%d%H%M")  # minute-level: repeated polls stay unique
     total = 0
     with eng.begin() as conn:
         sec_ids = dict(conn.execute(text(
