@@ -1,12 +1,17 @@
-/** API client — attaches the JWT bearer, normalizes errors. */
+/** API client — attaches the JWT bearer, normalizes errors.
+ *  Ported from the legacy apps/web Vite SPA to Next.js. */
+
 const TOKEN_KEY = "railbloc_token";
 
 export function getToken(): string | null {
+  if (typeof window === "undefined") return null;
   return localStorage.getItem(TOKEN_KEY);
 }
+
 export function setToken(t: string) {
   localStorage.setItem(TOKEN_KEY, t);
 }
+
 export function clearToken() {
   localStorage.removeItem(TOKEN_KEY);
 }
@@ -51,4 +56,16 @@ export interface MeInfo {
   username: string;
   role: string;
   division: string;
+}
+
+/** Parse the payload from a JWT without verification (client-side display only). */
+export function parseJwt(token: string | null): MeInfo | null {
+  if (!token) return null;
+  try {
+    const p = token.split(".")[1] ?? "";
+    const b64 = p.replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(decodeURIComponent(escape(window.atob(b64)))) as MeInfo;
+  } catch {
+    return null;
+  }
 }
