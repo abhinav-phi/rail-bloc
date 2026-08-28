@@ -55,6 +55,7 @@ services:
     restart: "no"
 
   api:
+    restart: unless-stopped
     build:
       context: .
       dockerfile: apps/api/Dockerfile
@@ -71,6 +72,7 @@ services:
       retries: 12
 
   worker:
+    restart: unless-stopped
     build:
       context: .
       dockerfile: apps/workers/Dockerfile
@@ -82,6 +84,7 @@ services:
       seeder: { condition: service_completed_successfully }
 
   beat:
+    restart: unless-stopped
     build:
       context: .
       dockerfile: apps/workers/Dockerfile
@@ -92,6 +95,7 @@ services:
       seeder: { condition: service_completed_successfully }
 
   web:
+    restart: unless-stopped
     build: ./apps/web
     ports: ["5173:80"]
     depends_on:
