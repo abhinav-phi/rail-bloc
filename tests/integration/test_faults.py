@@ -207,21 +207,38 @@ def test_f3_postgres_backend_kill_midflow_rolls_back_everything(engine):
     vcur.execute("UPDATE optimization.block_plans SET approval_status='AUTHORIZED_DRM' WHERE id=%s",
                  (plan_id,))
     vcur.execute("SELECT audit.append_event(%s,%s,'{}'::jsonb)", ("KILLED_TX_EVENT", marker))
-    killed = threading.Event()
+    worker_started = threading.Event()
+    worker_error = []
 
     def doze():
-        vcur.execute("SELECT pg_sleep(6)")   # mid-flow hold while main thread kills us
+        try:
+            worker_started.set()
+            vcur.execute("SELECT pg_sleep(6)")   # mid-flow hold while main thread kills us
+        except Exception as e:
+            worker_error.append(e)
 
     th = threading.Thread(target=doze)
     th.start()
-    time.sleep(1.0)
+    assert worker_started.wait(timeout=5.0), "Worker thread failed to start"
+
+    # Deterministically wait for the worker's query to appear in pg_stat_activity
+    pid = None
+    for _ in range(50):
+        with engine.begin() as c:
+            pid = c.execute(text(
+                "SELECT pid FROM pg_stat_activity WHERE datname='railbloc_db' AND query LIKE '%pg_sleep%' AND pid != pg_backend_pid()")).scalar()
+        if pid is not None:
+            break
+        time.sleep(0.1)
+        
+    assert pid is not None, "Sleep query did not appear in pg_stat_activity in time"
     with engine.begin() as c:
-        pid = c.execute(text(
-            "SELECT pid FROM pg_stat_activity WHERE datname='railbloc_db' AND query LIKE '%pg_sleep%'")).scalar()
-        assert pid is not None
         c.execute(text("SELECT pg_terminate_backend(:p)"), {"p": pid})
+        
     th.join(timeout=10)
-    killed.set()
+    if worker_error:
+        import psycopg2
+        assert isinstance(worker_error[0], psycopg2.OperationalError), f"Unexpected worker error: {worker_error[0]}"
 
     with engine.begin() as c:
         st = c.execute(text("SELECT approval_status FROM optimization.block_plans WHERE id=:i"),
