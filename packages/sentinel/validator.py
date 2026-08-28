@@ -16,6 +16,22 @@ class TrainInterval:
     priority_rank: int
     entry: datetime
     exit: datetime
+    source: str = "WTT"
+    forecast_confidence: float | None = None
+
+    @property
+    def is_hard_path(self) -> bool:
+        """TechSpec §2 / Rules §2: forecasted freight below FREIGHT_HARD_CONFIDENCE
+        is probabilistic — it is priced as an expected-delay cost by the solver and
+        must NOT hard-fail G&SR-1/G&SR-5 (that would make ML confidence a feasibility
+        constraint through the back door). Confirmed WTT/COA_LIVE paths always bind."""
+        if self.source != "FOIS_FORECAST":
+            return True
+        return (self.forecast_confidence if self.forecast_confidence is not None else 1.0) >= 0.60
+
+
+def _hard(trains: list[TrainInterval]) -> list[TrainInterval]:
+    return [t for t in trains if t.is_hard_path]
 
 
 @dataclass(frozen=True)
@@ -38,6 +54,7 @@ class SentinelContext:
     acks: dict[str, AckRecord] = field(default_factory=dict)   # key: content_hash of plan
     machine_infos: list[MachineInfo] = field(default_factory=list)
     machine_assignments: dict[str, list[tuple[datetime, datetime, float]]] = field(default_factory=dict)  # machine -> (start, end, section_km_mid)
+    committed_windows: dict[str, list[tuple[datetime, datetime]]] = field(default_factory=dict)  # section_id -> committed plan windows
     now: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     staleness_ttl: timedelta = timedelta(hours=12)
     headway_high_priority_mins: int = 15
@@ -82,7 +99,7 @@ def validate_plan(plan: PlanCandidate, ctx: SentinelContext) -> SentinelVerdict:
                       plan.primary_demand_id, plan.shadow_demand_ids)
     results: list[CheckResult] = []
 
-    trains = [t for t in ctx.train_intervals if t.section_id == plan.section_id]
+    trains = _hard([t for t in ctx.train_intervals if t.section_id == plan.section_id])
 
     # G&SR-1: raw occupancy vs block — any intersection is a hard failure.
     bad = [t for t in trains if _overlaps(plan.start_time, plan.end_time, t.entry, t.exit)]
@@ -106,16 +123,47 @@ def validate_plan(plan: PlanCandidate, ctx: SentinelContext) -> SentinelVerdict:
 
     # G&SR-4: every OHE feeding section touching this plan must lie fully inside the plan
     # (no isolator boundary spilling outside the block → no back-feed path).
+    # Refinement (physically-correct partial isolation): when a touching feeding
+    # section spills over into neighbouring sections, the plan is still SAFE if
+    # those neighbour sections are completely idle for the plan window — no hard
+    # train path crossing and no committed/active plan — because the isolator can
+    # then be opened without any back-feed source. Otherwise the TRD plan FAILS.
     plan_secs = {plan.section_id}
     touching = [f for f in ctx.feeding_map if plan_secs & set(f.section_ids)]
-    spill = [f.feeding_section_id for f in touching if not (set(f.section_ids) <= plan_secs)]
     needs_trd = "TRD" in plan.departments
-    results.append(CheckResult(CheckID.GSR4_POWER_ISOLATION_BOUNDARY,
-        (not spill) if needs_trd else True,
-        detail="boundaries contained" if not spill else f"feeding sections spill outside block: {spill}"))
+
+    def _gsr4() -> tuple[bool, str]:
+        if not needs_trd:
+            return True, "no TRD work in bundle"
+        unsafe: list[str] = []
+        idle_ok = True
+        for f in touching:
+            if set(f.section_ids) <= plan_secs:
+                continue  # fully contained inside this block
+            idle_ok = False
+            neighbours = sorted(set(f.section_ids) - plan_secs)
+            for m in neighbours:
+                for t in _hard([t for t in ctx.train_intervals if t.section_id == m]):
+                    if _overlaps(plan.start_time, plan.end_time, t.entry, t.exit):
+                        unsafe.append(f"{m}: train crosses window")
+                for ws, we in ctx.committed_windows.get(m, []):
+                    if _overlaps(plan.start_time, plan.end_time, ws, we):
+                        unsafe.append(f"{m}: committed plan overlaps window")
+            if not neighbours:
+                unsafe.append(str(f.feeding_section_id))
+        if not touching:
+            return False, "TRD plan has no feeding-section mapping at all"
+        if unsafe:
+            return False, f"feeding boundaries spill with live neighbours: {unsafe[:4]}"
+        if idle_ok:
+            return True, "boundaries contained"
+        return True, "partial isolation safe: adjacent members idle for the window"
+
+    ok4, detail4 = _gsr4()
+    results.append(CheckResult(CheckID.GSR4_POWER_ISOLATION_BOUNDARY, ok4, detail=detail4))
 
     # G&SR-5: >= headway margin before high-priority arrivals.
-    hp = [t for t in trains if t.priority_rank <= ctx.high_priority_max_rank]
+    hp = [t for t in trains if t.priority_rank <= ctx.high_priority_max_rank and t.is_hard_path]
     margin = timedelta(minutes=ctx.headway_high_priority_mins)
     viol = [t for t in hp if _overlaps(plan.start_time - margin, plan.end_time + margin, t.entry, t.exit)]
     results.append(CheckResult(CheckID.GSR5_HEADWAY_MARGIN, not viol,

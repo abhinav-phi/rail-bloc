@@ -1,0 +1,25 @@
+# Keep Docker build contexts tiny: images copy only what they need explicitly.
+.git
+.gitignore
+.env
+.env.example
+**/__pycache__
+**/*.py[cod]
+.pytest_cache
+.mypy_cache
+.ruff_cache
+htmlcov
+.coverage
+.venv
+apps/web/node_modules
+apps/web/dist
+apps/web/.vite
+build*.log
+docs
+tests
+scripts
+audit_report.md
+RAIL_BLOC_Manual_Prerequisites.md
+CONTRIBUTING.md
+MANUAL_STEPS.md
+README.md

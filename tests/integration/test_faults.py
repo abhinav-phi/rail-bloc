@@ -60,6 +60,46 @@ def eager_worker():
     wt.app.conf.task_always_eager = False
 
 
+@pytest.fixture(autouse=True)
+def flt_cleanup(engine):
+    """TASK-062: fault tests create throwaway FLT* divisions; remove them and all
+    dependents after each test so no phantom divisions reach the UI."""
+    yield
+    with engine.begin() as c:
+        c.execute(text(
+            """DELETE FROM optimization.machine_rosters WHERE plan_id IN (
+                 SELECT p.id FROM optimization.block_plans p
+                 JOIN infrastructure.block_sections s ON s.id = p.section_id
+                 WHERE s.division LIKE 'FLT\\_%' ESCAPE '\\')"""))
+        c.execute(text(
+            """DELETE FROM optimization.plan_shadow_demands WHERE plan_id IN (
+                 SELECT p.id FROM optimization.block_plans p
+                 JOIN infrastructure.block_sections s ON s.id = p.section_id
+                 WHERE s.division LIKE 'FLT\\_%' ESCAPE '\\')"""))
+        c.execute(text(
+            """DELETE FROM optimization.plan_sections WHERE plan_id IN (
+                 SELECT p.id FROM optimization.block_plans p
+                 JOIN infrastructure.block_sections s ON s.id = p.section_id
+                 WHERE s.division LIKE 'FLT\\_%' ESCAPE '\\')"""))
+        c.execute(text(
+            """DELETE FROM optimization.block_plans
+               WHERE section_id IN (
+                     SELECT id FROM infrastructure.block_sections WHERE division LIKE 'FLT\\_%' ESCAPE '\\')
+                  OR primary_demand_id IN (
+                     SELECT id FROM demands.block_demands
+                     WHERE external_ref_id LIKE 'FLTKILL-%' OR external_ref_id LIKE 'FLTRDS-%'
+                        OR external_ref_id LIKE 'DBG-%')"""))
+        c.execute(text(
+            """DELETE FROM demands.block_demands WHERE section_id IN (
+                 SELECT id FROM infrastructure.block_sections WHERE division LIKE 'FLT\\_%' ESCAPE '\\')
+               OR external_ref_id LIKE 'FLT1-%' OR external_ref_id LIKE 'EMG-%' OR external_ref_id LIKE 'E2E-%'
+               OR external_ref_id LIKE 'SAFE002-%' OR external_ref_id LIKE 'APP001-%'
+               OR external_ref_id LIKE 'ACK-%' OR external_ref_id LIKE 'FLTKILL-%'
+               OR external_ref_id LIKE 'FLTRDS-%' OR external_ref_id LIKE 'DBG-%'"""))
+        c.execute(text(
+            "DELETE FROM infrastructure.block_sections WHERE division LIKE 'FLT\\_%' ESCAPE '\\'"))
+
+
 def _count_plans_for_run(engine, run_id):
     with engine.begin() as c:
         return c.execute(text(

@@ -25,9 +25,15 @@ async def live_blocks(request: Request, token: str | None = None):
     if actor is None:
         raise HTTPException(401, "valid token required (query param `token`)")
 
-    async def gen():
+    # Fail-closed at connect time too: an unreachable Redis must yield 503 (whose
+    # EventSource onerror fires the client's STALE overlay), never a crash 500.
+    try:
         pubsub = sse.client().pubsub()
         await pubsub.subscribe(sse._channel)
+    except Exception as exc:
+        raise HTTPException(503, f"live feed temporarily unavailable: {type(exc).__name__}")
+
+    async def gen():
         try:
             yield f"data: {json.dumps({'event': 'CONNECTED', 'actor': actor.username})}\n\n"
             while True:
