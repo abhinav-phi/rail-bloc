@@ -207,21 +207,46 @@ def test_f3_postgres_backend_kill_midflow_rolls_back_everything(engine):
     vcur.execute("UPDATE optimization.block_plans SET approval_status='AUTHORIZED_DRM' WHERE id=%s",
                  (plan_id,))
     vcur.execute("SELECT audit.append_event(%s,%s,'{}'::jsonb)", ("KILLED_TX_EVENT", marker))
-    killed = threading.Event()
+    sleep_started = threading.Event()
+    sleep_finished = threading.Event()
+    thread_error = {}
 
     def doze():
-        vcur.execute("SELECT pg_sleep(6)")   # mid-flow hold while main thread kills us
+        try:
+            sleep_started.set()
+            vcur.execute("SELECT pg_sleep(6)")   # mid-flow hold while main thread kills us
+        except Exception as exc:  # surfaced on main thread after join
+            thread_error["exc"] = exc
+        finally:
+            sleep_finished.set()
 
     th = threading.Thread(target=doze)
     th.start()
-    time.sleep(1.0)
+    assert sleep_started.wait(timeout=5), "worker did not start pg_sleep thread"
+
+    pid = None
+    deadline = time.monotonic() + 5
+    while pid is None and time.monotonic() < deadline:
+        if "exc" in thread_error:
+            pytest.fail(f"worker thread errored before backend kill: {thread_error['exc']}")
+        with engine.begin() as c:
+            pid = c.execute(text(
+                "SELECT pid FROM pg_stat_activity WHERE datname='railbloc_db' AND query LIKE '%pg_sleep%'")).scalar()
+        if pid is None:
+            time.sleep(0.05)
+
+    assert pid is not None, "could not find sleeping backend to terminate"
     with engine.begin() as c:
-        pid = c.execute(text(
-            "SELECT pid FROM pg_stat_activity WHERE datname='railbloc_db' AND query LIKE '%pg_sleep%'")).scalar()
-        assert pid is not None
         c.execute(text("SELECT pg_terminate_backend(:p)"), {"p": pid})
-    th.join(timeout=10)
-    killed.set()
+
+    assert sleep_finished.wait(timeout=10), "worker thread did not finish after backend termination"
+    th.join(timeout=1)
+    victim.close()
+    if "exc" in thread_error:
+        err_text = str(thread_error["exc"]).lower()
+        assert ("terminating connection" in err_text
+                or "closed the connection unexpectedly" in err_text
+                or "server closed the connection unexpectedly" in err_text), thread_error["exc"]
 
     with engine.begin() as c:
         st = c.execute(text("SELECT approval_status FROM optimization.block_plans WHERE id=:i"),
