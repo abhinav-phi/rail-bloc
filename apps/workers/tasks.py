@@ -16,6 +16,8 @@ from celery import Celery
 from celery.schedules import crontab
 from sqlalchemy import create_engine, text
 
+from apps.api.core.metrics import PLANS_CREATED_TOTAL, SOLVES_TOTAL
+
 REDIS_URL = os.environ.get("REDIS_URL", "redis://redis:6379/0")
 DSN = os.environ.get("DATABASE_URL_SYNC") or os.environ.get("DATABASE_URL", "").replace("+asyncpg", "+psycopg2")
 
@@ -277,6 +279,7 @@ def run_solve(self, run_id: str):
                 "SELECT audit.append_event('SOLVE_COMPLETED','worker',CAST(:p AS jsonb))"),
                 {"p": json.dumps({"run_id": run_id, **stats})})
             _sse_publish("SOLVE_COMPLETED", {"run_id": run_id, "noop": True})
+            SOLVES_TOTAL.labels(status="COMPLETED_NOOP").inc()
             return stats
 
         tr_rows = conn.execute(text(
@@ -381,6 +384,7 @@ def run_solve(self, run_id: str):
                 {"t": "SOLVE_FAILED_ESCALATE_HUMAN", "a": "worker",
                  "p": json.dumps({"run_id": run_id, **stats})})
             _sse_publish("SOLVE_FAILED", {"run_id": run_id})
+            SOLVES_TOTAL.labels(status="FAILED_ESCALATED").inc()
             return stats
 
         candidates, by_hash = accepted
@@ -437,6 +441,7 @@ def run_solve(self, run_id: str):
                  "p": json.dumps({"plan_id": plan_id, "content_hash": ch,
                                   "awaiting_signal_acks": not passed}, default=str)})
             _sse_publish("PLAN_CREATED", {"plan_id": plan_id, "status": plan_status})
+            PLANS_CREATED_TOTAL.inc()
             committed += 1
 
         unscheduled = sorted({d.id for d in demands_all} - scheduled_ids)
@@ -455,6 +460,7 @@ def run_solve(self, run_id: str):
             "SELECT audit.append_event(:t, :a, CAST(:p AS jsonb))"),
             {"t": "SOLVE_COMPLETED", "a": "worker", "p": json.dumps({"run_id": run_id, **stats})})
     _sse_publish("SOLVE_COMPLETED", {"run_id": run_id, **{k: stats.get(k) for k in ("committed_plans", "scheduled", "unscheduled")}})
+    SOLVES_TOTAL.labels(status="COMPLETED").inc()
     return stats
 
 

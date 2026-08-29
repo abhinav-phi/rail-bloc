@@ -4,13 +4,20 @@ from __future__ import annotations
 import asyncio
 import contextlib
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+from sqlalchemy import text
 
 from .core.database import SessionLocal, ping
 from .core.config import settings
+from .core.logging import get_logger
+from .core.metrics import OUTBOX_PENDING
 from .services import coa_adapter
 from .routers import auth, demands, optimize, plans, approvals, emergency, ledger, stream, weather, operations
+
+
+logger = get_logger("api")
 
 
 async def outbox_bridge_loop() -> None:
@@ -21,8 +28,10 @@ async def outbox_bridge_loop() -> None:
             async with SessionLocal() as session:
                 await coa_adapter.process_outbox(session, settings.coa_ack_delay_seconds)
                 await session.commit()
-        except Exception:
-            pass
+                OUTBOX_PENDING.set((await session.execute(
+                    text("SELECT count(*) FROM optimization.coa_outbox WHERE state='PENDING'"))).scalar() or 0)
+        except Exception as exc:
+            logger.exception("outbox bridge iteration failed: %s", exc)
         await asyncio.sleep(2.0)
 
 
@@ -54,3 +63,8 @@ async def health():
     except Exception:
         db_ok = False
     return {"status": "ok" if db_ok else "degraded", "db": db_ok, "version": "1.1.0"}
+
+
+@app.get("/metrics")
+async def metrics():
+    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
