@@ -60,42 +60,43 @@ def eager_worker():
     wt.app.conf.task_always_eager = False
 
 
+# Demands owned by the fault tests (throwaway FLT* divisions or fault-test markers).
+_VICTIM_DEMANDS = """
+    SELECT id FROM demands.block_demands
+     WHERE section_id IN (SELECT id FROM infrastructure.block_sections
+                           WHERE division LIKE 'FLT\\_%' ESCAPE '\\')
+        OR external_ref_id LIKE 'FLT1-%' OR external_ref_id LIKE 'EMG-%' OR external_ref_id LIKE 'E2E-%'
+        OR external_ref_id LIKE 'SAFE002-%' OR external_ref_id LIKE 'APP001-%'
+        OR external_ref_id LIKE 'ACK-%' OR external_ref_id LIKE 'FLTKILL-%'
+        OR external_ref_id LIKE 'FLTRDS-%' OR external_ref_id LIKE 'DBG-%'"""
+
+# Plans anchored on throwaway divisions OR planning any victim demand — escalation
+# artifacts live on real sections, so the demand filter alone is not enough.
+_VICTIM_PLANS = f"""
+    SELECT p.id FROM optimization.block_plans p
+     WHERE p.section_id IN (SELECT id FROM infrastructure.block_sections
+                             WHERE division LIKE 'FLT\\_%' ESCAPE '\\')
+        OR p.primary_demand_id IN ({_VICTIM_DEMANDS})"""
+
+
 @pytest.fixture(autouse=True)
 def flt_cleanup(engine):
     """TASK-062: fault tests create throwaway FLT* divisions; remove them and all
     dependents after each test so no phantom divisions reach the UI."""
     yield
     with engine.begin() as c:
-        c.execute(text(
-            """DELETE FROM optimization.machine_rosters WHERE plan_id IN (
-                 SELECT p.id FROM optimization.block_plans p
-                 JOIN infrastructure.block_sections s ON s.id = p.section_id
-                 WHERE s.division LIKE 'FLT\\_%' ESCAPE '\\')"""))
-        c.execute(text(
-            """DELETE FROM optimization.plan_shadow_demands WHERE plan_id IN (
-                 SELECT p.id FROM optimization.block_plans p
-                 JOIN infrastructure.block_sections s ON s.id = p.section_id
-                 WHERE s.division LIKE 'FLT\\_%' ESCAPE '\\')"""))
-        c.execute(text(
-            """DELETE FROM optimization.plan_sections WHERE plan_id IN (
-                 SELECT p.id FROM optimization.block_plans p
-                 JOIN infrastructure.block_sections s ON s.id = p.section_id
-                 WHERE s.division LIKE 'FLT\\_%' ESCAPE '\\')"""))
-        c.execute(text(
-            """DELETE FROM optimization.block_plans
-               WHERE section_id IN (
-                     SELECT id FROM infrastructure.block_sections WHERE division LIKE 'FLT\\_%' ESCAPE '\\')
-                  OR primary_demand_id IN (
-                     SELECT id FROM demands.block_demands
-                     WHERE external_ref_id LIKE 'FLTKILL-%' OR external_ref_id LIKE 'FLTRDS-%'
-                        OR external_ref_id LIKE 'DBG-%')"""))
-        c.execute(text(
-            """DELETE FROM demands.block_demands WHERE section_id IN (
-                 SELECT id FROM infrastructure.block_sections WHERE division LIKE 'FLT\\_%' ESCAPE '\\')
-               OR external_ref_id LIKE 'FLT1-%' OR external_ref_id LIKE 'EMG-%' OR external_ref_id LIKE 'E2E-%'
-               OR external_ref_id LIKE 'SAFE002-%' OR external_ref_id LIKE 'APP001-%'
-               OR external_ref_id LIKE 'ACK-%' OR external_ref_id LIKE 'FLTKILL-%'
-               OR external_ref_id LIKE 'FLTRDS-%' OR external_ref_id LIKE 'DBG-%'"""))
+        # Every child table of block_plans is ON DELETE RESTRICT — clear them
+        # before the plans themselves, then the demands, then the divisions.
+        c.execute(text(f"DELETE FROM operations.signal_acknowledgments WHERE plan_id IN ({_VICTIM_PLANS})"))
+        c.execute(text(f"DELETE FROM optimization.coa_outbox WHERE plan_id IN ({_VICTIM_PLANS})"))
+        c.execute(text(f"DELETE FROM optimization.machine_rosters WHERE plan_id IN ({_VICTIM_PLANS})"))
+        c.execute(text(f"DELETE FROM optimization.plan_shadow_demands WHERE plan_id IN ({_VICTIM_PLANS})"
+                       f" OR demand_id IN ({_VICTIM_DEMANDS})"))
+        c.execute(text(f"DELETE FROM optimization.plan_sections WHERE plan_id IN ({_VICTIM_PLANS})"))
+        c.execute(text(f"UPDATE optimization.block_plans SET supersedes_id = NULL"
+                       f" WHERE supersedes_id IN ({_VICTIM_PLANS})"))
+        c.execute(text(f"DELETE FROM optimization.block_plans WHERE id IN ({_VICTIM_PLANS})"))
+        c.execute(text(f"DELETE FROM demands.block_demands WHERE id IN ({_VICTIM_DEMANDS})"))
         c.execute(text(
             "DELETE FROM infrastructure.block_sections WHERE division LIKE 'FLT\\_%' ESCAPE '\\'"))
 
