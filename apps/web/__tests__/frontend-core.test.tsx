@@ -44,15 +44,25 @@ describe('frontend core behaviors', () => {
 
   it('marks live feed stale on reconnect failure', async () => {
     const originalEventSource = globalThis.EventSource;
-    let instance: EventSource | null = null;
+    type MockEventSourceLike = {
+      close: () => void;
+      onopen: (() => void) | null;
+      onmessage: ((e: MessageEvent) => void) | null;
+      onerror: (() => void) | null;
+      url: string;
+    };
+    let instance: MockEventSourceLike | null = null;
 
     class MockEventSource {
       close = vi.fn();
       onopen: (() => void) | null = null;
       onmessage: ((e: MessageEvent) => void) | null = null;
       onerror: (() => void) | null = null;
-      constructor(public url: string) {
-        instance = this as unknown as EventSource;
+      url: string;
+
+      constructor(url: string) {
+        this.url = url;
+        instance = this as MockEventSourceLike;
       }
     }
 
