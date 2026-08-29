@@ -63,7 +63,7 @@ services:
     environment: *appenv
     depends_on:
       postgres: { condition: service_healthy }
-      redis: { condition: service_started }
+      redis: { condition: service_healthy }
       seeder: { condition: service_completed_successfully }
     ports: ["${API_PORT}:8000"]
     healthcheck:
@@ -80,7 +80,7 @@ services:
     environment: *appenv
     depends_on:
       postgres: { condition: service_healthy }
-      redis: { condition: service_started }
+      redis: { condition: service_healthy }
       seeder: { condition: service_completed_successfully }
 
   beat:
@@ -91,7 +91,7 @@ services:
     command: celery -A apps.workers.tasks:app beat --loglevel=info -s /tmp/celerybeat-schedule --pidfile=/tmp/celerybeat.pid
     environment: *appenv
     depends_on:
-      redis: { condition: service_started }
+      redis: { condition: service_healthy }
       seeder: { condition: service_completed_successfully }
 
   web:
