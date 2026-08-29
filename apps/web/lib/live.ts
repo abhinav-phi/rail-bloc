@@ -1,4 +1,8 @@
-import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+/** SSE live-feed hook — reconnects with fresh JWT, drives stale-data detection.
+ *  Ported from the legacy apps/web Vite SPA to Next.js. */
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getToken } from "./api";
 
 export interface LiveEvent {
@@ -6,28 +10,34 @@ export interface LiveEvent {
   [k: string]: unknown;
 }
 
-interface LiveState {
+export interface LiveState {
   stale: boolean;
   connected: boolean;
   lastEvent: LiveEvent | null;
   events: LiveEvent[];
 }
 
-const LiveContext = createContext<LiveState>({ stale: true, connected: false, lastEvent: null, events: [] });
-
 /** SSE client with reconnect re-auth (fresh token per EventSource) and a
  * heartbeat-lapse detector that drives the persistent STALE DATA overlay. */
-export const LiveProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [state, setState] = useState<LiveState>({ stale: true, connected: false, lastEvent: null, events: [] });
+export function useLive(): LiveState {
+  const [state, setState] = useState<LiveState>({
+    stale: true,
+    connected: false,
+    lastEvent: null,
+    events: [],
+  });
   const esRef = useRef<EventSource | null>(null);
 
   const connect = useCallback(() => {
     esRef.current?.close();
     const token = getToken();
     if (!token) return;
-    const es = new EventSource(`/api/v1/stream/live-blocks?token=${encodeURIComponent(token)}`);
+    const es = new EventSource(
+      `/api/v1/stream/live-blocks?token=${encodeURIComponent(token)}`
+    );
     esRef.current = es;
-    es.onopen = () => setState((s) => ({ ...s, stale: false, connected: true }));
+    es.onopen = () =>
+      setState((s) => ({ ...s, stale: false, connected: true }));
     es.onmessage = (m) => {
       try {
         const parsed = JSON.parse(m.data) as LiveEvent;
@@ -62,9 +72,5 @@ export const LiveProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return <LiveContext.Provider value={state}>{children}</LiveContext.Provider>;
-};
-
-export function useLive() {
-  return useContext(LiveContext);
+  return state;
 }

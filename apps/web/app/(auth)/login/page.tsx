@@ -15,12 +15,12 @@ const DEMO_PERSONAS = [
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = usePersona();
+  const { loginAsDemo } = usePersona();
   const router = useRouter();
 
   const handleLogin = async (persona: typeof DEMO_PERSONAS[0]) => {
     setIsLoading(true);
-    await login(persona);
+    loginAsDemo(persona);
     router.push('/dashboard');
   };
 
