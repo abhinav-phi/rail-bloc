@@ -6,11 +6,21 @@ import contextlib
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_client import Counter, Gauge, generate_latest, CONTENT_TYPE_LATEST
 
 from .core.database import SessionLocal, ping
 from .core.config import settings
+from .core.logging import get_logger
 from .services import coa_adapter
 from .routers import auth, demands, optimize, plans, approvals, emergency, ledger, stream, weather, operations
+
+
+logger = get_logger("api")
+
+SOLVES_TOTAL = Counter("railbloc_solves_total", "Total solves processed", labelnames=("status",))
+PLANS_CREATED_TOTAL = Counter("railbloc_plans_created_total", "Total plans created")
+LEDGER_EVENTS_TOTAL = Counter("railbloc_ledger_events_total", "Total ledger events emitted")
+OUTBOX_PENDING = Gauge("railbloc_outbox_pending", "Pending outbox rows")
 
 
 async def outbox_bridge_loop() -> None:
@@ -21,8 +31,8 @@ async def outbox_bridge_loop() -> None:
             async with SessionLocal() as session:
                 await coa_adapter.process_outbox(session, settings.coa_ack_delay_seconds)
                 await session.commit()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.exception("outbox bridge iteration failed: %s", exc)
         await asyncio.sleep(2.0)
 
 
@@ -54,3 +64,8 @@ async def health():
     except Exception:
         db_ok = False
     return {"status": "ok" if db_ok else "degraded", "db": db_ok, "version": "1.1.0"}
+
+
+@app.get("/metrics")
+async def metrics():
+    return (generate_latest(), {"content-type": CONTENT_TYPE_LATEST})
