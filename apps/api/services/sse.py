@@ -1,6 +1,9 @@
 import json
+
 import redis.asyncio as aioredis
+
 from ..core.config import settings
+from ..core.logging import logger
 
 _channel = "live_blocks"
 _pool: aioredis.Redis | None = None
@@ -20,4 +23,4 @@ async def publish(event_type: str, data: dict) -> None:
     try:
         await client().publish(_channel, json.dumps({"event": event_type, **data}, default=str))
     except Exception:
-        pass
+        logger.exception("SSE publish failed for event %s", event_type, extra={"event_type": event_type})
