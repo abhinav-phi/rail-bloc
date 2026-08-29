@@ -18,7 +18,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from sqlalchemy import text
 
-from .conftest import auth_header, make_token
+from .conftest import DSN, auth_header, make_token
 
 
 def _seed_run_with_impossible_demands(engine, feasible=False) -> str:
@@ -52,10 +52,14 @@ def _seed_run_with_impossible_demands(engine, feasible=False) -> str:
 
 
 @pytest.fixture()
-def eager_worker():
+def eager_worker(monkeypatch):
     from apps.workers import tasks as wt
     wt.app.conf.task_always_eager = True
     wt.app.conf.task_eager_propagates = False
+    # Seeded weather alerts must not defer the synthetic demands under test:
+    # fail-closed deferral empties the candidate set and the solver then reports
+    # a trivial OPTIMAL, masking the statuses these tests exist to pin down.
+    monkeypatch.setattr(wt, "load_weather_deferrals", lambda conn: set())
     yield wt
     wt.app.conf.task_always_eager = False
 
@@ -203,8 +207,10 @@ def test_f3_postgres_backend_kill_midflow_rolls_back_everything(engine):
             {"sec": sec, "st": st, "et": et, "dem": dem, "run": run,
              "ch": "a" * 64}).scalar())
 
-    victim = psycopg2.connect(
-        "host=localhost port=5432 dbname=railbloc_db user=rail_admin password=rail_secure_password")
+    from sqlalchemy.engine import make_url
+    _url = make_url(DSN)
+    victim = psycopg2.connect(host=_url.host, port=_url.port or 5432, dbname=_url.database,
+                              user=_url.username, password=_url.password)
     vcur = victim.cursor()
     vcur.execute("BEGIN")
     vcur.execute("UPDATE optimization.block_plans SET approval_status='AUTHORIZED_DRM' WHERE id=%s",

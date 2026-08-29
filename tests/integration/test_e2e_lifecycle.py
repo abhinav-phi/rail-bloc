@@ -14,8 +14,18 @@ from .conftest import auth_header, make_token
 def _seed_plan_ready_for_approval(engine) -> str:
     from datetime import timedelta
     with engine.begin() as conn:
+        st, et = datetime_now_plus(1), datetime_now_plus(2)
+        # Pick a section with no ACTIVE plan overlapping this window: earlier
+        # tests (e.g. APP-001) leave AUTHORIZED_DRM rows on random sections and
+        # excl_active_overlap would otherwise reject the APPROVE transition.
         sec = conn.execute(text(
-            "SELECT id FROM infrastructure.block_sections WHERE section_code='GZB-ALJN-UP'")).scalar()
+            """SELECT s.id FROM infrastructure.block_sections s
+               WHERE s.division='DLI' AND s.is_active AND NOT EXISTS (
+                     SELECT 1 FROM optimization.block_plans p
+                      WHERE p.section_id = s.id
+                        AND p.approval_status IN ('AUTHORIZED_DRM','TRANSMITTED_COA','ACTIVE_GRANTED')
+                        AND tstzrange(p.start_time, p.end_time) && tstzrange(:st,:et))
+               ORDER BY s.section_code LIMIT 1"""), {"st": st, "et": et}).scalar()
         dem = conn.execute(text(
             """INSERT INTO demands.block_demands
                (external_source, external_ref_id, department, section_id, activity_code,
@@ -23,12 +33,11 @@ def _seed_plan_ready_for_approval(engine) -> str:
                VALUES ('TMS',:ref,'ENGINEERING',:sec,'DTT_TAMPING',180,
                        :es,:ld,0.75,'SUBMITTED')
                RETURNING id"""),
-            {"ref": f"E2E-{uuid.uuid4()}", "sec": sec,
+            {"ref": f"E2E-{uuid.uuid()}", "sec": sec,
              "es": datetime_now_plus(3), "ld": datetime_now_plus(8)}).scalar()
         run = conn.execute(text(
             "INSERT INTO optimization.solver_runs (horizon, division, status) "
             "VALUES ('WEEKLY','DLI','COMPLETED') RETURNING id")).scalar()
-        st, et = datetime_now_plus(1), datetime_now_plus(2)
         ch = content_hash(str(sec), st, et, str(dem), [])
         return str(conn.execute(text(
             """INSERT INTO optimization.block_plans
