@@ -173,6 +173,8 @@ def test_f2_sentinel_fail_all_hits_retry_cap_then_escalates(engine, eager_worker
 def test_f3_postgres_backend_kill_midflow_rolls_back_everything(engine):
     """Writes (plan transition + ledger row) inside a tx whose backend is killed →
     neither survives. G&SR-3: no authorization granted under a crashed writer."""
+    import psycopg2
+
     marker = f"FLTKILL-{uuid.uuid4().hex[:8]}"
     plan_id = None
     with engine.begin() as c:
@@ -200,28 +202,52 @@ def test_f3_postgres_backend_kill_midflow_rolls_back_everything(engine):
             {"sec": sec, "st": st, "et": et, "dem": dem, "run": run,
              "ch": "a" * 64}).scalar())
 
-    victim = __import__("psycopg2").connect(
+    victim = psycopg2.connect(
         "host=localhost port=5432 dbname=railbloc_db user=rail_admin password=rail_secure_password")
     vcur = victim.cursor()
     vcur.execute("BEGIN")
     vcur.execute("UPDATE optimization.block_plans SET approval_status='AUTHORIZED_DRM' WHERE id=%s",
                  (plan_id,))
     vcur.execute("SELECT audit.append_event(%s,%s,'{}'::jsonb)", ("KILLED_TX_EVENT", marker))
-    killed = threading.Event()
+
+    worker_started = threading.Event()
+    worker_error: list[Exception] = []
 
     def doze():
-        vcur.execute("SELECT pg_sleep(6)")   # mid-flow hold while main thread kills us
+        try:
+            worker_started.set()
+            vcur.execute("SELECT pg_sleep(6)")   # mid-flow hold while main thread kills us
+        except Exception as exc:
+            worker_error.append(exc)
 
     th = threading.Thread(target=doze)
     th.start()
-    time.sleep(1.0)
+    worker_started.wait(timeout=5)
+
+    # Deterministically poll pg_stat_activity until the worker's pg_sleep query
+    # is visible as an *active* backend — avoids matching idle pool connections
+    # that previously ran this same poll query.
+    pid = None
+    for _ in range(50):
+        with engine.begin() as c:
+            pid = c.execute(text(
+                "SELECT pid FROM pg_stat_activity "
+                "WHERE datname = current_database() "
+                "  AND state = 'active' "
+                "  AND query LIKE '%pg_sleep%' "
+                "  AND pid != pg_backend_pid()")).scalar()
+        if pid is not None:
+            break
+        time.sleep(0.1)
+    assert pid is not None, "worker pg_sleep query never appeared in pg_stat_activity"
+
     with engine.begin() as c:
-        pid = c.execute(text(
-            "SELECT pid FROM pg_stat_activity WHERE datname='railbloc_db' AND query LIKE '%pg_sleep%'")).scalar()
-        assert pid is not None
         c.execute(text("SELECT pg_terminate_backend(:p)"), {"p": pid})
+
     th.join(timeout=10)
-    killed.set()
+    assert not th.is_alive(), "worker thread still alive after pg_terminate_backend"
+    assert worker_error and isinstance(worker_error[0], psycopg2.OperationalError), (
+        f"expected backend-kill OperationalError, got: {worker_error or 'no error (kill never landed)'}")
 
     with engine.begin() as c:
         st = c.execute(text("SELECT approval_status FROM optimization.block_plans WHERE id=:i"),
