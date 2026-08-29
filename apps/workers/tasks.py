@@ -20,7 +20,7 @@ from sqlalchemy import create_engine, text
 
 logger = logging.getLogger("railbloc.worker")
 
-REDIS_URL = os.environ.get("REDIS_URL", "redis://redis:6379/0")
+REDIS_URL = os.environ.get("REDIS_URL", "redis://:rail_redis_password@redis:6379/0")
 DSN = os.environ.get("DATABASE_URL_SYNC") or os.environ.get("DATABASE_URL", "").replace("+asyncpg", "+psycopg2")
 
 app = Celery("railbloc", broker=REDIS_URL, backend=REDIS_URL)
