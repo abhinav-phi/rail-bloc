@@ -87,6 +87,7 @@ jobs:
         working-directory: apps/web
         run: |
           npm ci
+          npm run test
           npm run lint
           npm run typecheck
           npm run build

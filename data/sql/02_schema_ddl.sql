@@ -79,6 +79,7 @@ CREATE TABLE demands.block_demands (
 CREATE INDEX idx_demands_dept_status ON demands.block_demands (department, status);
 CREATE INDEX idx_demands_window_gist ON demands.block_demands USING GIST (tstzrange(earliest_start, latest_deadline)); -- PERF-002
 CREATE INDEX idx_demands_section ON demands.block_demands (section_id);
+CREATE INDEX idx_demands_section_status ON demands.block_demands (section_id, status);
 CREATE UNIQUE INDEX uq_demands_source_ref ON demands.block_demands (external_source, external_ref_id); -- DB-006
 
 -- ============ OPERATIONS ============
