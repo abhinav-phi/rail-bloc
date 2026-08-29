@@ -33,7 +33,7 @@ def _seed_plan_ready_for_approval(engine) -> str:
                VALUES ('TMS',:ref,'ENGINEERING',:sec,'DTT_TAMPING',180,
                        :es,:ld,0.75,'SUBMITTED')
                RETURNING id"""),
-            {"ref": f"E2E-{uuid.uuid()}", "sec": sec,
+            {"ref": f"E2E-{uuid.uuid4()}", "sec": sec,
              "es": datetime_now_plus(3), "ld": datetime_now_plus(8)}).scalar()
         run = conn.execute(text(
             "INSERT INTO optimization.solver_runs (horizon, division, status) "
