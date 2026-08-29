@@ -9,7 +9,6 @@ All cadences come from environment (Rules.md §4 XC-010): WEEKLY_PLAN_CRON etc.
 from __future__ import annotations
 
 import json
-import logging
 import os
 from datetime import UTC, datetime, timedelta
 
@@ -18,9 +17,9 @@ from celery import Celery
 from celery.schedules import crontab
 from sqlalchemy import create_engine, text
 
-logger = logging.getLogger("railbloc.worker")
+from apps.api.core.metrics import PLANS_CREATED_TOTAL, SOLVES_TOTAL
 
-REDIS_URL = os.environ.get("REDIS_URL", "redis://:rail_redis_password@redis:6379/0")
+REDIS_URL = os.environ.get("REDIS_URL", "redis://redis:6379/0")
 DSN = os.environ.get("DATABASE_URL_SYNC") or os.environ.get("DATABASE_URL", "").replace("+asyncpg", "+psycopg2")
 
 app = Celery("railbloc", broker=REDIS_URL, backend=REDIS_URL)
@@ -111,7 +110,7 @@ def _sse_publish(event: str, data: dict) -> None:
         sync_redis.Redis.from_url(REDIS_URL).publish(
             "live_blocks", json.dumps({"event": event, **data}, default=str))
     except Exception:
-        logger.exception("worker SSE publish failed for %s", event, extra={"event": event})
+        pass
 
 
 def solve_weights():
@@ -231,10 +230,8 @@ def run_solve(self, run_id: str):
         run = conn.execute(text(
             "SELECT horizon, division FROM optimization.solver_runs WHERE id=:i"), {"i": run_id}).mappings().first()
         if run is None:
-            logger.warning("solver run not found", extra={"run_id": run_id})
             return {"error": "unknown run"}
         horizon, division = run["horizon"], run["division"]
-        logger.info("solver_run_started", extra={"run_id": run_id, "horizon": horizon, "division": division})
         conn.execute(text("UPDATE optimization.solver_runs SET status='RUNNING' WHERE id=:i"), {"i": run_id})
         refresh_weather_alerts_if_stale(conn)
 
@@ -288,6 +285,7 @@ def run_solve(self, run_id: str):
                 "SELECT audit.append_event('SOLVE_COMPLETED','worker',CAST(:p AS jsonb))"),
                 {"p": json.dumps({"run_id": run_id, **stats})})
             _sse_publish("SOLVE_COMPLETED", {"run_id": run_id, "noop": True})
+            SOLVES_TOTAL.labels(status="COMPLETED_NOOP").inc()
             return stats
 
         tr_rows = conn.execute(text(
@@ -379,7 +377,6 @@ def run_solve(self, run_id: str):
     with eng.begin() as conn:
         if accepted is None:
             # FAILED_ESCALATE_HUMAN: cap exhausted without a passing schedule.
-            logger.warning("solver_run_failed", extra={"run_id": run_id, "status": stats.get("status"), "attempts": attempts_used})
             conn.execute(text("""UPDATE optimization.solver_runs
                                  SET status='FAILED', completed_at=now(), stats=CAST(:st AS jsonb) WHERE id=:i"""),
                          {"st": json.dumps(stats), "i": run_id})
@@ -393,6 +390,7 @@ def run_solve(self, run_id: str):
                 {"t": "SOLVE_FAILED_ESCALATE_HUMAN", "a": "worker",
                  "p": json.dumps({"run_id": run_id, **stats})})
             _sse_publish("SOLVE_FAILED", {"run_id": run_id})
+            SOLVES_TOTAL.labels(status="FAILED_ESCALATED").inc()
             return stats
 
         candidates, by_hash = accepted
@@ -449,6 +447,7 @@ def run_solve(self, run_id: str):
                  "p": json.dumps({"plan_id": plan_id, "content_hash": ch,
                                   "awaiting_signal_acks": not passed}, default=str)})
             _sse_publish("PLAN_CREATED", {"plan_id": plan_id, "status": plan_status})
+            PLANS_CREATED_TOTAL.inc()
             committed += 1
 
         unscheduled = sorted({d.id for d in demands_all} - scheduled_ids)
@@ -467,6 +466,7 @@ def run_solve(self, run_id: str):
             "SELECT audit.append_event(:t, :a, CAST(:p AS jsonb))"),
             {"t": "SOLVE_COMPLETED", "a": "worker", "p": json.dumps({"run_id": run_id, **stats})})
     _sse_publish("SOLVE_COMPLETED", {"run_id": run_id, **{k: stats.get(k) for k in ("committed_plans", "scheduled", "unscheduled")}})
+    SOLVES_TOTAL.labels(status="COMPLETED").inc()
     return stats
 
 
@@ -498,7 +498,6 @@ def generate_weekly_plans():
 def simulate_feed_ingest():
     """FR-001/002/003 CRON simulation: small fresh batches through the machine-
     credential ingest path (per-source keys honored internally, TEL-001)."""
-    _eng()
     from .corridor_bridge import insert_feed_batch
     inserted = insert_feed_batch(_eng())
     _sse_publish("FEED_INGESTED", {"inserted": inserted})

@@ -7,10 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@netlify/plugin-nextjs": "^5.15.1",
@@ -67,9 +67,8 @@
   "devDependencies": {
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.0.1",
-    "eslint-config-prettier": "^9.1.0",
     "jsdom": "^24.1.1",
-    "prettier": "^3.4.2",
+    "prettier": "^3.3.3",
     "vitest": "^2.1.8"
   }
 }

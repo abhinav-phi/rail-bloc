@@ -9,7 +9,7 @@ import json
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
-from ..core.security import Actor, actor_from_query, actor_from_ticket, get_actor, issue_stream_ticket
+from ..core.security import Actor, actor_from_query, get_actor, issue_stream_ticket
 from ..services import sse
 
 router = APIRouter(prefix="/api/v1/stream", tags=["stream"])

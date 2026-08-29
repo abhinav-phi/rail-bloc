@@ -12,6 +12,8 @@ celery[redis]>=5.3
 redis>=5.0
 PyJWT>=2.8
 httpx>=0.27
+prometheus-client>=0.20
+ruff>=0.6
 # or-tools is NOT listed here deliberately: its PyPI index page is blocked on some
 # networks, so it installs from pinned local wheels (see /wheels in the Dockerfiles).
 pandas>=2.0

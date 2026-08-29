@@ -1,6 +1,7 @@
 """Advisory-only XGBoost freight-density forecaster (rho_f). Used to enrich FOIS
 forecast_confidence where absent and inside the benchmark. Deterministic seed."""
 from __future__ import annotations
+
 import numpy as np
 from xgboost import XGBRegressor
 

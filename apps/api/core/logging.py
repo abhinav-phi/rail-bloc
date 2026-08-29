@@ -1,21 +1,29 @@
-from __future__ import annotations
-
 import logging
-import sys
+from typing import Any
 
 
 def configure_logging() -> None:
-    root = logging.getLogger()
-    if root.handlers:
+    logger = logging.getLogger("railbloc")
+    if logger.handlers:
         return
 
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setFormatter(logging.Formatter(
-        '%(asctime)s %(levelname)s %(name)s request_id=%(request_id)s %(message)s'
-    ))
-    root.addHandler(handler)
-    root.setLevel(logging.INFO)
+    logger.setLevel(logging.INFO)
+
+    handler = logging.StreamHandler()
+    handler.setFormatter(
+        logging.Formatter(
+            "%(asctime)s %(levelname)s %(name)s %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+    )
+    logger.addHandler(handler)
+    logger.propagate = False
 
 
-logger = logging.getLogger("railbloc")
-logger.addFilter(lambda record: setattr(record, "request_id", getattr(record, "request_id", "-")) or True)
+def get_logger(name: str) -> logging.Logger:
+    configure_logging()
+    return logging.getLogger(f"railbloc.{name}")
+
+
+def make_log_extra(**kwargs: Any) -> dict[str, Any]:
+    return {"request_id": kwargs.get("request_id"), **kwargs}

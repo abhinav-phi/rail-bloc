@@ -2,8 +2,10 @@
 demand's machinery_req; the roster sequences travel legs, measures idle time, and
 flags physically infeasible transitions. Output persisted to machine_rosters (DB-005)."""
 from __future__ import annotations
+
 from datetime import timedelta
-from packages.core.models import DemandInput, MachineInfo, RosterEntry, ScheduledWork
+
+from packages.core.models import MachineInfo, RosterEntry, ScheduledWork
 
 
 def build_roster(works: list[ScheduledWork], machines: list[MachineInfo]) -> tuple[list[RosterEntry], float, list[str]]:

@@ -10,19 +10,18 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, generate_latest
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+from sqlalchemy import text
 from starlette.responses import Response
 
 from .core.config import settings
 from .core.database import SessionLocal, ping
-from .core.logging import configure_logging, logger
+from .core.logging import configure_logging, get_logger
+from .core.metrics import OUTBOX_PENDING, REQUESTS_TOTAL
 from .routers import approvals, auth, demands, emergency, ledger, operations, optimize, plans, stream, weather
 from .services import coa_adapter
 
-REQUESTS_TOTAL = Counter("railbloc_requests_total", "HTTP requests", ["method", "path", "status"])
-OUTBOX_PENDING = Gauge("railbloc_outbox_pending", "Pending COA outbox rows")
-SOLVES_TOTAL = Counter("railbloc_solves_total", "Solver runs by terminal status", ["status"])
-PLANS_CREATED_TOTAL = Counter("railbloc_plans_created_total", "Plans created by status", ["status"])
+logger = get_logger("api")
 
 
 async def outbox_bridge_loop() -> None:
@@ -32,9 +31,10 @@ async def outbox_bridge_loop() -> None:
     while True:
         try:
             async with SessionLocal() as session:
-                pending = await coa_adapter.process_outbox(session, settings.coa_ack_delay_seconds)
+                await coa_adapter.process_outbox(session, settings.coa_ack_delay_seconds)
                 await session.commit()
-                OUTBOX_PENDING.set(float(pending))
+                OUTBOX_PENDING.set((await session.execute(
+                    text("SELECT count(*) FROM optimization.coa_outbox WHERE state='PENDING'"))).scalar() or 0)
         except Exception:
             logger.exception("COA outbox bridge iteration failed")
         await asyncio.sleep(2.0)

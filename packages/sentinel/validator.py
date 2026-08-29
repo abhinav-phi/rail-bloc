@@ -2,12 +2,14 @@
 It is a validator, never an executor (ADR-006). Inputs are the candidate plans and
 the current structural state; output is a per-check verdict bound to content hashes."""
 from __future__ import annotations
+
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
-from typing import Optional
-from packages.core.models import PlanCandidate, MachineInfo
+from datetime import UTC, datetime, timedelta
+
 from packages.chronicle.canonical import content_hash
-from .rules import CheckID, STRUCTURAL_SUBSET
+from packages.core.models import MachineInfo, PlanCandidate
+
+from .rules import STRUCTURAL_SUBSET, CheckID
 
 
 @dataclass(frozen=True)
@@ -55,7 +57,7 @@ class SentinelContext:
     machine_infos: list[MachineInfo] = field(default_factory=list)
     machine_assignments: dict[str, list[tuple[datetime, datetime, float]]] = field(default_factory=dict)  # machine -> (start, end, section_km_mid)
     committed_windows: dict[str, list[tuple[datetime, datetime]]] = field(default_factory=dict)  # section_id -> committed plan windows
-    now: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    now: datetime = field(default_factory=lambda: datetime.now(UTC))
     staleness_ttl: timedelta = timedelta(hours=12)
     headway_high_priority_mins: int = 15
     high_priority_max_rank: int = 3
@@ -71,7 +73,7 @@ class CheckResult:
 
 @dataclass
 class SentinelVerdict:
-    plan_id: Optional[str]
+    plan_id: str | None
     content_hash: str
     results: list[CheckResult]
 

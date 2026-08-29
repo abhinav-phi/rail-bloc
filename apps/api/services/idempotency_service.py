@@ -2,10 +2,12 @@
 returns the stored original response and performs NO second effect: exactly one
 ledger row, one state transition, one outbox entry per key."""
 from __future__ import annotations
+
 import json
+
+from fastapi import HTTPException
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import HTTPException
 
 
 async def check_replay(session: AsyncSession, key: str, endpoint: str, actor_id: str) -> dict | None:

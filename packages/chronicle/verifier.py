@@ -2,7 +2,9 @@
 so JSONB text serialization is identical by construction; Python only orchestrates the
 REPEATABLE READ snapshot (API-002: no torn reads mid-write)."""
 from __future__ import annotations
+
 from dataclasses import dataclass
+
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 

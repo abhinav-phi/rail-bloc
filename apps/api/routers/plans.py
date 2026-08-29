@@ -2,24 +2,44 @@
 transmission (FR-016 with T-2h structural re-check), execution lifecycle (FR-017),
 summary and geo feeds."""
 from __future__ import annotations
-import json
+
 import decimal
+import json
 import uuid as uuidlib
-from datetime import datetime, timedelta, timezone
-from fastapi import APIRouter, Depends, HTTPException
+from datetime import UTC, datetime, timedelta
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from packages.core.models import (
+    DemandInput,
+    MachineInfo,
+    PlanCandidate,
+    ScheduledWork,
+)
+from packages.sentinel.validator import (
+    AckRecord,
+    FeedingMapEntry,
+    SentinelContext,
+    TrainInterval,
+    validate_plan,
+    validate_structural_subset,
+)
+
+from ..core.config import settings
 from ..core.database import get_session
 from ..core.security import Actor, get_actor, require_roles
-from ..schemas.models import ReviseIn, AckSignalIn
-from ..services.plan_lifecycle import load_plan, load_shadow_ids, revise_plan, recompute_hash, check_no_active_overlap
-from ..services.ledger_service import append
+from ..schemas.models import AckSignalIn, ReviseIn
 from ..services import coa_adapter, sse
-from packages.core.models import (DemandInput, PlanCandidate, ScheduledWork,
-                                  MachineInfo, SolverParams, SolveWeights)
-from packages.sentinel.validator import (SentinelContext, TrainInterval, FeedingMapEntry,
-                                         AckRecord, validate_plan, validate_structural_subset)
-from ..core.config import settings
+from ..services.ledger_service import append
+from ..services.plan_lifecycle import (
+    check_no_active_overlap,
+    load_plan,
+    load_shadow_ids,
+    recompute_hash,
+    revise_plan,
+)
 
 router = APIRouter(prefix="/api/v1/plans", tags=["plans"])
 
@@ -39,7 +59,7 @@ async def _bundle(session: AsyncSession, plan: dict) -> dict:
 
 
 async def _build_sentinel_context(session: AsyncSession) -> SentinelContext:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     trains = [TrainInterval(str(r[0]), int(r[1]), r[2], r[3],
                             source=str(r[4] or "WTT"),
                             forecast_confidence=(json.loads(r[5]).get("forecast_confidence")
@@ -97,7 +117,7 @@ def _candidate_from_bundle(bundle: dict, plan: dict) -> PlanCandidate:
 
 @router.get("")
 async def list_plans(horizon: str = "WEEKLY", division: str | None = None,
-                     status: str | None = None, limit: int = 200,
+                     status: str | None = None, limit: int = Query(200, ge=1, le=500),
                      actor: Actor = Depends(get_actor), session: AsyncSession = Depends(get_session)):
     div = division or _scope(actor)
     q = text("""SELECT p.*, s.section_code, s.division FROM optimization.block_plans p

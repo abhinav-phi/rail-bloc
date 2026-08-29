@@ -1,6 +1,5 @@
 """Minimal repro: raw psycopg2, N independent PROCESSES, single INSERT per txn."""
 import multiprocessing as mp
-import sys
 
 import psycopg2
 

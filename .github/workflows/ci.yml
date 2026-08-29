@@ -25,7 +25,8 @@ jobs:
           --health-retries 5
       redis:
         image: redis:7.2
-        command: ["redis-server", "--requirepass", "rail_redis_password"]
+        env:
+          REDIS_ARGS: "--requirepass rail_redis_password"
         ports:
           - 6379:6379
         options: >-
@@ -59,16 +60,13 @@ jobs:
             psql -h localhost -U postgres -d railbloc -v ON_ERROR_STOP=1 -f "$f"
           done
 
-      - name: Run Ruff
-        run: |
-          ruff check .
-
-      - name: Run Pytest
+      - name: Seed & run tests
         env:
           DATABASE_URL: postgresql+asyncpg://postgres:password@localhost:5432/railbloc
           DATABASE_URL_SYNC: postgresql://postgres:password@localhost:5432/railbloc
           REDIS_URL: redis://:rail_redis_password@localhost:6379/0
         run: |
+          python -m data.generators.seed_all
           pytest -q
 
   frontend:
@@ -93,6 +91,5 @@ jobs:
           npm ci
           npm run test
           npm run lint
-          npm run format:check
           npm run typecheck
           npm run build

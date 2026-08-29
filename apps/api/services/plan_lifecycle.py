@@ -1,9 +1,12 @@
 """SAFE-002 / FR-026 — revision & content-hash binding; RES-03 — multi-section overlap."""
 from __future__ import annotations
+
 import uuid
 from datetime import datetime
+
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from packages.chronicle.canonical import content_hash
 
 

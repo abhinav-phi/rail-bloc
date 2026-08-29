@@ -7,10 +7,11 @@ every ML-derived figure (Model Calibration Transparency rule).
 Usage:  python -m apps.eval.calibrate
 """
 from __future__ import annotations
-import numpy as np
 
-from packages.ml.degradation_model import train, make_dataset, physical_urgency, UrgencyNet
+import numpy as np
 import torch
+
+from packages.ml.degradation_model import UrgencyNet, make_dataset, physical_urgency, train
 
 
 def reliability(model: UrgencyNet, n: int = 1200, seed: int = 777, bins: int = 8) -> None:
@@ -42,7 +43,7 @@ def sensitivity(model: UrgencyNet) -> None:
             "rail_wear_loss_percent": 6.0, "imr_severity_num": 2.0}
     from packages.ml.degradation_model import FEATURES, estimate
     b = estimate(model, base)
-    print("\nPerturbation sensitivity at base urgency {:.3f} (±20% per feature):".format(b))
+    print(f"\nPerturbation sensitivity at base urgency {b:.3f} (±20% per feature):")
     for f in FEATURES:
         lo = estimate(model, {**base, f: base[f] * 0.8})
         hi = estimate(model, {**base, f: base[f] * 1.2})
