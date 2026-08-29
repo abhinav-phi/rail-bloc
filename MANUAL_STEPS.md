@@ -168,7 +168,14 @@ docker compose down -v             # stop + wipe data volume (fresh start)
 
 ## 7. Database Setup, Migrations & Verification
 
-**AUTOMATIC:** first boot executes `data/sql/01_init_postgis.sql` → `02_schema_ddl.sql` → `03_ledger_triggers.sql` via `/docker-entrypoint-initdb.d`; then the seeder inserts idempotently. No manual migration command exists or is needed.
+**AUTOMATIC:** on startup, the project runs Alembic migrations before the API and workers come up. The database is initialized by `data/sql/01_init_postgis.sql` → `02_schema_ddl.sql` → `03_ledger_triggers.sql` on first boot, then the `migrate` service applies the migration chain stored under `migrations/versions/`. Future schema changes should be added as new Alembic revision files and merged with the app image.
+
+```bash
+docker compose run --rm migrate             # apply pending schema migrations
+alembic -c migrations/alembic.ini upgrade head  # local host equivalent
+```
+
+> If you need a clean slate, `docker compose down -v` still wipes the volume; otherwise, schema changes are applied incrementally instead of forcing a reset.
 
 ### Post-Migration Verification Queries
 ```bash

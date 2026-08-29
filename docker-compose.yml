@@ -14,11 +14,11 @@ services:
       retries: 12
     ports: ["5432:5432"]
 
-  seeder:
+  migrate:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-    command: python -m data.generators.seed_all
+    command: sh -c "alembic -c migrations/alembic.ini upgrade head"
     environment: &appenv
       DATABASE_URL: ${DATABASE_URL}
       DATABASE_URL_SYNC: ${DATABASE_URL_SYNC}
@@ -54,6 +54,17 @@ services:
       postgres: { condition: service_healthy }
     restart: "no"
 
+  seeder:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command: python -m data.generators.seed_all
+    environment: *appenv
+    depends_on:
+      postgres: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+    restart: "no"
+
   api:
     restart: unless-stopped
     build:
@@ -64,6 +75,7 @@ services:
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
       seeder: { condition: service_completed_successfully }
     ports: ["${API_PORT}:8000"]
     healthcheck:
@@ -81,6 +93,7 @@ services:
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
       seeder: { condition: service_completed_successfully }
 
   beat:
@@ -92,6 +105,7 @@ services:
     environment: *appenv
     depends_on:
       redis: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
       seeder: { condition: service_completed_successfully }
 
   web:
