@@ -5,6 +5,7 @@ pydantic-settings>=2.2
 SQLAlchemy>=2.0
 asyncpg>=0.29
 psycopg2-binary>=2.9
+alembic>=1.13
 celery[redis]>=5.3
 redis>=5.0
 PyJWT>=2.8
