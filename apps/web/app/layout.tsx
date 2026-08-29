@@ -1,6 +1,7 @@
 import './globals.css';
 import type { Metadata } from 'next';
 import { Inter, JetBrains_Mono } from 'next/font/google';
+import { AppErrorBoundary } from '../components/error-boundary';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -36,7 +37,7 @@ export default function RootLayout({
         className={`${inter.variable} ${jetbrainsMono.variable} font-sans`}
         suppressHydrationWarning
       >
-        {children}
+        <AppErrorBoundary>{children}</AppErrorBoundary>
       </body>
     </html>
   );

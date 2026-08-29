@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -77,7 +77,8 @@ async def ingest(body: DemandIngestIn, session: AsyncSession = Depends(get_sessi
 
 @router.get("")
 async def list_demands(status: str | None = None, department: str | None = None,
-                       division: str | None = None, limit: int = 200,
+                       division: str | None = None,
+                       limit: int = Query(200, ge=1, le=500),
                        actor: Actor = Depends(get_actor), session: AsyncSession = Depends(get_session)):
     div = division or (None if actor.role in ("AUDITOR", "ADMIN") else actor.division)
     rows = (await session.execute(text(
