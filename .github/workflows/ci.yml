@@ -58,7 +58,7 @@ jobs:
             psql -h localhost -U postgres -d railbloc -v ON_ERROR_STOP=1 -f "$f"
           done
 
-      - name: Run Pytest
+      - name: Seed & run tests
         env:
           DATABASE_URL: postgresql+asyncpg://postgres:password@localhost:5432/railbloc
           DATABASE_URL_SYNC: postgresql://postgres:password@localhost:5432/railbloc
