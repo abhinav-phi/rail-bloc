@@ -18,7 +18,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from sqlalchemy import text
 
-from .conftest import auth_header, make_token
+from .conftest import DSN, auth_header, make_token
 
 
 def _seed_run_with_impossible_demands(engine, feasible=False) -> str:
@@ -52,12 +52,35 @@ def _seed_run_with_impossible_demands(engine, feasible=False) -> str:
 
 
 @pytest.fixture()
-def eager_worker():
+def eager_worker(monkeypatch):
     from apps.workers import tasks as wt
     wt.app.conf.task_always_eager = True
     wt.app.conf.task_eager_propagates = False
+    # Seeded weather alerts must not defer the synthetic demands under test:
+    # fail-closed deferral empties the candidate set and the solver then reports
+    # a trivial OPTIMAL, masking the statuses these tests exist to pin down.
+    monkeypatch.setattr(wt, "load_weather_deferrals", lambda conn: set())
     yield wt
     wt.app.conf.task_always_eager = False
+
+
+# Demands owned by the fault tests (throwaway FLT* divisions or fault-test markers).
+_VICTIM_DEMANDS = """
+    SELECT id FROM demands.block_demands
+     WHERE section_id IN (SELECT id FROM infrastructure.block_sections
+                           WHERE division LIKE 'FLT\\_%' ESCAPE '\\')
+        OR external_ref_id LIKE 'FLT1-%' OR external_ref_id LIKE 'EMG-%' OR external_ref_id LIKE 'E2E-%'
+        OR external_ref_id LIKE 'SAFE002-%' OR external_ref_id LIKE 'APP001-%'
+        OR external_ref_id LIKE 'ACK-%' OR external_ref_id LIKE 'FLTKILL-%'
+        OR external_ref_id LIKE 'FLTRDS-%' OR external_ref_id LIKE 'DBG-%'"""
+
+# Plans anchored on throwaway divisions OR planning any victim demand — escalation
+# artifacts live on real sections, so the demand filter alone is not enough.
+_VICTIM_PLANS = f"""
+    SELECT p.id FROM optimization.block_plans p
+     WHERE p.section_id IN (SELECT id FROM infrastructure.block_sections
+                             WHERE division LIKE 'FLT\\_%' ESCAPE '\\')
+        OR p.primary_demand_id IN ({_VICTIM_DEMANDS})"""
 
 
 @pytest.fixture(autouse=True)
@@ -66,36 +89,18 @@ def flt_cleanup(engine):
     dependents after each test so no phantom divisions reach the UI."""
     yield
     with engine.begin() as c:
-        c.execute(text(
-            """DELETE FROM optimization.machine_rosters WHERE plan_id IN (
-                 SELECT p.id FROM optimization.block_plans p
-                 JOIN infrastructure.block_sections s ON s.id = p.section_id
-                 WHERE s.division LIKE 'FLT\\_%' ESCAPE '\\')"""))
-        c.execute(text(
-            """DELETE FROM optimization.plan_shadow_demands WHERE plan_id IN (
-                 SELECT p.id FROM optimization.block_plans p
-                 JOIN infrastructure.block_sections s ON s.id = p.section_id
-                 WHERE s.division LIKE 'FLT\\_%' ESCAPE '\\')"""))
-        c.execute(text(
-            """DELETE FROM optimization.plan_sections WHERE plan_id IN (
-                 SELECT p.id FROM optimization.block_plans p
-                 JOIN infrastructure.block_sections s ON s.id = p.section_id
-                 WHERE s.division LIKE 'FLT\\_%' ESCAPE '\\')"""))
-        c.execute(text(
-            """DELETE FROM optimization.block_plans
-               WHERE section_id IN (
-                     SELECT id FROM infrastructure.block_sections WHERE division LIKE 'FLT\\_%' ESCAPE '\\')
-                  OR primary_demand_id IN (
-                     SELECT id FROM demands.block_demands
-                     WHERE external_ref_id LIKE 'FLTKILL-%' OR external_ref_id LIKE 'FLTRDS-%'
-                        OR external_ref_id LIKE 'DBG-%')"""))
-        c.execute(text(
-            """DELETE FROM demands.block_demands WHERE section_id IN (
-                 SELECT id FROM infrastructure.block_sections WHERE division LIKE 'FLT\\_%' ESCAPE '\\')
-               OR external_ref_id LIKE 'FLT1-%' OR external_ref_id LIKE 'EMG-%' OR external_ref_id LIKE 'E2E-%'
-               OR external_ref_id LIKE 'SAFE002-%' OR external_ref_id LIKE 'APP001-%'
-               OR external_ref_id LIKE 'ACK-%' OR external_ref_id LIKE 'FLTKILL-%'
-               OR external_ref_id LIKE 'FLTRDS-%' OR external_ref_id LIKE 'DBG-%'"""))
+        # Every child table of block_plans is ON DELETE RESTRICT — clear them
+        # before the plans themselves, then the demands, then the divisions.
+        c.execute(text(f"DELETE FROM operations.signal_acknowledgments WHERE plan_id IN ({_VICTIM_PLANS})"))
+        c.execute(text(f"DELETE FROM optimization.coa_outbox WHERE plan_id IN ({_VICTIM_PLANS})"))
+        c.execute(text(f"DELETE FROM optimization.machine_rosters WHERE plan_id IN ({_VICTIM_PLANS})"))
+        c.execute(text(f"DELETE FROM optimization.plan_shadow_demands WHERE plan_id IN ({_VICTIM_PLANS})"
+                       f" OR demand_id IN ({_VICTIM_DEMANDS})"))
+        c.execute(text(f"DELETE FROM optimization.plan_sections WHERE plan_id IN ({_VICTIM_PLANS})"))
+        c.execute(text(f"UPDATE optimization.block_plans SET supersedes_id = NULL"
+                       f" WHERE supersedes_id IN ({_VICTIM_PLANS})"))
+        c.execute(text(f"DELETE FROM optimization.block_plans WHERE id IN ({_VICTIM_PLANS})"))
+        c.execute(text(f"DELETE FROM demands.block_demands WHERE id IN ({_VICTIM_DEMANDS})"))
         c.execute(text(
             "DELETE FROM infrastructure.block_sections WHERE division LIKE 'FLT\\_%' ESCAPE '\\'"))
 
@@ -119,7 +124,12 @@ def test_f1_solver_infeasible_escalates_without_committing_plans(engine, eager_w
     run_id = _seed_run_with_impossible_demands(engine)
     marker = run_id[:8]
     stats = eager_worker.run_solve.apply(args=[run_id]).result
-    assert stats["status"] in ("INFEASIBLE", "UNKNOWN")
+    # The model treats unaddressable demands as soft (formulations.build_model
+    # forces present=0 when the window cannot fit the duration), so CP-SAT
+    # reports OPTIMAL with zero candidates; the escalation contract is driven
+    # by "nothing schedulable", not by the raw CP-SAT status.
+    assert stats["total_demands"] == 3          # demands reached the solver (not noop/deferred)
+    assert stats["attempts"] == 1               # zero candidates → no sentinel retries
     assert _count_plans_for_run(engine, run_id) == 0          # nothing unsafe committed
     assert _escalated_count(engine, marker) == 3               # FSM-002 terminal state
     with engine.begin() as c:
@@ -202,8 +212,10 @@ def test_f3_postgres_backend_kill_midflow_rolls_back_everything(engine):
             {"sec": sec, "st": st, "et": et, "dem": dem, "run": run,
              "ch": "a" * 64}).scalar())
 
-    victim = psycopg2.connect(
-        "host=localhost port=5432 dbname=railbloc_db user=rail_admin password=rail_secure_password")
+    from sqlalchemy.engine import make_url
+    _url = make_url(DSN)
+    victim = psycopg2.connect(host=_url.host, port=_url.port or 5432, dbname=_url.database,
+                              user=_url.username, password=_url.password)
     vcur = victim.cursor()
     vcur.execute("BEGIN")
     vcur.execute("UPDATE optimization.block_plans SET approval_status='AUTHORIZED_DRM' WHERE id=%s",

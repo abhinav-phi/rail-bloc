@@ -44,25 +44,17 @@ describe('frontend core behaviors', () => {
 
   it('marks live feed stale on reconnect failure', async () => {
     const originalEventSource = globalThis.EventSource;
-    type MockEventSourceLike = {
-      close: () => void;
-      onopen: (() => void) | null;
-      onmessage: ((e: MessageEvent) => void) | null;
-      onerror: (() => void) | null;
-      url: string;
-    };
-    let instance: MockEventSourceLike | null = null;
+    // Structural type so the zero-arg handler invocations below typecheck —
+    // the DOM EventSource interface declares onopen/onerror with an event arg.
+    let instance: { close: () => void; onopen: (() => void) | null; onerror: (() => void) | null } | null = null;
 
     class MockEventSource {
       close = vi.fn();
       onopen: (() => void) | null = null;
       onmessage: ((e: MessageEvent) => void) | null = null;
       onerror: (() => void) | null = null;
-      url: string;
-
-      constructor(url: string) {
-        this.url = url;
-        instance = this as MockEventSourceLike;
+      constructor(public url: string) {
+        instance = this;
       }
     }
 
