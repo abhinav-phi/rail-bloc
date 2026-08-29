@@ -8,7 +8,7 @@ export default function PlannerWeeklyPage() {
   return (
     <div className="flex h-full w-full overflow-hidden relative">
       <SimulatedDataWatermark position="center" />
-      
+
       {/* Left panel: 20% width min 250px max 350px */}
       <div className="w-[280px] shrink-0">
         <DemandQueuePanel />

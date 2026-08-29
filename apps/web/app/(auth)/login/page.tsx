@@ -7,10 +7,34 @@ import { Button } from '@/components/ui/button';
 import { Train, Shield } from 'lucide-react';
 
 const DEMO_PERSONAS = [
-  { id: 'sr-dom', name: 'R. K. Sharma', role: 'Sr. DOM', division: 'DLI Division', badge: 'Sr.DOM/DLI' },
-  { id: 'drm', name: 'Sunita Verma', role: 'DRM', division: 'DLI Division', badge: 'DRM/DLI' },
-  { id: 'chief-controller', name: 'A. P. Singh', role: 'Chief Controller', division: 'DLI Division', badge: 'CHC/DLI' },
-  { id: 'sse-engineer', name: 'Meena Nair', role: 'SSE Engineer', division: 'DLI Division', badge: 'SSE/S&T' },
+  {
+    id: 'sr-dom',
+    name: 'R. K. Sharma',
+    role: 'Sr. DOM',
+    division: 'DLI Division',
+    badge: 'Sr.DOM/DLI',
+  },
+  {
+    id: 'drm',
+    name: 'Sunita Verma',
+    role: 'DRM',
+    division: 'DLI Division',
+    badge: 'DRM/DLI',
+  },
+  {
+    id: 'chief-controller',
+    name: 'A. P. Singh',
+    role: 'Chief Controller',
+    division: 'DLI Division',
+    badge: 'CHC/DLI',
+  },
+  {
+    id: 'sse-engineer',
+    name: 'Meena Nair',
+    role: 'SSE Engineer',
+    division: 'DLI Division',
+    badge: 'SSE/S&T',
+  },
 ];
 
 export default function LoginPage() {
@@ -18,7 +42,7 @@ export default function LoginPage() {
   const { loginAsDemo } = usePersona();
   const router = useRouter();
 
-  const handleLogin = async (persona: typeof DEMO_PERSONAS[0]) => {
+  const handleLogin = async (persona: (typeof DEMO_PERSONAS)[0]) => {
     setIsLoading(true);
     loginAsDemo(persona);
     router.push('/dashboard');

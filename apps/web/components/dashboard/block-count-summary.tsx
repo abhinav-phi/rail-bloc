@@ -21,7 +21,10 @@ export function BlockCountSummary() {
       <CardContent>
         <div className="grid gap-3">
           {MOCK_COUNTS.map((item) => (
-            <div key={item.status} className="flex items-center justify-between border-b pb-2 last:border-0 last:pb-0">
+            <div
+              key={item.status}
+              className="flex items-center justify-between border-b pb-2 last:border-0 last:pb-0"
+            >
               <BlockStatusPill status={item.status} />
               <span className="font-mono font-medium">{item.count}</span>
             </div>

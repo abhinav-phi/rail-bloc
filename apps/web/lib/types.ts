@@ -14,15 +14,30 @@ export type BlockPlanStatus =
   | 'FAILED_ESCALATE'
   | 'CANCELLED';
 
-export type IncidentType = 'TRACK_FRACTURE' | 'OHE_BREAKDOWN' | 'SIGNAL_FAILURE' | 'OTHER';
+export type IncidentType =
+  | 'TRACK_FRACTURE'
+  | 'OHE_BREAKDOWN'
+  | 'SIGNAL_FAILURE'
+  | 'OTHER';
 
-export type SolverStatus = 'OPTIMAL' | 'FEASIBLE' | 'INFEASIBLE' | 'UNKNOWN' | 'IDLE' | 'RUNNING';
+export type SolverStatus =
+  | 'OPTIMAL'
+  | 'FEASIBLE'
+  | 'INFEASIBLE'
+  | 'UNKNOWN'
+  | 'IDLE'
+  | 'RUNNING';
 
 export type TrainPathSource = 'WTT' | 'COA_LIVE' | 'FOIS_FORECAST';
 
 export type Department = 'CIVIL' | 'TRD' | 'SNT';
 
-export type PersonaRole = 'SR_DOM' | 'DRM' | 'CHIEF_CONTROLLER' | 'SR_DEN' | 'SSE';
+export type PersonaRole =
+  | 'SR_DOM'
+  | 'DRM'
+  | 'CHIEF_CONTROLLER'
+  | 'SR_DEN'
+  | 'SSE';
 
 export interface Persona {
   id: string;
@@ -34,8 +49,16 @@ export interface Persona {
 }
 
 export type SentinelRuleId =
-  | 'G&SR-1' | 'G&SR-2' | 'G&SR-3' | 'G&SR-4' | 'G&SR-5'
-  | 'MILP-C1' | 'MILP-C2' | 'MILP-C3' | 'MILP-C4' | 'MILP-C5';
+  | 'G&SR-1'
+  | 'G&SR-2'
+  | 'G&SR-3'
+  | 'G&SR-4'
+  | 'G&SR-5'
+  | 'MILP-C1'
+  | 'MILP-C2'
+  | 'MILP-C3'
+  | 'MILP-C4'
+  | 'MILP-C5';
 
 export interface SentinelCheckResult {
   ruleId: SentinelRuleId;

@@ -89,7 +89,9 @@ export function ApprovalWorkflow({ persona }: Props) {
                     done && 'border-success bg-success text-success-foreground',
                     active &&
                       'border-primary bg-primary/20 text-primary ring-4 ring-primary/20',
-                    !done && !active && 'border-muted bg-card text-muted-foreground'
+                    !done &&
+                      !active &&
+                      'border-muted bg-card text-muted-foreground',
                   )}
                 >
                   {done ? (
@@ -101,7 +103,7 @@ export function ApprovalWorkflow({ persona }: Props) {
                 <span
                   className={cn(
                     'text-center text-[9px] font-medium leading-tight',
-                    active ? 'text-foreground' : 'text-muted-foreground'
+                    active ? 'text-foreground' : 'text-muted-foreground',
                   )}
                 >
                   {stage}
@@ -125,7 +127,10 @@ export function ApprovalWorkflow({ persona }: Props) {
                 <CheckCircle2 className="mr-1 h-3 w-3" /> Signed
               </Badge>
             ) : (
-              <Badge variant="outline" className="border-warning/40 bg-warning/10 text-warning">
+              <Badge
+                variant="outline"
+                className="border-warning/40 bg-warning/10 text-warning"
+              >
                 <PenLine className="mr-1 h-3 w-3" /> Pending
               </Badge>
             )}
@@ -164,7 +169,7 @@ export function ApprovalWorkflow({ persona }: Props) {
             <ChevronDown
               className={cn(
                 'h-4 w-4 text-muted-foreground transition-transform',
-                checklistOpen && 'rotate-180'
+                checklistOpen && 'rotate-180',
               )}
             />
           </button>
@@ -191,13 +196,15 @@ export function ApprovalWorkflow({ persona }: Props) {
                         <Circle className="h-4 w-4 shrink-0 text-destructive" />
                       )}
                       <div className="flex flex-1 items-center justify-between">
-                        <span className="text-xs text-foreground">{check.label}</span>
+                        <span className="text-xs text-foreground">
+                          {check.label}
+                        </span>
                         <span
                           className={cn(
                             'font-mono text-[10px]',
                             check.status === 'pass' && 'text-success',
                             check.status === 'warn' && 'text-warning',
-                            check.status === 'fail' && 'text-destructive'
+                            check.status === 'fail' && 'text-destructive',
                           )}
                         >
                           {check.detail}
@@ -245,8 +252,12 @@ export function ApprovalWorkflow({ persona }: Props) {
                 </h4>
                 <p className="mt-1 text-xs text-muted-foreground">
                   You are authorizing block plan{' '}
-                  <span className="font-mono text-foreground">BLK-2026-W34-01</span> on
-                  behalf of <span className="text-foreground">{persona.name}</span> ({persona.role}).
+                  <span className="font-mono text-foreground">
+                    BLK-2026-W34-01
+                  </span>{' '}
+                  on behalf of{' '}
+                  <span className="text-foreground">{persona.name}</span> (
+                  {persona.role}).
                 </p>
               </div>
 

@@ -49,7 +49,7 @@ export function Header({
           hour: '2-digit',
           minute: '2-digit',
           second: '2-digit',
-        }) + ' IST'
+        }) + ' IST',
       );
     };
     tick();
@@ -161,11 +161,14 @@ export function Header({
                 onClick={() => onPersonaChange(p)}
                 className={cn(
                   'flex items-center gap-3 py-2',
-                  p.id === persona.id && 'bg-primary/10'
+                  p.id === persona.id && 'bg-primary/10',
                 )}
               >
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary/70 to-accent/70 text-xs font-bold text-primary-foreground">
-                  {p.name.split(' ').map((n) => n[0]).join('')}
+                  {p.name
+                    .split(' ')
+                    .map((n) => n[0])
+                    .join('')}
                 </div>
                 <div className="flex flex-1 flex-col leading-tight">
                   <span className="text-sm font-medium text-foreground">
@@ -211,7 +214,7 @@ function StatusPill({
           className={cn(
             'flex h-7 w-7 items-center justify-center rounded-md',
             tone === 'primary' && 'bg-primary/15 text-primary',
-            tone === 'success' && 'bg-success/15 text-success'
+            tone === 'success' && 'bg-success/15 text-success',
           )}
         >
           {icon}
@@ -224,7 +227,7 @@ function StatusPill({
             <span
               className={cn(
                 'h-1.5 w-1.5 rounded-full',
-                tone === 'success' && 'bg-success pulse-ring'
+                tone === 'success' && 'bg-success pulse-ring',
               )}
             />
           </div>

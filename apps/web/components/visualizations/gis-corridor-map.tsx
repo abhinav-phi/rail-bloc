@@ -3,7 +3,7 @@ import React, { useEffect, useRef } from 'react';
 
 export function GisCorridorMap() {
   const mapContainer = useRef<HTMLDivElement>(null);
-  
+
   useEffect(() => {
     if (!mapContainer.current) return;
 

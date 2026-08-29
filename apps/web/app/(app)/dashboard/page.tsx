@@ -10,16 +10,20 @@ export default function DashboardPage() {
   return (
     <div className="p-6 max-w-[1600px] mx-auto relative min-h-full pb-20">
       <SimulatedDataWatermark position="center" />
-      
+
       <div className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight">Operations Overview</h1>
-        <p className="text-muted-foreground mt-1">Live divisional status and escalated demands.</p>
+        <h1 className="text-2xl font-bold tracking-tight">
+          Operations Overview
+        </h1>
+        <p className="text-muted-foreground mt-1">
+          Live divisional status and escalated demands.
+        </p>
       </div>
 
       <KpiRibbon />
-      
+
       <DemandEscalationList />
-      
+
       <div className="grid gap-6 md:grid-cols-2">
         <BlockCountSummary />
         <MachineUtilizationSummary />

@@ -1,9 +1,9 @@
 /** SSE live-feed hook — reconnects with fresh JWT, drives stale-data detection.
  *  Ported from the legacy apps/web Vite SPA to Next.js. */
-"use client";
+'use client';
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { getToken } from "./api";
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { getToken } from './api';
 
 export interface LiveEvent {
   event: string;
@@ -33,7 +33,7 @@ export function useLive(): LiveState {
     const token = getToken();
     if (!token) return;
     const es = new EventSource(
-      `/api/v1/stream/live-blocks?token=${encodeURIComponent(token)}`
+      `/api/v1/stream/live-blocks?token=${encodeURIComponent(token)}`,
     );
     esRef.current = es;
     es.onopen = () =>

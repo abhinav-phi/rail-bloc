@@ -5,7 +5,9 @@ export function BlockHeatmapLegend() {
   return (
     <Card className="absolute bottom-6 right-4 z-10 shadow-md">
       <CardContent className="p-3 text-xs flex items-center gap-3">
-        <span className="font-semibold text-muted-foreground">Block Density:</span>
+        <span className="font-semibold text-muted-foreground">
+          Block Density:
+        </span>
         <div className="flex items-center gap-1">
           <div className="w-4 h-4 bg-emerald-500/20 border border-emerald-500" />
           <span>Low</span>

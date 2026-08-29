@@ -11,7 +11,10 @@ export function Header() {
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setTime(new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' }) + ' IST');
+      setTime(
+        new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' }) +
+          ' IST',
+      );
     }, 1000);
     return () => clearInterval(timer);
   }, []);

@@ -6,9 +6,24 @@ import { SentinelCheckResult } from '@/lib/types';
 import { DepartmentTag } from '@/components/shared/department-tag';
 
 const MOCK_CHECKS: SentinelCheckResult[] = [
-  { ruleId: 'G&SR-1', name: 'No conflicting passenger trains', passed: true, detail: 'WTT cross-referenced.' },
-  { ruleId: 'G&SR-3', name: 'Adjacent block safety buffer', passed: true, detail: '5km separation maintained.' },
-  { ruleId: 'MILP-C2', name: 'Resource availability', passed: false, detail: 'BCM-1 is marked as MAINTENANCE.' },
+  {
+    ruleId: 'G&SR-1',
+    name: 'No conflicting passenger trains',
+    passed: true,
+    detail: 'WTT cross-referenced.',
+  },
+  {
+    ruleId: 'G&SR-3',
+    name: 'Adjacent block safety buffer',
+    passed: true,
+    detail: '5km separation maintained.',
+  },
+  {
+    ruleId: 'MILP-C2',
+    name: 'Resource availability',
+    passed: false,
+    detail: 'BCM-1 is marked as MAINTENANCE.',
+  },
 ];
 
 export function ActionPreviewCard({ planId }: { planId?: string }) {
@@ -31,7 +46,7 @@ export function ActionPreviewCard({ planId }: { planId?: string }) {
           Track maintenance • DLI-PNP • Oct 18, 10:00 - 14:00
         </div>
       </div>
-      
+
       <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-8">
         <div>
           <h3 className="font-semibold mb-4">Approval Chain Status</h3>
