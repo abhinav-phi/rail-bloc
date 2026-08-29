@@ -124,7 +124,12 @@ def test_f1_solver_infeasible_escalates_without_committing_plans(engine, eager_w
     run_id = _seed_run_with_impossible_demands(engine)
     marker = run_id[:8]
     stats = eager_worker.run_solve.apply(args=[run_id]).result
-    assert stats["status"] in ("INFEASIBLE", "UNKNOWN")
+    # The model treats unaddressable demands as soft (formulations.build_model
+    # forces present=0 when the window cannot fit the duration), so CP-SAT
+    # reports OPTIMAL with zero candidates; the escalation contract is driven
+    # by "nothing schedulable", not by the raw CP-SAT status.
+    assert stats["total_demands"] == 3          # demands reached the solver (not noop/deferred)
+    assert stats["attempts"] == 1               # zero candidates → no sentinel retries
     assert _count_plans_for_run(engine, run_id) == 0          # nothing unsafe committed
     assert _escalated_count(engine, marker) == 3               # FSM-002 terminal state
     with engine.begin() as c:
