@@ -11,7 +11,7 @@ exclude = ["build_wheels", "node_modules", "apps/web", "migrations", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
-ignore = ["E501", "E702", "B008", "B904", "B007", "UP031", "F821"]
+ignore = ["E501", "E702", "B008", "B904", "B007", "UP031", "F821", "UP042", "B905"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

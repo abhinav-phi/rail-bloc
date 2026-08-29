@@ -1,12 +1,15 @@
 """FR-007 solve trigger + job polling. Per-division/horizon Redis lock prevents racing
 solves (DB-003 companion); the run registry is optimization.solver_runs (RES-04)."""
 from __future__ import annotations
+
 import json
 import uuid
+
 import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from ..core.config import settings
 from ..core.database import get_session
 from ..core.security import Actor, require_roles

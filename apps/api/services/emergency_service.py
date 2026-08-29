@@ -2,15 +2,18 @@
 Issues advisory revocations (it executes; Sentinel never does), coalesces incidents on
 adjacent sections, and gates PROVISIONAL plans on Controller acknowledgment."""
 from __future__ import annotations
-import json
+
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from packages.chronicle.canonical import content_hash
-from packages.core.models import DemandInput, TrainPathInput, MachineInfo, PlanCandidate, ScheduledWork
-from .ledger_service import append
+from packages.core.models import DemandInput, MachineInfo, PlanCandidate, ScheduledWork, TrainPathInput
+
 from . import sse
+from .ledger_service import append
 
 
 async def adjacent_section_ids(session: AsyncSession, section_id: str) -> list[str]:
@@ -37,7 +40,7 @@ async def adjacent_section_ids(session: AsyncSession, section_id: str) -> list[s
 
 
 async def blast_radius(session: AsyncSession, section_id: str, est_mins: int) -> dict:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     until = now + timedelta(minutes=est_mins)
     trains = (await session.execute(text(
         """SELECT t.train_number, t.train_type, t.priority_rank, t.scheduled_entry, t.scheduled_exit
@@ -62,7 +65,7 @@ async def coalesce_or_create_incident(session: AsyncSession, section_id: str, it
                                       reported_by: str, est_mins: int) -> tuple[str, str | None]:
     """AppFlow Scenario A step 1: a second incident on an ADJACENT section inside the
     same window is coalesced into the first to prevent conflicting concurrent re-plans."""
-    window_start = datetime.now(timezone.utc) - timedelta(minutes=60)
+    window_start = datetime.now(UTC) - timedelta(minutes=60)
     adj = await adjacent_section_ids(session, section_id)
     existing = None
     if adj:
@@ -114,7 +117,7 @@ async def issue_advisory_revocation(session: AsyncSession, section_id: str,
 
 async def fetch_solve_inputs(session: AsyncSession, section_ids: list[str],
                              horizon_hours: float = 48.0):
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     until = now + timedelta(hours=horizon_hours)
     dem_rows = (await session.execute(text(
         """SELECT d.*, s.section_code, s.division, s.start_km, s.end_km

@@ -1,11 +1,14 @@
 """FR-023 — ledger integrity verification (REPEATABLE READ snapshot) + explorer feed."""
 from __future__ import annotations
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from packages.chronicle.verifier import verify_ledger
+
 from ..core.database import get_session
 from ..core.security import Actor, require_roles
-from packages.chronicle.verifier import verify_ledger
 
 router = APIRouter(prefix="/api/v1/ledger", tags=["ledger"])
 

@@ -1,14 +1,17 @@
 """FR-001/2/3 + FR-030: machine-credential ingestion, staleness TTL, plausibility and
 cross-feed contradiction checks, idempotent upsert (DB-006)."""
 from __future__ import annotations
+
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+
 from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from ..core.config import settings
 from ..core.database import get_session
-from ..core.security import verify_source_credentials, Actor, get_actor
+from ..core.security import Actor, get_actor, verify_source_credentials
 from ..schemas.models import DemandIngestIn
 from ..services.ledger_service import append
 
@@ -23,7 +26,7 @@ CONTRADICTIONS = [("contact_wire_diameter_mm", 8.25, "lt", 0.5),
 async def ingest(body: DemandIngestIn, session: AsyncSession = Depends(get_session),
                  x_source_system: str = Header(...), x_source_key: str = Header(...)):
     verify_source_credentials(x_source_system, x_source_key)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     ttl = timedelta(hours=settings.demand_staleness_ttl_hours)
     ingested = rejected = 0
     flags: list[dict] = []

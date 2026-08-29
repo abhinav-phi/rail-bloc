@@ -1,7 +1,8 @@
 """Baseline 1 (B1) — honest, tunable greedy heuristic (Rules.md §3). Doubles as the
 CP-SAT warm-start hint (TechSpec §2.5): RAIL-BLOC is therefore never worse than B1."""
 from __future__ import annotations
-from datetime import datetime, timedelta
+
+from datetime import datetime
 
 
 def _mins(dt: datetime, base: datetime) -> int:

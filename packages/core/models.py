@@ -1,8 +1,8 @@
 from __future__ import annotations
+
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Optional
 
 
 class Department(str, Enum):
@@ -32,7 +32,7 @@ class DemandInput:
     latest_deadline: datetime
     urgency_score: float
     machinery: list[str] = field(default_factory=list)
-    source_ingested_at: Optional[datetime] = None
+    source_ingested_at: datetime | None = None
     features: dict = field(default_factory=dict)
 
 
@@ -45,7 +45,7 @@ class TrainPathInput:
     scheduled_entry: datetime
     scheduled_exit: datetime
     source: str = "WTT"
-    forecast_confidence: Optional[float] = None
+    forecast_confidence: float | None = None
 
 
 @dataclass(frozen=True)
@@ -65,7 +65,7 @@ class SolveWeights:
     unaddressed_defect: float
     early_start: float
 
-    def relaxed(self) -> "SolveWeights":
+    def relaxed(self) -> SolveWeights:
         """FSM-002 REJECTED_RETRY: relax soft weights for a re-run. Hard safety is
         never relaxed — only objective soft terms (shadow reward / early start)."""
         return SolveWeights(
@@ -107,7 +107,7 @@ class PlanCandidate:
     works: list[ScheduledWork]
     is_shadow_block: bool
     plan_horizon: str
-    incident_id: Optional[str] = None
+    incident_id: str | None = None
 
     @property
     def shadow_demand_ids(self) -> list[str]:
@@ -145,4 +145,4 @@ class SolveResult:
 
 
 def utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)

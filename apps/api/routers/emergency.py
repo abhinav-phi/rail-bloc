@@ -3,25 +3,37 @@ Blast-radius modal data, incident creation with coalescing, advisory revocation,
 corridor-scoped synchronous re-plan with Sentinel's structural subset inside the
 NFR-002 budget, PROVISIONAL plan, and the Controller acknowledgment gate."""
 from __future__ import annotations
+
 import asyncio
 import json
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from packages.core.models import SolverParams, SolveWeights
+from packages.sentinel.validator import (
+    FeedingMapEntry,
+    SentinelContext,
+    TrainInterval,
+    validate_structural_subset,
+)
+
 from ..core.config import settings
-from ..core.database import get_session, SessionLocal
+from ..core.database import get_session
 from ..core.security import Actor, get_actor, require_roles
 from ..schemas.models import BreakdownIn
-from ..services.emergency_service import (blast_radius, coalesce_or_create_incident,
-                                          issue_advisory_revocation, fetch_solve_inputs,
-                                          persist_emergency_plan)
+from ..services.emergency_service import (
+    blast_radius,
+    coalesce_or_create_incident,
+    fetch_solve_inputs,
+    issue_advisory_revocation,
+    persist_emergency_plan,
+)
 from ..services.idempotency_service import check_replay, record
-from ..services.plan_lifecycle import load_plan
 from ..services.ledger_service import append
-from packages.core.models import SolverParams, SolveWeights
-from packages.sentinel.validator import validate_structural_subset, SentinelContext, TrainInterval, FeedingMapEntry
 
 router = APIRouter(prefix="/api/v1/emergency", tags=["emergency"])
 
@@ -49,7 +61,7 @@ async def breakdown(body: BreakdownIn, actor: Actor = Depends(require_roles("CON
     if sec is None:
         raise HTTPException(400, "unknown or inactive section")
 
-    started = datetime.now(timezone.utc)
+    started = datetime.now(UTC)
 
     # FR-016 wording: validates the target section actually has an active/planned block.
     has_block = (await session.execute(text(
@@ -94,7 +106,7 @@ async def breakdown(body: BreakdownIn, actor: Actor = Depends(require_roles("CON
 
     loop = asyncio.get_running_loop()
     result = await loop.run_in_executor(None, _solve)
-    wall = (datetime.now(timezone.utc) - started).total_seconds()
+    wall = (datetime.now(UTC) - started).total_seconds()
 
     plan_id = None
     content_hash_value = None
@@ -110,7 +122,7 @@ async def breakdown(body: BreakdownIn, actor: Actor = Depends(require_roles("CON
             train_intervals=[TrainInterval(t.section_id, t.priority_rank, t.scheduled_entry, t.scheduled_exit)
                              for t in trains],
             feeding_map=[FeedingMapEntry(k, frozenset(v)) for k, v in feeds.items()],
-            now=datetime.now(timezone.utc),
+            now=datetime.now(UTC),
             staleness_ttl=timedelta(hours=settings.demand_staleness_ttl_hours),
             headway_high_priority_mins=settings.headway_high_priority_mins)
         structural = validate_structural_subset(cand, ctx)

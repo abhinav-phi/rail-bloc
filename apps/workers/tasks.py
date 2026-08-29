@@ -7,9 +7,10 @@ Solve FSM: IDLE → GRAPH_ASSEMBLY → SOLVING → SENTINEL_EVALUATION → COMMI
 All cadences come from environment (Rules.md §4 XC-010): WEEKLY_PLAN_CRON etc.
 """
 from __future__ import annotations
+
 import json
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import redis as sync_redis
 from celery import Celery
@@ -121,7 +122,7 @@ def solve_weights():
         early_start=_env_float("OBJECTIVE_WEIGHT_EARLY_START", 0.05))
 
 
-def solver_params(budget_seconds: float | None = None) -> "SolverParams":
+def solver_params(budget_seconds: float | None = None) -> SolverParams:
     from packages.core.models import SolverParams
     return SolverParams(
         max_time_seconds=budget_seconds or _env_float("SOLVER_MAX_TIME_SECONDS", 35.0),
@@ -140,7 +141,7 @@ def refresh_weather_alerts_if_stale(conn) -> int:
     """Simulated IMD feed (FR-005-style poll): when every seeded alert has expired,
     roll a fresh fixed-seed alert set in so TEL-002 fail-closed deferrals reflect an
     ACTIVE weather event rather than a permanently stale feed."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     fresh = conn.execute(text(
         "SELECT count(*) FROM operations.weather_alerts WHERE valid_until > :n"),
         {"n": now}).scalar()
@@ -166,7 +167,7 @@ def refresh_weather_alerts_if_stale(conn) -> int:
 def load_weather_deferrals(conn) -> set[str]:
     """TEL-002 fail-closed: stale/missing IMD feed defers ALL weather-sensitive outdoor
     work; a fresh feed defers exactly the prohibited types of active alerts."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     ttl = timedelta(hours=_env_float("WEATHER_STALENESS_TTL_HOURS", 3.0))
     fresh = conn.execute(text(
         "SELECT prohibited_work_types FROM operations.weather_alerts "
@@ -190,7 +191,7 @@ def maybe_apply_ml_urgency(conn, demand_rows) -> int:
     if not targets:
         return 0
     try:
-        from packages.ml.degradation_model import train, estimate, FEATURES
+        from packages.ml.degradation_model import FEATURES, estimate, train
         model = train(epochs=40)
     except Exception:
         return 0
@@ -211,12 +212,17 @@ def maybe_apply_ml_urgency(conn, demand_rows) -> int:
 def run_solve(self, run_id: str):
     """FR-007/FR-011 full solve pipeline for one solver_runs row."""
     eng = _eng()
-    from packages.core.models import DemandInput, TrainPathInput, MachineInfo
-    from packages.optima.solver import solve as optima_solve
-    from packages.optima.objectives import replay_train_detention
-    from packages.sentinel.validator import (SentinelContext, TrainInterval, FeedingMapEntry,
-                                             AckRecord, validate_set)
     from packages.chronicle.canonical import content_hash
+    from packages.core.models import DemandInput, MachineInfo, TrainPathInput
+    from packages.optima.objectives import replay_train_detention
+    from packages.optima.solver import solve as optima_solve
+    from packages.sentinel.validator import (
+        AckRecord,
+        FeedingMapEntry,
+        SentinelContext,
+        TrainInterval,
+        validate_set,
+    )
 
     with eng.begin() as conn:
         run = conn.execute(text(
@@ -227,7 +233,7 @@ def run_solve(self, run_id: str):
         conn.execute(text("UPDATE optimization.solver_runs SET status='RUNNING' WHERE id=:i"), {"i": run_id})
         refresh_weather_alerts_if_stale(conn)
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         until = now + timedelta(days=HORIZON_DAYS.get(horizon, 7))
         sections = conn.execute(text(
             "SELECT id, section_code, division, start_km, end_km FROM infrastructure.block_sections "
@@ -318,7 +324,7 @@ def run_solve(self, run_id: str):
                                            for t in trains],
                           feeding_map=feeding_map, acks=acks, machine_infos=machines,
                           committed_windows=committed_windows,
-                          now=datetime.now(timezone.utc),
+                          now=datetime.now(UTC),
                           staleness_ttl=timedelta(hours=_env_float("DEMAND_STALENESS_TTL_HOURS", 12)),
                           headway_high_priority_mins=_env_int("HEADWAY_HIGH_PRIORITY_MINS", 15))
 
@@ -486,7 +492,6 @@ def generate_weekly_plans():
 def simulate_feed_ingest():
     """FR-001/002/003 CRON simulation: small fresh batches through the machine-
     credential ingest path (per-source keys honored internally, TEL-001)."""
-    eng = _eng()
     from .corridor_bridge import insert_feed_batch
     inserted = insert_feed_batch(_eng())
     _sse_publish("FEED_INGESTED", {"inserted": inserted})
@@ -503,16 +508,17 @@ def fois_forecast_poll():
         sections = conn.execute(text(
             "SELECT section_code, start_km, end_km FROM infrastructure.block_sections WHERE is_active ORDER BY start_km")
         ).mappings().all()
-        from data.generators.traffic_gen import gen_freight
         from datetime import timedelta
-        tomorrow = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=2)
+
+        from data.generators.traffic_gen import gen_freight
+        tomorrow = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=2)
         paths = gen_freight([dict(s) for s in sections], tomorrow, seed=int(tomorrow.timestamp()) % 100000)
         conf_by_hour = None
         for p in paths:
             meta = p["metadata"]
             if meta.get("forecast_confidence") is None:
                 try:
-                    from packages.ml.freight_forecaster import train, forecast
+                    from packages.ml.freight_forecaster import forecast, train
                     if conf_by_hour is None:
                         conf_by_hour = train()
                     meta["forecast_confidence"] = round(forecast(

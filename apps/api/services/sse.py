@@ -1,5 +1,7 @@
 import json
+
 import redis.asyncio as aioredis
+
 from ..core.config import settings
 
 _channel = "live_blocks"

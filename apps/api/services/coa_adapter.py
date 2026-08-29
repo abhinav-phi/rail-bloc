@@ -3,12 +3,16 @@ never on send (RES-02: plan status stays AUTHORIZED_DRM / PROVISIONAL until then
 The bridge loop (main.py startup) acks rows after a simulated COA round-trip;
 production would POST to the real COA bridge with COA_BRIDGE_SECRET."""
 from __future__ import annotations
-import json, uuid
-from datetime import datetime, timezone
+
+import json
+import uuid
+from datetime import UTC, datetime
+
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
-from .ledger_service import append
+
 from . import sse
+from .ledger_service import append
 
 
 async def enqueue_transmission(session: AsyncSession, plan: dict) -> str:
@@ -27,10 +31,10 @@ async def process_outbox(session: AsyncSession, ack_delay_seconds: float = 1.5) 
     rows = (await session.execute(text(
         """SELECT o.id, o.plan_id, o.created_at FROM optimization.coa_outbox o
            WHERE o.state = 'PENDING' AND o.attempts < 3
-             AND o.created_at < :c"""), {"c": datetime.now(timezone.utc)})).mappings().all()
+             AND o.created_at < :c"""), {"c": datetime.now(UTC)})).mappings().all()
     n = 0
     for r in rows:
-        age = (datetime.now(timezone.utc) - r["created_at"]).total_seconds()
+        age = (datetime.now(UTC) - r["created_at"]).total_seconds()
         if age < ack_delay_seconds:
             continue
         plan = (await session.execute(text(

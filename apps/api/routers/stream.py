@@ -2,10 +2,13 @@
 cannot set headers); re-authentication happens on every reconnect. Heartbeat lapses
 drive the client's persistent STALE DATA overlay."""
 from __future__ import annotations
+
 import asyncio
 import json
-from fastapi import APIRouter, Request, HTTPException
+
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
+
 from ..core.security import actor_from_query
 from ..services import sse
 
@@ -42,7 +45,7 @@ async def live_blocks(request: Request, token: str | None = None):
                 try:
                     msg = await asyncio.wait_for(pubsub.get_message(ignore_subscribe_messages=True),
                                                  timeout=HEARTBEAT_SECONDS)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     msg = None
                 if msg is None:
                     yield ": heartbeat\n\n"

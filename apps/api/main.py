@@ -1,16 +1,18 @@
 """RAIL-BLOC FastAPI gateway (ADR-001 modular monolith). Includes the COA outbox
 bridge loop (SAFE-006) started on startup."""
 from __future__ import annotations
+
 import asyncio
 import contextlib
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .core.database import SessionLocal, ping
 from .core.config import settings
+from .core.database import SessionLocal, ping
+from .routers import approvals, auth, demands, emergency, ledger, operations, optimize, plans, stream, weather
 from .services import coa_adapter
-from .routers import auth, demands, optimize, plans, approvals, emergency, ledger, stream, weather, operations
 
 
 async def outbox_bridge_loop() -> None:

@@ -2,11 +2,23 @@
 -> machine VRP. Reports CP-SAT status and bound with every solve (ADR-002 corrected:
 constraint-verified always; optimality only when status == OPTIMAL)."""
 from __future__ import annotations
+
 from datetime import timedelta
+
 from ortools.sat.python import cp_model
-from packages.core.models import (DemandInput, TrainPathInput, MachineInfo, SolveWeights,
-                                  SolverParams, PlanCandidate, ScheduledWork, SolveResult, RosterEntry)
-from .formulations import build_model, add_hint, _mins
+
+from packages.core.models import (
+    DemandInput,
+    MachineInfo,
+    PlanCandidate,
+    ScheduledWork,
+    SolveResult,
+    SolverParams,
+    SolveWeights,
+    TrainPathInput,
+)
+
+from .formulations import add_hint, build_model
 from .heuristic import greedy_schedule
 from .vrp import build_roster
 

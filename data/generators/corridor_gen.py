@@ -3,6 +3,7 @@ seed scripts and the benchmark harness, so B0/B1/RAIL-BLOC see identical data by
 construction (BENCH-001). Documented correlation structure (ML-001): defects cluster
 spatially; urgency correlates with TGI/GMT/IMR/wear per domain rules."""
 from __future__ import annotations
+
 import random
 
 STATIONS = [

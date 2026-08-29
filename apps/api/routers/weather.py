@@ -1,22 +1,26 @@
 """FR-019 — Weather Risk Adapter (IMD mock). PostGIS ST_Intersects matches alerts to
 sections; TEL-002 fail-closed: a stale/missing feed DEFERS outdoor high-risk work."""
 from __future__ import annotations
+
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+
 from fastapi import APIRouter, Depends
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from data.generators.corridor_gen import WEATHER_SENSITIVE
+
 from ..core.config import settings
 from ..core.database import get_session
 from ..core.security import Actor, get_actor
-from data.generators.corridor_gen import WEATHER_SENSITIVE
 
 router = APIRouter(prefix="/api/v1/weather", tags=["weather"])
 
 
 @router.get("/alerts")
 async def alerts(actor: Actor = Depends(get_actor), session: AsyncSession = Depends(get_session)):
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     ttl = timedelta(hours=settings.weather_staleness_ttl_hours)
     rows = (await session.execute(text(
         """SELECT w.id, w.alert_type, w.severity, w.precipitation_mm_hr,
@@ -44,7 +48,7 @@ async def alerts(actor: Actor = Depends(get_actor), session: AsyncSession = Depe
 @router.get("/deferred-activities")
 async def deferred(actor: Actor = Depends(get_actor), session: AsyncSession = Depends(get_session)):
     """The exact work types currently deferred under fail-closed semantics."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     fresh_alerts = (await session.execute(text(
         "SELECT prohibited_work_types FROM operations.weather_alerts "
         "WHERE valid_until > :n AND created_at > :c"),
