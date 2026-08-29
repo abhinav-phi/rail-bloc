@@ -1,7 +1,7 @@
 import React from 'react';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
-import { parseJwt } from '@/lib/api';
+import { parseJwt, setToken } from '@/lib/api';
 import { ApprovalActionRow } from '@/components/approvals/approval-action-row';
 import { Sidebar } from '@/components/shell/sidebar';
 import { useLive } from '@/lib/live';
@@ -31,7 +31,9 @@ describe('frontend core behaviors', () => {
     render(<ApprovalActionRow isHashValid={false} canApprove={true} />);
 
     expect(screen.getByText(/HASH MISMATCH/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /approve & sign/i })).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: /approve & sign/i }),
+    ).toBeDisabled();
   });
 
   it('shows sidebar navigation entries for standard operations pages', () => {
@@ -46,7 +48,11 @@ describe('frontend core behaviors', () => {
     const originalEventSource = globalThis.EventSource;
     // Structural type so the zero-arg handler invocations below typecheck —
     // the DOM EventSource interface declares onopen/onerror with an event arg.
-    let instance: { close: () => void; onopen: (() => void) | null; onerror: (() => void) | null } | null = null;
+    let instance: {
+      close: () => void;
+      onopen: (() => void) | null;
+      onerror: (() => void) | null;
+    } | null = null;
 
     class MockEventSource {
       close = vi.fn();
@@ -59,10 +65,11 @@ describe('frontend core behaviors', () => {
     }
 
     globalThis.EventSource = MockEventSource as any;
-    Object.defineProperty(window, 'localStorage', {
-      value: { getItem: () => makeToken('SR_DOM', 'DLI') },
-      configurable: true,
-    });
+    setToken(makeToken('SR_DOM', 'DLI'));
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({ ticket: 'test-ticket' }),
+    } as Response);
 
     function HookHarness() {
       const state = useLive();
@@ -81,6 +88,7 @@ describe('frontend core behaviors', () => {
     });
     await waitFor(() => expect(screen.getByText('STALE')).toBeInTheDocument());
 
+    fetchMock.mockRestore();
     globalThis.EventSource = originalEventSource;
   });
 });
