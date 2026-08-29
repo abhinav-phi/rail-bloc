@@ -2,13 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Train,
-  Truck,
-  Wrench,
-  Layers,
-  Info,
-} from 'lucide-react';
+import { Train, Truck, Wrench, Layers, Info } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -57,7 +51,7 @@ export function TrainGraph() {
 
   const hours = useMemo(
     () => Array.from({ length: TIMELINE_HOURS + 1 }, (_, i) => i),
-    []
+    [],
   );
 
   return (
@@ -88,13 +82,13 @@ export function TrainGraph() {
               'flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors',
               showShadow
                 ? 'border-accent/40 bg-accent/10 text-accent'
-                : 'border-border bg-card/40 text-muted-foreground hover:text-foreground'
+                : 'border-border bg-card/40 text-muted-foreground hover:text-foreground',
             )}
           >
             <span
               className={cn(
                 'h-2.5 w-2.5 rounded-sm',
-                showShadow ? 'bg-accent' : 'bg-muted-foreground/30'
+                showShadow ? 'bg-accent' : 'bg-muted-foreground/30',
               )}
             />
             Shadow Blocks
@@ -147,7 +141,7 @@ export function TrainGraph() {
                       'flex h-6 w-8 items-center justify-center rounded text-[10px] font-bold',
                       track.direction === 'UP' && 'bg-success/15 text-success',
                       track.direction === 'DN' && 'bg-primary/15 text-primary',
-                      track.direction === 'Mixed' && 'bg-accent/15 text-accent'
+                      track.direction === 'Mixed' && 'bg-accent/15 text-accent',
                     )}
                   >
                     {track.direction}
@@ -179,7 +173,11 @@ export function TrainGraph() {
                         key={p.id}
                         initial={{ opacity: 0, scaleX: 0 }}
                         animate={{ opacity: 1, scaleX: 1 }}
-                        transition={{ type: 'spring', stiffness: 200, damping: 26 }}
+                        transition={{
+                          type: 'spring',
+                          stiffness: 200,
+                          damping: 26,
+                        }}
                         style={{
                           left: left + LABEL_WIDTH,
                           width,
@@ -196,7 +194,7 @@ export function TrainGraph() {
                             style.bg,
                             style.border,
                             isShadow &&
-                              'ring-1 ring-accent/40 ring-offset-1 ring-offset-background'
+                              'ring-1 ring-accent/40 ring-offset-1 ring-offset-background',
                           )}
                         >
                           {isShadow && (
@@ -209,7 +207,7 @@ export function TrainGraph() {
                             <span
                               className={cn(
                                 'truncate text-[10px] font-medium',
-                                style.text
+                                style.text,
                               )}
                             >
                               {p.label}
@@ -262,11 +260,15 @@ export function TrainGraph() {
               <div className="mt-2 space-y-1 font-mono text-[11px] text-muted-foreground">
                 <div className="flex justify-between">
                   <span>Start</span>
-                  <span className="text-foreground">{formatClock(hovered.startMin)}</span>
+                  <span className="text-foreground">
+                    {formatClock(hovered.startMin)}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span>End</span>
-                  <span className="text-foreground">{formatClock(hovered.endMin)}</span>
+                  <span className="text-foreground">
+                    {formatClock(hovered.endMin)}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span>Duration</span>
@@ -281,7 +283,9 @@ export function TrainGraph() {
                 {hovered.departments && (
                   <div className="flex justify-between">
                     <span>Departments</span>
-                    <span className="text-accent">{hovered.departments.join(' + ')}</span>
+                    <span className="text-accent">
+                      {hovered.departments.join(' + ')}
+                    </span>
                   </div>
                 )}
                 {hovered.priority && (
@@ -291,7 +295,8 @@ export function TrainGraph() {
                       className={cn(
                         hovered.priority === 'P0' && 'text-destructive',
                         hovered.priority === 'P1' && 'text-warning',
-                        hovered.priority === 'Routine' && 'text-muted-foreground'
+                        hovered.priority === 'Routine' &&
+                          'text-muted-foreground',
                       )}
                     >
                       {hovered.priority}
@@ -306,7 +311,8 @@ export function TrainGraph() {
 
       <div className="flex items-center gap-2 border-t border-border px-5 py-3 text-[11px] text-muted-foreground">
         <Info className="h-3.5 w-3.5" />
-        Hover any block for details. Shadow blocks show co-allocated Civil + TRD + S&amp;T tasks.
+        Hover any block for details. Shadow blocks show co-allocated Civil + TRD
+        + S&amp;T tasks.
       </div>
     </Card>
   );
@@ -323,7 +329,13 @@ function Legend() {
         ] as const
       ).map(({ label, style }) => (
         <div key={label} className="flex items-center gap-1.5">
-          <span className={cn('h-2.5 w-2.5 rounded-sm border', style.bg, style.border)} />
+          <span
+            className={cn(
+              'h-2.5 w-2.5 rounded-sm border',
+              style.bg,
+              style.border,
+            )}
+          />
           <span className="text-[11px] text-muted-foreground">{label}</span>
         </div>
       ))}

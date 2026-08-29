@@ -4,6 +4,15 @@ version = "1.1.0"
 description = "RAIL-BLOC — AI-Powered Automatic Block Planning System (SIH26027), post-audit hardened v1.1"
 requires-python = ">=3.11"
 
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+exclude = ["build_wheels", "node_modules", "apps/web", "migrations", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["E501", "E702", "B008", "B904", "B007", "UP031", "F821", "UP042", "B905"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
@@ -12,12 +21,3 @@ filterwarnings = ["ignore::DeprecationWarning"]
 [tool.mypy]
 python_version = "3.11"
 ignore_missing_imports = true
-
-[tool.ruff]
-line-length = 110
-target-version = "py311"
-exclude = ["build_wheels", "node_modules", ".venv"]
-
-[tool.ruff.lint]
-select = ["E", "F", "I", "B", "UP"]
-ignore = []

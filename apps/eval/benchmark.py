@@ -9,17 +9,17 @@ simulated-scenario results; B1's tuning grid is searched on a held-out TUNING sp
 Usage:  python -m apps.eval.benchmark [--weeks 4] [--seed-base 100]
 """
 from __future__ import annotations
+
 import argparse
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
-from data.generators.corridor_gen import corridor, MACHINES, WEATHER_SENSITIVE
+from data.generators.corridor_gen import MACHINES, corridor
 from data.generators.demand_gen import gen_demands
-from data.generators.traffic_gen import gen_timetable, gen_freight
-from packages.core.models import DemandInput, TrainPathInput, MachineInfo, SolveWeights, SolverParams
+from data.generators.traffic_gen import gen_freight, gen_timetable
+from packages.core.models import DemandInput, MachineInfo, SolverParams, SolveWeights, TrainPathInput
 from packages.optima.heuristic import greedy_schedule, tuning_grid
 from packages.optima.objectives import replay_train_detention
-from packages.sentinel.validator import SentinelContext, TrainInterval, validate_set
 
 TUNING_SEED_BASE = 900   # held-out tuning split (Rules.md §3 protocol)
 EVAL_SEED_BASE = 100     # evaluation split
@@ -27,7 +27,7 @@ EVAL_SEED_BASE = 100     # evaluation split
 
 def build_scenario(seed: int):
     sections, _, _ = corridor(seed=42)
-    week_start = datetime(2026, 1, 5, tzinfo=timezone.utc)
+    week_start = datetime(2026, 1, 5, tzinfo=UTC)
     raw = gen_demands(sections, week_start, seed=seed, n_eng=24, n_trd=14, n_snt=14)
     # Timetable overlaps the demand week so path-replay has real interactions.
     day_start = week_start
@@ -81,7 +81,7 @@ def kpis(schedule: dict[str, int], demand_map: dict[str, DemandInput], trains, p
             "unaddressed_urgency": round(unaddr, 2)}
 
 
-def start_dt(did: str, mins: int, demand_map) -> "datetime":
+def start_dt(did: str, mins: int, demand_map) -> datetime:
     base = min(d.earliest_start for d in demand_map.values())
     return base + timedelta(minutes=mins)
 

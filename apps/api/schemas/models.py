@@ -1,6 +1,8 @@
 from __future__ import annotations
+
 from datetime import datetime
-from typing import Optional, Literal
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -51,8 +53,8 @@ class DecisionIn(BaseModel):
 
 
 class ReviseIn(BaseModel):
-    start_time: Optional[datetime] = None
-    end_time: Optional[datetime] = None
+    start_time: datetime | None = None
+    end_time: datetime | None = None
 
 
 class BreakdownIn(BaseModel):
@@ -82,9 +84,9 @@ class PlanOut(BaseModel):
     revision_no: int
     content_hash: str
     sentinel_verified: bool
-    decided_by: Optional[str] = None
-    authorized_by: Optional[str] = None
-    incident_id: Optional[str] = None
+    decided_by: str | None = None
+    authorized_by: str | None = None
+    incident_id: str | None = None
 
 
 class TimetableRowIn(BaseModel):

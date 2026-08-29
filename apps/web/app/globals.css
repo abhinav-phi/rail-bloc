@@ -36,7 +36,6 @@
   }
 }
 
-
 @layer base {
   * {
     @apply border-border;
@@ -77,14 +76,20 @@
   }
 
   .bg-grid {
-    background-image:
-      linear-gradient(to right, hsl(var(--border) / 0.25) 1px, transparent 1px),
+    background-image: linear-gradient(
+        to right,
+        hsl(var(--border) / 0.25) 1px,
+        transparent 1px
+      ),
       linear-gradient(to bottom, hsl(var(--border) / 0.25) 1px, transparent 1px);
     background-size: 28px 28px;
   }
 
   .bg-dotted {
-    background-image: radial-gradient(hsl(var(--border) / 0.4) 1px, transparent 1px);
+    background-image: radial-gradient(
+      hsl(var(--border) / 0.4) 1px,
+      transparent 1px
+    );
     background-size: 18px 18px;
   }
 }
@@ -121,10 +126,12 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(to bottom,
-      transparent,
-      hsl(var(--primary) / 0.08),
-      transparent);
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    hsl(var(--primary) / 0.08),
+    transparent
+  );
   animation: scan-line 3s linear infinite;
   pointer-events: none;
 }

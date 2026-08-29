@@ -20,10 +20,10 @@ export function SSEProvider({ children }: { children: React.ReactNode }) {
 
   // Categorize events by type for consumers
   const liveBlocks = live.events.filter(
-    (e) => e.event === 'block_update' || e.event === 'plan_change'
+    (e) => e.event === 'block_update' || e.event === 'plan_change',
   );
   const liveTrainPositions = live.events.filter(
-    (e) => e.event === 'train_position'
+    (e) => e.event === 'train_position',
   );
 
   return (

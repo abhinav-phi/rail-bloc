@@ -2,8 +2,11 @@
 small fresh batch per source and inserts it through the same per-source-credential
 contract the API enforces (TEL-001/XC-011), with source_ingested_at = now()."""
 from __future__ import annotations
-import hashlib, json, os
-from datetime import datetime, timedelta, timezone
+
+import hashlib
+import json
+import os
+from datetime import UTC, datetime, timedelta
 
 
 def _source_key(source: str) -> str | None:
@@ -14,11 +17,12 @@ def _source_key(source: str) -> str | None:
 
 def insert_feed_batch(eng) -> int:
     from sqlalchemy import text
+
     from data.generators.corridor_gen import corridor
     from data.generators.demand_gen import gen_demands
 
     sections, _, _ = corridor(seed=42)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     stamp = now.strftime("%Y%m%d%H%M")  # minute-level: repeated polls stay unique
     total = 0
     with eng.begin() as conn:

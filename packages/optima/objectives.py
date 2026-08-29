@@ -1,8 +1,10 @@
 """Objective components (TechSpec §2). ML-derived quantities (Pi, rho) appear ONLY in
 objective coefficients — never in a feasibility constraint (Rules.md §2)."""
 from __future__ import annotations
+
 from datetime import datetime, timedelta
-from packages.core.models import DemandInput, SolveWeights, SolverParams
+
+from packages.core.models import DemandInput, SolverParams, SolveWeights
 
 
 def time_weighted_urgency(d: DemandInput, at: datetime) -> float:

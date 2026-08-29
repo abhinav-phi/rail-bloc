@@ -31,7 +31,9 @@ describe('frontend core behaviors', () => {
     render(<ApprovalActionRow isHashValid={false} canApprove={true} />);
 
     expect(screen.getByText(/HASH MISMATCH/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /approve & sign/i })).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: /approve & sign/i }),
+    ).toBeDisabled();
   });
 
   it('shows sidebar navigation entries for standard operations pages', () => {
@@ -46,7 +48,11 @@ describe('frontend core behaviors', () => {
     const originalEventSource = globalThis.EventSource;
     // Structural type so the zero-arg handler invocations below typecheck —
     // the DOM EventSource interface declares onopen/onerror with an event arg.
-    let instance: { close: () => void; onopen: (() => void) | null; onerror: (() => void) | null } | null = null;
+    let instance: {
+      close: () => void;
+      onopen: (() => void) | null;
+      onerror: (() => void) | null;
+    } | null = null;
 
     class MockEventSource {
       close = vi.fn();

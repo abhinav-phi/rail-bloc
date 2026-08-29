@@ -4,7 +4,9 @@ BEFORE the INSERT, so the sealing statement's snapshot already contains every
 committed predecessor (READ COMMITTED snapshot-before-lock-wait flaw — see
 data/sql/03_ledger_triggers.sql). Returns the sealed row's hash."""
 from __future__ import annotations
+
 import json
+
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 

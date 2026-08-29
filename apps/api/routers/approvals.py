@@ -6,16 +6,18 @@ Server-side gates on every decision (TechSpec §4):
   * division-scoped object access → 403 cross-division
 """
 from __future__ import annotations
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from ..core.database import get_session
 from ..core.security import Actor, require_roles
 from ..schemas.models import DecisionIn
-from ..services.plan_lifecycle import load_plan, recompute_hash
+from ..services import sse
 from ..services.idempotency_service import check_replay, record
 from ..services.ledger_service import append
-from ..services import sse
+from ..services.plan_lifecycle import load_plan, recompute_hash
 
 router = APIRouter(prefix="/api/v1/approvals", tags=["approvals"])
 

@@ -116,20 +116,22 @@ export function EmergencyModal({ open, onOpenChange }: Props) {
                             'flex items-center gap-2.5 rounded-lg border p-3 text-left transition-all',
                             active
                               ? 'border-destructive/50 bg-destructive/10'
-                              : 'border-border bg-card/40 hover:border-destructive/30'
+                              : 'border-border bg-card/40 hover:border-destructive/30',
                           )}
                         >
                           <Icon
                             className={cn(
                               'h-5 w-5',
-                              active ? 'text-destructive' : 'text-muted-foreground'
+                              active
+                                ? 'text-destructive'
+                                : 'text-muted-foreground',
                             )}
                           />
                           <div>
                             <p
                               className={cn(
                                 'text-xs font-semibold',
-                                active ? 'text-destructive' : 'text-foreground'
+                                active ? 'text-destructive' : 'text-foreground',
                               )}
                             >
                               {et.label}
@@ -181,10 +183,11 @@ export function EmergencyModal({ open, onOpenChange }: Props) {
                     <div className="flex items-start gap-2">
                       <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
                       <p className="text-[11px] text-muted-foreground">
-                        Issuing this advisory will immediately revoke all active block
-                        possessions in the affected corridor, trigger single-line working
-                        protocols, and notify the Chief Controller, SSE on-duty, and adjacent
-                        station masters. This action is cryptographically logged.
+                        Issuing this advisory will immediately revoke all active
+                        block possessions in the affected corridor, trigger
+                        single-line working protocols, and notify the Chief
+                        Controller, SSE on-duty, and adjacent station masters.
+                        This action is cryptographically logged.
                       </p>
                     </div>
                   </div>
@@ -226,8 +229,8 @@ export function EmergencyModal({ open, onOpenChange }: Props) {
                   Advisory Issued
                 </h4>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Emergency revoke broadcast to all stations in the corridor. Single-line
-                  working activated. Sentinel audit event logged.
+                  Emergency revoke broadcast to all stations in the corridor.
+                  Single-line working activated. Sentinel audit event logged.
                 </p>
                 <Badge className="mt-4 border-success/40 bg-success/10 font-mono text-success">
                   ADV-0xA3F2 · 2026-08-25 09:46
@@ -260,7 +263,9 @@ function ImpactCard({
           {label}
         </span>
       </div>
-      <p className="mt-1 font-mono text-lg font-bold text-foreground">{value}</p>
+      <p className="mt-1 font-mono text-lg font-bold text-foreground">
+        {value}
+      </p>
       <p className="text-[10px] text-muted-foreground">{sub}</p>
     </div>
   );

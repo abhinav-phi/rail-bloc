@@ -1,14 +1,20 @@
 """Idempotent seeder: corridor + machines + feeding map + 26-week demands + WTT/FOIS +
 weather + demo users + signal-ack rows. Re-running never duplicates (DB-006 upsert keys)."""
 from __future__ import annotations
-import hashlib, json, os, sys
-from datetime import datetime, timedelta, timezone
-from sqlalchemy import create_engine, text
-from .corridor_gen import corridor, MACHINES
-from .demand_gen import gen_demands
-from .traffic_gen import gen_timetable, gen_freight, gen_weather
 
-DS = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+import hashlib
+import json
+import os
+import sys
+from datetime import UTC, datetime, timedelta
+
+from sqlalchemy import create_engine, text
+
+from .corridor_gen import MACHINES, corridor
+from .demand_gen import gen_demands
+from .traffic_gen import gen_freight, gen_timetable, gen_weather
+
+DS = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
 
 
 def hash_pw(pw: str) -> str:
@@ -77,7 +83,7 @@ def main(dsn: str, seed_password: str = "railbloc") -> None:
                  "sec": sec_ids[d["section_code"]], "ac": d["activity_code"],
                  "dur": d["min_duration_mins"], "st": d["earliest_start"], "ld": d["latest_deadline"],
                  "u": d["urgency_score"], "f": json.dumps(d["features"]),
-                 "m": json.dumps(d["machinery_req"]), "ing": datetime.now(timezone.utc)})
+                 "m": json.dumps(d["machinery_req"]), "ing": datetime.now(UTC)})
 
     tt = gen_timetable(sections, DS, seed=52)
     fr = gen_freight(sections, DS, seed=53)

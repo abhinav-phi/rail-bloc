@@ -3,15 +3,16 @@ Every mutation-holding field of a plan is hashed: section, window, primary deman
 and the SORTED shadow demand IDs. Used identically by solver persistence, the
 approve/authorize/transmit gates, and the revise endpoint — one definition, no drift."""
 from __future__ import annotations
+
 import hashlib
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 
 def _iso(dt: datetime) -> str:
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc).isoformat()
+        dt = dt.replace(tzinfo=UTC)
+    return dt.astimezone(UTC).isoformat()
 
 
 def canonical_plan_payload(section_id: str, start_time: datetime, end_time: datetime,

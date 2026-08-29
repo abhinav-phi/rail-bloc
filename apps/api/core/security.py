@@ -1,10 +1,14 @@
 from __future__ import annotations
-import hashlib, hmac, time
+
+import hashlib
+import hmac
+import time
 from dataclasses import dataclass
-from typing import Optional
+
 import jwt
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer
+
 from .config import settings
 
 bearer = HTTPBearer(auto_error=False)
@@ -56,6 +60,6 @@ def verify_source_credentials(system: str, key: str) -> None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, f"invalid source credentials for {system}")
 
 
-def actor_from_query(request: Request) -> Optional[Actor]:
+def actor_from_query(request: Request) -> Actor | None:
     token = request.query_params.get("token")
     return decode_token(token) if token else None

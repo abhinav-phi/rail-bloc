@@ -58,6 +58,10 @@ jobs:
             psql -h localhost -U postgres -d railbloc -v ON_ERROR_STOP=1 -f "$f"
           done
 
+      - name: Run Ruff
+        run: |
+          ruff check .
+
       - name: Seed & run tests
         env:
           DATABASE_URL: postgresql+asyncpg://postgres:password@localhost:5432/railbloc
@@ -89,5 +93,6 @@ jobs:
           npm ci
           npm run test
           npm run lint
+          npm run format:check
           npm run typecheck
           npm run build

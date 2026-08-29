@@ -4,6 +4,7 @@ fully containerized stack. Requires `docker compose up` with api+worker+beat up.
 Usage: python scripts/live_solve_e2e.py [api_base] [db_dsn]
 """
 from __future__ import annotations
+
 import json
 import sys
 import time

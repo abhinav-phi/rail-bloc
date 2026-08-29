@@ -1,11 +1,12 @@
 from __future__ import annotations
+
 import random
 from datetime import datetime, timedelta
 
 
 def gen_demands(sections, week_start: datetime, seed: int = 42, n_eng: int = 70,
                 n_trd: int = 45, n_snt: int = 45, strategic: bool = False):
-    from .corridor_gen import ENG_ACTIVITIES, TRD_ACTIVITIES, SNT_ACTIVITIES, MACHINES
+    from .corridor_gen import ENG_ACTIVITIES, MACHINES, SNT_ACTIVITIES, TRD_ACTIVITIES
     rng = random.Random(seed)
     out = []
     horizon_days = 182 if strategic else 7

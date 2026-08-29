@@ -1,21 +1,24 @@
 """RAIL-BLOC FastAPI gateway (ADR-001 modular monolith). Includes the COA outbox
 bridge loop (SAFE-006) started on startup."""
 from __future__ import annotations
+
 import asyncio
 import contextlib
+import time
+import uuid
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Response
+
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from sqlalchemy import text
 
-from .core.database import SessionLocal, ping
 from .core.config import settings
+from .core.database import SessionLocal, ping
 from .core.logging import get_logger
-from .core.metrics import OUTBOX_PENDING
+from .core.metrics import OUTBOX_PENDING, REQUESTS_TOTAL
+from .routers import approvals, auth, demands, emergency, ledger, operations, optimize, plans, stream, weather
 from .services import coa_adapter
-from .routers import auth, demands, optimize, plans, approvals, emergency, ledger, stream, weather, operations
-
 
 logger = get_logger("api")
 
@@ -50,6 +53,21 @@ app = FastAPI(title="RAIL-BLOC API", version="1.1.0",
 
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True,
                    allow_methods=["*"], allow_headers=["*"])
+
+@app.middleware("http")
+async def add_request_context(request: Request, call_next):
+    request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
+    request.state.request_id = request_id
+    start = time.perf_counter()
+    response = await call_next(request)
+    duration_ms = (time.perf_counter() - start) * 1000
+    response.headers["X-Request-ID"] = request_id
+    REQUESTS_TOTAL.labels(request.method, request.url.path, str(response.status_code)).inc()
+    logger.info("request_completed", extra={"request_id": request_id, "method": request.method,
+                                             "path": request.url.path, "status": response.status_code,
+                                             "duration_ms": round(duration_ms, 1)})
+    return response
+
 
 for r in (auth, demands, optimize, plans, approvals, emergency, ledger, stream, weather, operations):
     app.include_router(r.router)
