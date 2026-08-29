@@ -4,23 +4,20 @@ from __future__ import annotations
 import asyncio
 import contextlib
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
-from prometheus_client import Counter, Gauge, generate_latest, CONTENT_TYPE_LATEST
+from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+from sqlalchemy import text
 
 from .core.database import SessionLocal, ping
 from .core.config import settings
 from .core.logging import get_logger
+from .core.metrics import OUTBOX_PENDING
 from .services import coa_adapter
 from .routers import auth, demands, optimize, plans, approvals, emergency, ledger, stream, weather, operations
 
 
 logger = get_logger("api")
-
-SOLVES_TOTAL = Counter("railbloc_solves_total", "Total solves processed", labelnames=("status",))
-PLANS_CREATED_TOTAL = Counter("railbloc_plans_created_total", "Total plans created")
-LEDGER_EVENTS_TOTAL = Counter("railbloc_ledger_events_total", "Total ledger events emitted")
-OUTBOX_PENDING = Gauge("railbloc_outbox_pending", "Pending outbox rows")
 
 
 async def outbox_bridge_loop() -> None:
@@ -31,6 +28,8 @@ async def outbox_bridge_loop() -> None:
             async with SessionLocal() as session:
                 await coa_adapter.process_outbox(session, settings.coa_ack_delay_seconds)
                 await session.commit()
+                OUTBOX_PENDING.set((await session.execute(
+                    text("SELECT count(*) FROM optimization.coa_outbox WHERE state='PENDING'"))).scalar() or 0)
         except Exception as exc:
             logger.exception("outbox bridge iteration failed: %s", exc)
         await asyncio.sleep(2.0)
@@ -68,4 +67,4 @@ async def health():
 
 @app.get("/metrics")
 async def metrics():
-    return (generate_latest(), {"content-type": CONTENT_TYPE_LATEST})
+    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)

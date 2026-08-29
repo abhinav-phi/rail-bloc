@@ -97,7 +97,7 @@ def _candidate_from_bundle(bundle: dict, plan: dict) -> PlanCandidate:
 
 @router.get("")
 async def list_plans(horizon: str = "WEEKLY", division: str | None = None,
-                     status: str | None = None, limit: int = Query(200, le=500),
+                     status: str | None = None, limit: int = Query(200, ge=1, le=500),
                      actor: Actor = Depends(get_actor), session: AsyncSession = Depends(get_session)):
     div = division or _scope(actor)
     q = text("""SELECT p.*, s.section_code, s.division FROM optimization.block_plans p
