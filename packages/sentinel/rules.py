@@ -2,10 +2,10 @@
 fabricated '14/14'). Exactly these ten exist; the Action Preview Card renders exactly
 these ten. Adding a check means updating this enum, the validator, and the card —
 never a bare count."""
-from enum import Enum
+from enum import StrEnum
 
 
-class CheckID(str, Enum):
+class CheckID(StrEnum):
     GSR1_ABSOLUTE_BLOCK_EXCLUSION = "G&SR-1 Absolute Block Exclusion"
     GSR2_INTERLOCKING_PRECEDENCE = "G&SR-2 Interlocking Precedence Acknowledgment"
     GSR3_FAIL_CLOSED_CONSISTENCY = "G&SR-3 Fail-Closed State Consistency"

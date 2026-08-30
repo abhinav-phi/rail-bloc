@@ -1,18 +1,19 @@
 """SAFE-002 / FR-026 / R6.2 — the modify-after-verify bypass must be rejected (409),
 and revisions must clear sentinel verification."""
 from __future__ import annotations
+
 import asyncio
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import text
 
 from packages.chronicle.canonical import content_hash
+
 from .conftest import auth_header, make_token
 
 
 def _mk_plan(conn) -> str:
-    from datetime import timedelta
     sec = conn.execute(text(
         "SELECT id FROM infrastructure.block_sections WHERE section_code='NDLS-GZB-UP'")).scalar()
     dem = conn.execute(text(
@@ -23,13 +24,13 @@ def _mk_plan(conn) -> str:
                    :es,:ld,0.8,'SUBMITTED')
            RETURNING id"""),
         {"ref": f"SAFE002-{uuid.uuid4()}", "sec": sec,
-         "es": datetime.now(timezone.utc) + timedelta(days=3),
-         "ld": datetime.now(timezone.utc) + timedelta(days=6)}).scalar()
+         "es": datetime.now(UTC) + timedelta(days=3),
+         "ld": datetime.now(UTC) + timedelta(days=6)}).scalar()
     run = conn.execute(text(
         "INSERT INTO optimization.solver_runs (horizon, division, status) "
         "VALUES ('WEEKLY','DLI','COMPLETED') RETURNING id")).scalar()
-    st = datetime.now(timezone.utc) + timedelta(days=1)
-    et = datetime.now(timezone.utc) + timedelta(days=2)
+    st = datetime.now(UTC) + timedelta(days=1)
+    et = datetime.now(UTC) + timedelta(days=2)
     ch = content_hash(str(sec), st, et, str(dem), [])
     plan_id = conn.execute(text(
         """INSERT INTO optimization.block_plans
@@ -73,8 +74,8 @@ def test_unmodified_plan_passes_hash_gate_to_approval(client, engine):
 
 
 def test_revise_creates_new_draft_revision_clearing_sentinel(client, engine):
-    from apps.api.services.plan_lifecycle import load_plan
     from apps.api.core.database import SessionLocal
+    from apps.api.services.plan_lifecycle import load_plan
     with engine.begin() as conn:
         plan_id = _mk_plan(conn)
     async def _do():

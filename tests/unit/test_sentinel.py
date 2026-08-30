@@ -1,15 +1,20 @@
 """Property tests for the 10-enumerated-check Sentinel module (TASK-047 DoD)."""
 from dataclasses import replace as _rep
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
-from packages.core.models import (DemandInput, PlanCandidate, ScheduledWork,
-                                  MachineInfo)
+from packages.core.models import DemandInput, MachineInfo, PlanCandidate, ScheduledWork
 from packages.sentinel.rules import CheckID
-from packages.sentinel.validator import (SentinelContext, TrainInterval, FeedingMapEntry,
-                                         AckRecord, validate_plan, validate_set,
-                                         validate_structural_subset)
+from packages.sentinel.validator import (
+    AckRecord,
+    FeedingMapEntry,
+    SentinelContext,
+    TrainInterval,
+    validate_plan,
+    validate_set,
+    validate_structural_subset,
+)
 
-T0 = datetime(2026, 1, 6, 1, 0, tzinfo=timezone.utc)
+T0 = datetime(2026, 1, 6, 1, 0, tzinfo=UTC)
 
 
 def demand(did="d1", dept="ENGINEERING", dur=120, sec="S1", urgency=0.5):
@@ -18,7 +23,7 @@ def demand(did="d1", dept="ENGINEERING", dur=120, sec="S1", urgency=0.5):
                        activity_code="DTT_TAMPING", min_duration_mins=dur,
                        earliest_start=T0, latest_deadline=T0 + timedelta(days=2),
                        urgency_score=urgency, machinery=[],
-                       source_ingested_at=datetime.now(timezone.utc) - timedelta(minutes=30))
+                       source_ingested_at=datetime.now(UTC) - timedelta(minutes=30))
 
 
 def plan(works, start=T0, end=None, sec="S1"):
@@ -43,7 +48,7 @@ def ctx(trains=None, feeding_map=None, acks=None, machine_infos=None,
         machine_infos=machine_infos or [],
         machine_assignments=machine_assignments or {},
         committed_windows=committed_windows or {},
-        now=datetime.now(timezone.utc))
+        now=datetime.now(UTC))
 
 
 def test_exactly_ten_enumerated_checks():
@@ -75,7 +80,7 @@ def test_gsr2_pending_until_both_acks_then_pass():
 
 
 def test_gsr3_stale_telemetry_fails():
-    stale_d = _rep(demand(), source_ingested_at=datetime.now(timezone.utc) - timedelta(days=2))
+    stale_d = _rep(demand(), source_ingested_at=datetime.now(UTC) - timedelta(days=2))
     v = validate_plan(plan([ScheduledWork(stale_d, T0, T0 + timedelta(hours=2))]), ctx())
     g = next(r for r in v.results if r.check_id == CheckID.GSR3_FAIL_CLOSED_CONSISTENCY)
     assert not g.passed

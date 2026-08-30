@@ -1,18 +1,18 @@
 """APP-001 / FR-027 / R6.3 — distinct-approver enforcement and idempotency keys.
 Also exercises the DB-level chk_distinct_approvers constraint."""
 from __future__ import annotations
-import uuid
-from datetime import datetime, timedelta, timezone
 
-import pytest
+import uuid
+from datetime import UTC, datetime, timedelta
+
 from sqlalchemy import text
 
 from packages.chronicle.canonical import content_hash
+
 from .conftest import auth_header, make_token
 
 
 def _mk_sentinel_plan(engine) -> str:
-    from datetime import timedelta
     import uuid as _u
     with engine.begin() as conn:
         # Unique section per test: excl_active_overlap correctly blocks two
@@ -29,13 +29,13 @@ def _mk_sentinel_plan(engine) -> str:
                        :es,:ld,0.6,'SUBMITTED')
                RETURNING id"""),
             {"ref": f"APP001-{uuid.uuid4()}", "sec": sec,
-             "es": datetime.now(timezone.utc) + timedelta(days=3),
-             "ld": datetime.now(timezone.utc) + timedelta(days=6)}).scalar()
+             "es": datetime.now(UTC) + timedelta(days=3),
+             "ld": datetime.now(UTC) + timedelta(days=6)}).scalar()
         run = conn.execute(text(
             "INSERT INTO optimization.solver_runs (horizon, division, status) "
             "VALUES ('WEEKLY','DLI','COMPLETED') RETURNING id")).scalar()
-        st = datetime.now(timezone.utc) + timedelta(days=1)
-        et = datetime.now(timezone.utc) + timedelta(days=2)
+        st = datetime.now(UTC) + timedelta(days=1)
+        et = datetime.now(UTC) + timedelta(days=2)
         ch = content_hash(str(sec), st, et, str(dem), [])
         return str(conn.execute(text(
             """INSERT INTO optimization.block_plans

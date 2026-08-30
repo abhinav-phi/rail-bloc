@@ -17,7 +17,7 @@ def make_dataset(n: int = 3000, seed: int = SEED):
     hours = rng.integers(0, 24, n)
     dows = rng.integers(0, 7, n)
     comms = rng.integers(0, 5, n)
-    X = np.array([hour_features(h, d, c) for h, d, c in zip(hours, dows, comms)])
+    X = np.array([hour_features(h, d, c) for h, d, c in zip(hours, dows, comms, strict=False)])
     y = np.clip(0.35 + 0.25 * np.sin((hours + 3) / 24 * 2 * np.pi) + 0.1 * comms / 5
                 + rng.normal(0, 0.08, n), 0.05, 0.98)
     return X, y

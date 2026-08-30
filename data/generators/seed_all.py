@@ -1,6 +1,7 @@
 """Idempotent seeder: corridor + machines + feeding map + 26-week demands + WTT/FOIS +
 weather + demo users + signal-ack rows. Re-running never duplicates (DB-006 upsert keys)."""
 from __future__ import annotations
+<<<<<<< Updated upstream
 
 import hashlib
 import json
@@ -14,11 +15,30 @@ from .corridor_gen import MACHINES, corridor
 from .demand_gen import gen_demands
 from .traffic_gen import gen_freight, gen_timetable, gen_weather
 
+=======
+
+import hashlib
+import json
+import os
+import secrets
+import sys
+from datetime import UTC, datetime, timedelta
+
+from sqlalchemy import create_engine, text
+
+from .corridor_gen import MACHINES, corridor
+from .demand_gen import gen_demands
+from .traffic_gen import gen_freight, gen_timetable, gen_weather
+
+>>>>>>> Stashed changes
 DS = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
 
 
-def hash_pw(pw: str) -> str:
-    return hashlib.pbkdf2_hmac("sha256", pw.encode(), b"railbloc-salt", 60_000).hex()
+def hash_pw(pw: str, salt: str | bytes = "") -> str:
+    salt_bytes = salt.encode() if isinstance(salt, str) else salt
+    if not salt_bytes:
+        salt_bytes = secrets.token_bytes(32)
+    return hashlib.pbkdf2_hmac("sha256", pw.encode(), salt_bytes, 600_000).hex()
 
 
 def main(dsn: str, seed_password: str = "railbloc") -> None:
@@ -121,13 +141,14 @@ def main(dsn: str, seed_password: str = "railbloc") -> None:
              ("engineer_dli", "ENGINEER", "DLI", "Sr. DEN Coord (Delhi)"),
              ("sm_dli", "STATION_MASTER", "DLI", "Station Master (GZB)"),
              ("auditor", "AUDITOR", "DLI", "Vigilance Auditor")]
-    pw = hash_pw(seed_password)
     with eng.begin() as c:
         for u, role, div, name in users:
+            salt = secrets.token_hex(32)
+            pw_hash = hash_pw(seed_password, salt)
             c.execute(text(
-                "INSERT INTO auth.users (username, password_hash, role, division, full_name) "
-                "VALUES (:u,:p,:r,:d,:n) ON CONFLICT (username) DO NOTHING"),
-                {"u": u, "p": pw, "r": role, "d": div, "n": name})
+                "INSERT INTO auth.users (username, salt, password_hash, role, division, full_name) "
+                "VALUES (:u,:s,:p,:r,:d,:n) ON CONFLICT (username) DO NOTHING"),
+                {"u": u, "s": salt, "p": pw_hash, "r": role, "d": div, "n": name})
         c.execute(text("SELECT audit.append_event('SYSTEM_SEEDED','seed_all',CAST(:p AS jsonb))"),
                   {"p": json.dumps({"sections": len(sections), "demands": len(demands),
                                     "train_paths": len(tt) + len(fr), "weather_alerts": len(alerts),

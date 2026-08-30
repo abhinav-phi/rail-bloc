@@ -1,5 +1,6 @@
 """DB-001 — ledger append-only enforcement, rollback-gap safety, chain integrity."""
 from __future__ import annotations
+
 import json
 
 from sqlalchemy import text
@@ -48,6 +49,7 @@ def test_concurrent_writers_keep_single_chain(engine):
     INSERT, so every sealing statement's snapshot contains all committed
     predecessors — N concurrent connections must form one unbroken chain."""
     import threading
+
     from sqlalchemy import text as t
 
     errors = []
@@ -76,4 +78,4 @@ def test_concurrent_writers_keep_single_chain(engine):
     assert ok
     seqs = [r[0] for r in rows]
     prevs = [r[1] for r in rows]
-    assert len(set(prevs)) == len(prevs), f"duplicate predecessors: {list(zip(seqs, prevs))}"
+    assert len(set(prevs)) == len(prevs), f"duplicate predecessors: {list(zip(seqs, prevs, strict=False))}"

@@ -1,8 +1,8 @@
 """Unit tests: time-weighted urgency (MILP-003), headway mapping, B1 heuristic,
 VRP roster feasibility, and the benchmark harness smoke run."""
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
-T0 = datetime(2026, 1, 5, tzinfo=timezone.utc)
+T0 = datetime(2026, 1, 5, tzinfo=UTC)
 
 
 def _demand(urgency=0.8):
@@ -23,8 +23,8 @@ def test_time_weighted_urgency_monotonic_to_deadline():
 
 
 def test_headway_mapping():
-    from packages.optima.objectives import headway_minutes
     from packages.core.models import SolverParams
+    from packages.optima.objectives import headway_minutes
     p = SolverParams(max_time_seconds=1, num_workers=1, headway_high_priority_mins=15,
                      headway_default_mins=5, freight_hard_confidence=0.6)
     assert headway_minutes(1, p) == 15
@@ -33,7 +33,7 @@ def test_headway_mapping():
 
 
 def test_greedy_respects_windows_and_trains():
-    from packages.core.models import TrainPathInput, SolverParams
+    from packages.core.models import SolverParams, TrainPathInput
     from packages.optima.heuristic import greedy_schedule
     d = _demand(urgency=1.0)
     train = TrainPathInput(train_number="1", train_type="MAIL_EXP", section_id="S",
@@ -49,7 +49,8 @@ def test_greedy_respects_windows_and_trains():
 
 
 def test_vrp_roster_flags_travel_violation_and_counts_idle():
-    from packages.core.models import DemandInput as D, MachineInfo, ScheduledWork
+    from packages.core.models import DemandInput as D
+    from packages.core.models import MachineInfo, ScheduledWork
     from packages.optima.vrp import build_roster
     m = MachineInfo("M1", "TAMPING", 0.0, 40)
 

@@ -1,10 +1,10 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from packages.chronicle.canonical import canonical_plan_payload, content_hash
 
 S = "sec"
-T1 = datetime(2026, 1, 5, 1, 0, tzinfo=timezone.utc)
-T2 = datetime(2026, 1, 5, 4, 0, tzinfo=timezone.utc)
+T1 = datetime(2026, 1, 5, 1, 0, tzinfo=UTC)
+T2 = datetime(2026, 1, 5, 4, 0, tzinfo=UTC)
 
 
 def test_hash_deterministic_and_order_insensitive():

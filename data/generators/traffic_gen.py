@@ -49,7 +49,7 @@ def gen_freight(sections, day_start: datetime, seed: int = 43):
 def gen_weather(day_start: datetime, seed: int = 44):
     rng = random.Random(seed)
     alerts = []
-    for i in range(3):
+    for _i in range(3):
         lat, lon = 27.5 + rng.uniform(-0.6, 0.6), 78.5 + rng.uniform(-0.5, 0.8)
         d = 0.35
         alerts.append(dict(

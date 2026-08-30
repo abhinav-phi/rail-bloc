@@ -202,9 +202,9 @@ def validate_set(candidates: list[PlanCandidate], ctx: SentinelContext) -> list[
     by_sec: dict[str, list[PlanCandidate]] = {}
     for p in candidates:
         by_sec.setdefault(p.section_id, []).append(p)
-    for sec, plans in by_sec.items():
+    for _sec, plans in by_sec.items():
         plans_sorted = sorted(plans, key=lambda p: p.start_time)
-        for a, b in zip(plans_sorted, plans_sorted[1:]):
+        for a, b in zip(plans_sorted, plans_sorted[1:], strict=False):
             if _overlaps(a.start_time, a.end_time, b.start_time, b.end_time):
                 for v in verdicts:
                     if v.content_hash == content_hash(a.section_id, a.start_time, a.end_time,
@@ -219,7 +219,7 @@ def validate_set(candidates: list[PlanCandidate], ctx: SentinelContext) -> list[
     # MILP-C5: no machine may be in two places at once; travel time respected.
     for machine, windows in ctx.machine_assignments.items():
         windows_sorted = sorted(windows)
-        for (s1, e1, km1), (s2, e2, km2) in zip(windows_sorted, windows_sorted[1:]):
+        for (s1, e1, km1), (s2, e2, km2) in zip(windows_sorted, windows_sorted[1:], strict=False):
             info = next((m for m in ctx.machine_infos if m.machine_code == machine), None)
             speed = info.transit_speed_kmph if info else 40
             travel = timedelta(minutes=abs(km2 - km1) / max(speed, 1) * 60)

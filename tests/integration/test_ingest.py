@@ -1,7 +1,8 @@
 """TEL-001/TEL-002/XC-011 — machine-credential ingestion, staleness TTL,
 plausibility contradictions, idempotent re-ingest (DB-006)."""
 from __future__ import annotations
-from datetime import datetime, timedelta, timezone
+
+from datetime import UTC, datetime, timedelta
 
 from .conftest import auth_header, make_token
 
@@ -9,7 +10,7 @@ KEY = "mock_tms_source_key"
 
 
 def _record(ref: str, stale: bool = False) -> dict:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return {
         "external_ref_id": ref,
         "department": "TRD",

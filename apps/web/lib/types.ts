@@ -15,6 +15,7 @@ export type BlockPlanStatus =
   | 'CANCELLED';
 
 export type IncidentType =
+<<<<<<< Updated upstream
   | 'TRACK_FRACTURE'
   | 'OHE_BREAKDOWN'
   | 'SIGNAL_FAILURE'
@@ -27,17 +28,27 @@ export type SolverStatus =
   | 'UNKNOWN'
   | 'IDLE'
   | 'RUNNING';
+=======
+  'TRACK_FRACTURE' | 'OHE_BREAKDOWN' | 'SIGNAL_FAILURE' | 'OTHER';
+
+export type SolverStatus =
+  'OPTIMAL' | 'FEASIBLE' | 'INFEASIBLE' | 'UNKNOWN' | 'IDLE' | 'RUNNING';
+>>>>>>> Stashed changes
 
 export type TrainPathSource = 'WTT' | 'COA_LIVE' | 'FOIS_FORECAST';
 
 export type Department = 'CIVIL' | 'TRD' | 'SNT';
 
 export type PersonaRole =
+<<<<<<< Updated upstream
   | 'SR_DOM'
   | 'DRM'
   | 'CHIEF_CONTROLLER'
   | 'SR_DEN'
   | 'SSE';
+=======
+  'SR_DOM' | 'DRM' | 'CHIEF_CONTROLLER' | 'SR_DEN' | 'SSE';
+>>>>>>> Stashed changes
 
 export interface Persona {
   id: string;

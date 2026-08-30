@@ -1,13 +1,13 @@
 """TASK-044 DoD: known-optimum unit test + saturated-corridor feasibility (MILP fixes)."""
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
-from packages.core.models import DemandInput, TrainPathInput
-from packages.optima.solver import solve
 from data.generators.corridor_gen import corridor
 from data.generators.demand_gen import gen_demands
-from data.generators.traffic_gen import gen_timetable, gen_freight
+from data.generators.traffic_gen import gen_freight, gen_timetable
+from packages.core.models import DemandInput, TrainPathInput
+from packages.optima.solver import solve
 
-T0 = datetime(2026, 1, 5, tzinfo=timezone.utc)
+T0 = datetime(2026, 1, 5, tzinfo=UTC)
 
 
 def weights():

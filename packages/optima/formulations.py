@@ -155,7 +155,7 @@ def build_model(demands: list[DemandInput], trains: list[TrainPathInput],
         if dv.start is not None:
             es = _mins(dv.demand.earliest_start, base)
             terms.append(weights.early_start * dv.demand.urgency_score * (dv.start - es))
-    for (aid, bid), s in built.shadow.items():
+    for (_aid, _bid), s in built.shadow.items():
         terms.append(-weights.shadow_reward * shadow_weight_scale * s)
     for c, w in soft_freight_terms:
         terms.append(w * c)
