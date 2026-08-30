@@ -102,13 +102,13 @@ export function AuditLedger({ open, onOpenChange }: Props) {
                         'absolute left-0 top-1 flex h-8 w-8 items-center justify-center rounded-full border-2',
                         event.verified
                           ? 'border-success bg-success/15'
-                          : 'border-destructive bg-destructive/15'
+                          : 'border-destructive bg-destructive/15',
                       )}
                     >
                       <Fingerprint
                         className={cn(
                           'h-3.5 w-3.5',
-                          event.verified ? 'text-success' : 'text-destructive'
+                          event.verified ? 'text-success' : 'text-destructive',
                         )}
                       />
                     </div>

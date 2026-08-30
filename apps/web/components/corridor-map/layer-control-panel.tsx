@@ -13,11 +13,19 @@ export function LayerControlPanel() {
       </CardHeader>
       <CardContent className="p-4 flex flex-col gap-3 text-sm">
         <label className="flex items-center gap-2">
-          <input type="checkbox" defaultChecked className="rounded border-input" />
+          <input
+            type="checkbox"
+            defaultChecked
+            className="rounded border-input"
+          />
           <span>Active Blocks (Heatmap)</span>
         </label>
         <label className="flex items-center gap-2">
-          <input type="checkbox" defaultChecked className="rounded border-input" />
+          <input
+            type="checkbox"
+            defaultChecked
+            className="rounded border-input"
+          />
           <span>Section Boundaries</span>
         </label>
         <label className="flex items-center gap-2">

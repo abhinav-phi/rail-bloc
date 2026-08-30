@@ -15,7 +15,7 @@ const SolverContext = createContext<SolverContextState | undefined>(undefined);
 
 export function SolverProvider({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<SolverStatus>('IDLE');
-  
+
   const triggerSolve = async (weekId: string) => {
     setStatus('RUNNING');
     // Mock solve

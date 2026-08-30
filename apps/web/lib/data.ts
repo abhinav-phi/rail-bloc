@@ -354,16 +354,66 @@ export const APPROVAL_STAGES: BlockStatus[] = [
 ];
 
 export const SENTINEL_CHECKS: SentinelCheck[] = [
-  { id: 1, label: 'Block window conflict-free (WTT)', status: 'pass', detail: '0 passenger path conflicts' },
-  { id: 2, label: 'Track machine availability', status: 'pass', detail: '3/3 machines assigned' },
-  { id: 3, label: 'Possession handover margin ≥ 15 min', status: 'pass', detail: '18 min margin' },
-  { id: 4, label: 'Detour route feasibility', status: 'pass', detail: 'Single-line working viable' },
-  { id: 5, label: 'OHE isolation confirmed (TRD)', status: 'pass', detail: 'Section dead' },
-  { id: 6, label: 'Signal isolation & clamping (S&T)', status: 'pass', detail: 'All points clamped' },
-  { id: 7, label: 'Engineering speed restriction issued', status: 'pass', detail: '15 km/h advisory' },
-  { id: 8, label: 'Crew roster impact < threshold', status: 'warn', detail: '2 crews re-timed' },
-  { id: 9, label: 'Punctuality deviation ≤ 10 min', status: 'pass', detail: '7.4 min avg' },
-  { id: 10, label: 'Cryptographic signature attached', status: 'pass', detail: 'SHA-256 chained' },
+  {
+    id: 1,
+    label: 'Block window conflict-free (WTT)',
+    status: 'pass',
+    detail: '0 passenger path conflicts',
+  },
+  {
+    id: 2,
+    label: 'Track machine availability',
+    status: 'pass',
+    detail: '3/3 machines assigned',
+  },
+  {
+    id: 3,
+    label: 'Possession handover margin ≥ 15 min',
+    status: 'pass',
+    detail: '18 min margin',
+  },
+  {
+    id: 4,
+    label: 'Detour route feasibility',
+    status: 'pass',
+    detail: 'Single-line working viable',
+  },
+  {
+    id: 5,
+    label: 'OHE isolation confirmed (TRD)',
+    status: 'pass',
+    detail: 'Section dead',
+  },
+  {
+    id: 6,
+    label: 'Signal isolation & clamping (S&T)',
+    status: 'pass',
+    detail: 'All points clamped',
+  },
+  {
+    id: 7,
+    label: 'Engineering speed restriction issued',
+    status: 'pass',
+    detail: '15 km/h advisory',
+  },
+  {
+    id: 8,
+    label: 'Crew roster impact < threshold',
+    status: 'warn',
+    detail: '2 crews re-timed',
+  },
+  {
+    id: 9,
+    label: 'Punctuality deviation ≤ 10 min',
+    status: 'pass',
+    detail: '7.4 min avg',
+  },
+  {
+    id: 10,
+    label: 'Cryptographic signature attached',
+    status: 'pass',
+    detail: 'SHA-256 chained',
+  },
 ];
 
 export const AUDIT_EVENTS: AuditEvent[] = [
@@ -420,7 +470,7 @@ export const AUDIT_EVENTS: AuditEvent[] = [
 ];
 
 export const ROLLING_WEEKS = Array.from({ length: 26 }, (_, i) => {
-  const week = `W${(34 + i - 26)}`.replace('W0', 'W');
+  const week = `W${34 + i - 26}`.replace('W0', 'W');
   return {
     id: i,
     label: i === 25 ? 'W34 (Current)' : week,

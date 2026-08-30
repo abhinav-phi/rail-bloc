@@ -77,7 +77,9 @@ export function Sidebar({ active, onNavigate }: SidebarProps) {
                 isActive
                   ? 'text-foreground'
                   : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
-                isEmergency && !isActive && 'text-destructive/80 hover:text-destructive'
+                isEmergency &&
+                  !isActive &&
+                  'text-destructive/80 hover:text-destructive',
               )}
             >
               {isActive && (
@@ -90,7 +92,7 @@ export function Sidebar({ active, onNavigate }: SidebarProps) {
               <Icon
                 className={cn(
                   'relative z-10 h-[18px] w-[18px] shrink-0 transition-transform group-hover:scale-110',
-                  isEmergency && 'text-destructive'
+                  isEmergency && 'text-destructive',
                 )}
               />
               <AnimatePresence initial={false}>
@@ -143,7 +145,10 @@ export function Sidebar({ active, onNavigate }: SidebarProps) {
         aria-label="Toggle sidebar"
       >
         <ChevronLeft
-          className={cn('h-3.5 w-3.5 transition-transform', collapsed && 'rotate-180')}
+          className={cn(
+            'h-3.5 w-3.5 transition-transform',
+            collapsed && 'rotate-180',
+          )}
         />
       </button>
     </motion.aside>

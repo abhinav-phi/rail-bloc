@@ -13,8 +13,11 @@ export function SentinelCheckList({ checks }: SentinelCheckListProps) {
         Sentinel Safety Checks (10-point Verification)
       </div>
       <div className="max-h-[300px] overflow-y-auto">
-        {checks.map(check => (
-          <div key={check.ruleId} className="p-3 flex items-start gap-3 hover:bg-muted/10 transition-colors">
+        {checks.map((check) => (
+          <div
+            key={check.ruleId}
+            className="p-3 flex items-start gap-3 hover:bg-muted/10 transition-colors"
+          >
             {check.passed ? (
               <CheckCircle2 className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
             ) : (
@@ -22,10 +25,16 @@ export function SentinelCheckList({ checks }: SentinelCheckListProps) {
             )}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <span className="font-mono text-xs font-bold text-muted-foreground">{check.ruleId}</span>
-                <span className="font-medium text-sm truncate">{check.name}</span>
+                <span className="font-mono text-xs font-bold text-muted-foreground">
+                  {check.ruleId}
+                </span>
+                <span className="font-medium text-sm truncate">
+                  {check.name}
+                </span>
               </div>
-              <p className="text-xs text-muted-foreground mt-1">{check.detail}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {check.detail}
+              </p>
             </div>
           </div>
         ))}

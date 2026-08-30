@@ -10,20 +10,31 @@ interface PersonaContextState {
   /** Real API login with username/password. Falls back to demo mode if backend unavailable. */
   login: (credentials: { username: string; password: string }) => Promise<void>;
   /** Demo-persona login — sets persona directly without hitting the API. */
-  loginAsDemo: (demo: { id: string; name: string; role: string; division: string; badge: string }) => void;
+  loginAsDemo: (demo: {
+    id: string;
+    name: string;
+    role: string;
+    division: string;
+    badge: string;
+  }) => void;
   logout: () => void;
 }
 
-const PersonaContext = createContext<PersonaContextState | undefined>(undefined);
+const PersonaContext = createContext<PersonaContextState | undefined>(
+  undefined,
+);
 
 /** Map display-role strings to the PersonaRole union. */
 function toPersonaRole(role: string): PersonaRole {
   const map: Record<string, PersonaRole> = {
-    'SR_DOM': 'SR_DOM', 'Sr. DOM': 'SR_DOM',
-    'DRM': 'DRM',
-    'CHIEF_CONTROLLER': 'CHIEF_CONTROLLER', 'Chief Controller': 'CHIEF_CONTROLLER',
-    'SR_DEN': 'SR_DEN',
-    'SSE': 'SSE', 'SSE Engineer': 'SSE',
+    SR_DOM: 'SR_DOM',
+    'Sr. DOM': 'SR_DOM',
+    DRM: 'DRM',
+    CHIEF_CONTROLLER: 'CHIEF_CONTROLLER',
+    'Chief Controller': 'CHIEF_CONTROLLER',
+    SR_DEN: 'SR_DEN',
+    SSE: 'SSE',
+    'SSE Engineer': 'SSE',
   };
   return map[role] ?? 'SR_DOM';
 }
@@ -50,7 +61,10 @@ export function PersonaProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = async (credentials: { username: string; password: string }) => {
-    const resp = await api.post<{ access_token: string }>('/api/v1/auth/login', credentials);
+    const resp = await api.post<{ access_token: string }>(
+      '/api/v1/auth/login',
+      credentials,
+    );
     setToken(resp.access_token);
     const me = parseJwt(resp.access_token);
     if (me) {
@@ -66,7 +80,13 @@ export function PersonaProvider({ children }: { children: React.ReactNode }) {
   };
 
   /** Demo-persona login — no API call, sets persona directly. */
-  const loginAsDemo = (demo: { id: string; name: string; role: string; division: string; badge: string }) => {
+  const loginAsDemo = (demo: {
+    id: string;
+    name: string;
+    role: string;
+    division: string;
+    badge: string;
+  }) => {
     setPersona({
       id: demo.id,
       name: demo.name,

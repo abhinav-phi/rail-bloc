@@ -2,7 +2,11 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { MapPin } from 'lucide-react';
 
-export function SectionDetailPopover({ sectionId = 'DLI-PNP' }: { sectionId?: string }) {
+export function SectionDetailPopover({
+  sectionId = 'DLI-PNP',
+}: {
+  sectionId?: string;
+}) {
   return (
     <Card className="w-72 shadow-xl border-primary/20">
       <CardHeader className="py-3 px-4 border-b bg-muted/30">

@@ -8,7 +8,9 @@ export function HashChainVerificationBanner() {
         <ShieldCheck className="h-6 w-6" />
         <div>
           <h4 className="font-semibold">Cryptographic Ledger Verified</h4>
-          <p className="text-sm">All 142 records match immutable hash chain signature.</p>
+          <p className="text-sm">
+            All 142 records match immutable hash chain signature.
+          </p>
         </div>
       </div>
       <div className="font-mono text-xs bg-emerald-500/20 px-3 py-1.5 rounded">

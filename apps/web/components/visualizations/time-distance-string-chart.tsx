@@ -50,16 +50,15 @@ export function TimeDistanceStringChart() {
     // Draw mock train paths (Strings)
     ctx.strokeStyle = '#3b82f6'; // Blue for express
     ctx.beginPath();
-    ctx.moveTo((8/24)*width, 0);
-    ctx.lineTo((12/24)*width, height);
+    ctx.moveTo((8 / 24) * width, 0);
+    ctx.lineTo((12 / 24) * width, height);
     ctx.stroke();
 
     ctx.strokeStyle = '#94a3b8'; // Slate for freight
     ctx.beginPath();
-    ctx.moveTo((13/24)*width, height);
-    ctx.lineTo((18/24)*width, 0);
+    ctx.moveTo((13 / 24) * width, height);
+    ctx.lineTo((18 / 24) * width, 0);
     ctx.stroke();
-
   }, []);
 
   return (
@@ -73,11 +72,11 @@ export function TimeDistanceStringChart() {
         <span>Station F (250km)</span>
       </div>
       <div className="ml-32 flex-1 border border-slate-700 bg-slate-900 rounded relative">
-        <canvas 
-          ref={canvasRef} 
-          width={1200} 
-          height={600} 
-          className="w-full h-full block" 
+        <canvas
+          ref={canvasRef}
+          width={1200}
+          height={600}
+          className="w-full h-full block"
         />
       </div>
       <div className="ml-32 mt-2 text-xs font-mono text-muted-foreground flex justify-between px-2">

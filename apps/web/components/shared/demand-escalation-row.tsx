@@ -13,7 +13,13 @@ interface DemandEscalationRowProps {
   timestamp: string;
 }
 
-export function DemandEscalationRow({ id, department, section, reason, timestamp }: DemandEscalationRowProps) {
+export function DemandEscalationRow({
+  id,
+  department,
+  section,
+  reason,
+  timestamp,
+}: DemandEscalationRowProps) {
   return (
     <div className="flex items-center justify-between p-4 border rounded-md bg-destructive/5 hover:bg-destructive/10 transition-colors">
       <div className="flex items-center gap-4">
@@ -23,7 +29,8 @@ export function DemandEscalationRow({ id, department, section, reason, timestamp
         </div>
         <DepartmentTag dept={department} />
         <div className="text-sm">
-          <span className="font-medium text-muted-foreground">Section:</span> {section}
+          <span className="font-medium text-muted-foreground">Section:</span>{' '}
+          {section}
         </div>
         <div className="text-sm text-destructive">
           <span className="font-medium">Failed:</span> {reason}

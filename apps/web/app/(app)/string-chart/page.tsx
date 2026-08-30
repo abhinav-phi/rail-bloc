@@ -10,9 +10,11 @@ export default function StringChartPage() {
       <SimulatedDataWatermark position="center" />
       <div className="px-6 py-4 border-b shrink-0 bg-background/95 backdrop-blur z-20">
         <h1 className="text-2xl font-bold">Master String Chart</h1>
-        <p className="text-muted-foreground">Time-Distance graph for detailed conflict resolution.</p>
+        <p className="text-muted-foreground">
+          Time-Distance graph for detailed conflict resolution.
+        </p>
       </div>
-      
+
       <SectionDateSelector />
       <StringChartLegend />
       <TimeDistanceStringChart />

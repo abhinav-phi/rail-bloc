@@ -64,7 +64,9 @@ export function useLive(): LiveState {
       es.onerror = () => {
         es.close();
         setState((s) => ({ ...s, stale: true, connected: false }));
-        setTimeout(() => { void connect(); }, 3000);
+        setTimeout(() => {
+          void connect();
+        }, 3000);
       };
     } catch {
       setState((s) => ({ ...s, stale: true, connected: false }));

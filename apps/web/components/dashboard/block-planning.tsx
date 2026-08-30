@@ -26,13 +26,19 @@ import {
 } from '@/lib/data';
 import { cn } from '@/lib/utils';
 
-const SOURCE_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
+const SOURCE_ICON: Record<
+  string,
+  React.ComponentType<{ className?: string }>
+> = {
   TMS: Building2,
   TDMS: Zap,
   SMMS: CircleDot,
 };
 
-const PRIORITY_STYLES: Record<Priority, { badge: string; dot: string; label: string }> = {
+const PRIORITY_STYLES: Record<
+  Priority,
+  { badge: string; dot: string; label: string }
+> = {
   P0: {
     badge: 'border-destructive/40 bg-destructive/15 text-destructive',
     dot: 'bg-destructive',
@@ -196,7 +202,9 @@ export function BlockPlanning() {
                         <span
                           className={cn(
                             'text-sm',
-                            i <= solveStep ? 'text-foreground' : 'text-muted-foreground'
+                            i <= solveStep
+                              ? 'text-foreground'
+                              : 'text-muted-foreground',
                           )}
                         >
                           {step}
@@ -207,7 +215,10 @@ export function BlockPlanning() {
                       <div className="mb-1.5 flex justify-between text-[11px] text-muted-foreground">
                         <span>Optimizing</span>
                         <span className="font-mono">
-                          {Math.round(((solveStep + 1) / SOLVE_STEPS.length) * 100)}%
+                          {Math.round(
+                            ((solveStep + 1) / SOLVE_STEPS.length) * 100,
+                          )}
+                          %
                         </span>
                       </div>
                       <div className="h-1.5 overflow-hidden rounded-full bg-muted">
@@ -243,16 +254,24 @@ export function BlockPlanning() {
                       </p>
                       {[
                         { label: 'Shadow blocks created', value: '4' },
-                        { label: 'Departments bundled', value: '3 (Civil + TRD + S&T)' },
+                        {
+                          label: 'Departments bundled',
+                          value: '3 (Civil + TRD + S&T)',
+                        },
                         { label: 'Passenger delay avoided', value: '184 min' },
-                        { label: 'Sentinel safety checks', value: '10/10 passed' },
+                        {
+                          label: 'Sentinel safety checks',
+                          value: '10/10 passed',
+                        },
                         { label: 'Solver status', value: 'OPTIMAL' },
                       ].map((r) => (
                         <div
                           key={r.label}
                           className="flex items-center justify-between rounded-md bg-muted/40 px-3 py-2"
                         >
-                          <span className="text-xs text-muted-foreground">{r.label}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {r.label}
+                          </span>
                           <span className="font-mono text-xs font-semibold text-foreground">
                             {r.value}
                           </span>
@@ -295,7 +314,7 @@ function HorizonToggle({
         'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all',
         active
           ? 'bg-card text-foreground shadow-sm'
-          : 'text-muted-foreground hover:text-foreground'
+          : 'text-muted-foreground hover:text-foreground',
       )}
     >
       <Icon className="h-3.5 w-3.5" />
@@ -314,7 +333,13 @@ function TacticalWeek() {
   );
 }
 
-function DemandRow({ demand, index }: { demand: MaintenanceDemand; index: number }) {
+function DemandRow({
+  demand,
+  index,
+}: {
+  demand: MaintenanceDemand;
+  index: number;
+}) {
   const Icon = SOURCE_ICON[demand.source] ?? CircleDot;
   const prio = PRIORITY_STYLES[demand.priority];
   return (
@@ -332,11 +357,16 @@ function DemandRow({ demand, index }: { demand: MaintenanceDemand; index: number
           <span className="font-mono text-xs font-semibold text-foreground">
             {demand.id}
           </span>
-          <Badge variant="outline" className={cn('px-1.5 py-0 text-[9px]', prio.badge)}>
+          <Badge
+            variant="outline"
+            className={cn('px-1.5 py-0 text-[9px]', prio.badge)}
+          >
             <span className={cn('mr-1 h-1.5 w-1.5 rounded-full', prio.dot)} />
             {prio.label}
           </Badge>
-          <span className="text-[10px] text-muted-foreground">{demand.source}</span>
+          <span className="text-[10px] text-muted-foreground">
+            {demand.source}
+          </span>
         </div>
         <span className="truncate text-xs text-muted-foreground">
           {demand.asset} · {demand.description}
@@ -357,7 +387,7 @@ function DemandRow({ demand, index }: { demand: MaintenanceDemand; index: number
             'rounded-md px-2 py-1 text-[10px] font-semibold',
             demand.status === 'Allocated'
               ? 'bg-success/15 text-success'
-              : 'bg-muted/50 text-muted-foreground'
+              : 'bg-muted/50 text-muted-foreground',
           )}
         >
           {demand.status}
@@ -379,7 +409,8 @@ function RollingCalendar() {
             <span className="h-2 w-2 rounded-sm bg-primary" /> Current
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-sm bg-muted-foreground/40" /> Planned
+            <span className="h-2 w-2 rounded-sm bg-muted-foreground/40" />{' '}
+            Planned
           </span>
         </div>
       </div>
@@ -397,7 +428,7 @@ function RollingCalendar() {
               'group relative flex aspect-square flex-col items-center justify-center rounded-md border text-center transition-all hover:z-10 hover:scale-110',
               w.current
                 ? 'border-primary/50 bg-primary/15'
-                : 'border-border bg-card/40 hover:border-primary/30'
+                : 'border-border bg-card/40 hover:border-primary/30',
             )}
             title={`${w.label} · ${w.load}% load`}
           >
@@ -413,7 +444,7 @@ function RollingCalendar() {
             <span
               className={cn(
                 'font-mono text-[8px] font-semibold',
-                w.current ? 'text-primary' : 'text-muted-foreground'
+                w.current ? 'text-primary' : 'text-muted-foreground',
               )}
             >
               {w.label.replace(' (Current)', '').replace('W', '')}
