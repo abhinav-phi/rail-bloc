@@ -9,6 +9,7 @@ node_modules/
 dist/
 build/
 .vite/
+build*.log
 *.log
 .DS_Store
 # NOTE: build_wheels/ is INTENTIONALLY tracked in git — the pinned or-tools and

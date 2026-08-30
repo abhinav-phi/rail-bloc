@@ -1,7 +1,7 @@
 import React from 'react';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
-import { parseJwt } from '@/lib/api';
+import { parseJwt, setToken } from '@/lib/api';
 import { ApprovalActionRow } from '@/components/approvals/approval-action-row';
 import { Sidebar } from '@/components/shell/sidebar';
 import { useLive } from '@/lib/live';
@@ -65,10 +65,11 @@ describe('frontend core behaviors', () => {
     }
 
     globalThis.EventSource = MockEventSource as any;
-    Object.defineProperty(window, 'localStorage', {
-      value: { getItem: () => makeToken('SR_DOM', 'DLI') },
-      configurable: true,
-    });
+    setToken(makeToken('SR_DOM', 'DLI'));
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({ ticket: 'test-ticket' }),
+    } as Response);
 
     function HookHarness() {
       const state = useLive();
@@ -77,6 +78,7 @@ describe('frontend core behaviors', () => {
 
     render(<HookHarness />);
 
+    await waitFor(() => expect(instance).not.toBeNull());
     await act(async () => {
       instance?.onopen?.();
     });
@@ -87,6 +89,7 @@ describe('frontend core behaviors', () => {
     });
     await waitFor(() => expect(screen.getByText('STALE')).toBeInTheDocument());
 
+    fetchMock.mockRestore();
     globalThis.EventSource = originalEventSource;
   });
 });

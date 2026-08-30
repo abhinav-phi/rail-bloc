@@ -1,6 +1,7 @@
 """Shared fixtures for DB integration tests. Skips the module when no PostgreSQL
 is reachable (e.g., unit-only runs); CI/docker runs provide DATABASE_URL_SYNC."""
 from __future__ import annotations
+
 import os
 
 import pytest
@@ -15,7 +16,7 @@ os.environ.setdefault("DATABASE_URL_SYNC", DSN)
 os.environ.setdefault(
     "DATABASE_URL", "postgresql+asyncpg://rail_admin:rail_secure_password@localhost:5432/railbloc_db"
 )
-os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
+os.environ.setdefault("REDIS_URL", "redis://:rail_redis_password@localhost:6379/0")
 
 
 def _db_up() -> bool:
@@ -59,12 +60,14 @@ def conn(engine):
 @pytest.fixture()
 def client():
     from fastapi.testclient import TestClient
+
     from apps.api.main import app
     with TestClient(app) as c:
         yield c
     # Release pooled asyncpg connections bound to this test's event loop so the
     # next test's loop cannot touch them ("another operation is in progress").
     import asyncio
+
     from apps.api.core.database import engine as app_engine
     try:
         asyncio.run(app_engine.dispose())

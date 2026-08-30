@@ -1,19 +1,19 @@
 /** API client — attaches the JWT bearer, normalizes errors.
- *  Ported from the legacy apps/web Vite SPA to Next.js. */
+ * Tokens are kept in process memory instead of localStorage to reduce XSS exposure.
+ */
 
-const TOKEN_KEY = 'railbloc_token';
+let inMemoryToken: string | null = null;
 
 export function getToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem(TOKEN_KEY);
+  return inMemoryToken;
 }
 
 export function setToken(t: string) {
-  localStorage.setItem(TOKEN_KEY, t);
+  inMemoryToken = t;
 }
 
 export function clearToken() {
-  localStorage.removeItem(TOKEN_KEY);
+  inMemoryToken = null;
 }
 
 export class ApiError extends Error {

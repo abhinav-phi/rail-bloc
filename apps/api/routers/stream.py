@@ -1,32 +1,31 @@
-"""SSE live-block stream (FR-036 / TechSpec §4). Token via query param (EventSource
-cannot set headers); re-authentication happens on every reconnect. Heartbeat lapses
+"""SSE live-block stream (FR-036 / TechSpec §4). The client authenticates with a
+short-lived one-time ticket instead of the full JWT in the URL. Heartbeat lapses
 drive the client's persistent STALE DATA overlay."""
 from __future__ import annotations
 
 import asyncio
 import json
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
-from ..core.security import actor_from_query
+from ..core.security import Actor, actor_from_query, get_actor, issue_stream_ticket
 from ..services import sse
 
 router = APIRouter(prefix="/api/v1/stream", tags=["stream"])
 HEARTBEAT_SECONDS = 10
 
 
+@router.get("/issue-ticket")
+async def issue_ticket(actor: Actor = Depends(get_actor)):
+    return {"ticket": issue_stream_ticket(actor)}
+
+
 @router.get("/live-blocks")
-async def live_blocks(request: Request, token: str | None = None):
-    actor = actor_from_query(request) if not token else None
-    if actor is None and token:
-        from ..core.security import decode_token
-        try:
-            actor = decode_token(token)
-        except HTTPException:
-            actor = None
+async def live_blocks(request: Request):
+    actor = actor_from_query(request)
     if actor is None:
-        raise HTTPException(401, "valid token required (query param `token`)")
+        raise HTTPException(401, "valid ticket required")
 
     # Fail-closed at connect time too: an unreachable Redis must yield 503 (whose
     # EventSource onerror fires the client's STALE overlay), never a crash 500.

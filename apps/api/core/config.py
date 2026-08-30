@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     api_port: int = 8000
     api_host: str = "0.0.0.0"
     database_url: str = "postgresql+asyncpg://rail_admin:rail_secure_password@postgres:5432/railbloc_db"
-    redis_url: str = "redis://redis:6379/0"
+    redis_url: str = "redis://:rail_redis_password@redis:6379/0"
     jwt_secret: str = "super_secret_jwt_key_railbloc_2026"
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 480

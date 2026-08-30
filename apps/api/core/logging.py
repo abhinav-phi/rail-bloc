@@ -20,6 +20,9 @@ def configure_logging() -> None:
     logger.propagate = False
 
 
+logger = logging.getLogger("railbloc")
+
+
 def get_logger(name: str) -> logging.Logger:
     configure_logging()
     return logging.getLogger(f"railbloc.{name}")

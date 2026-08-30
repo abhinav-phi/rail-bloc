@@ -9,7 +9,6 @@ All cadences come from environment (Rules.md §4 XC-010): WEEKLY_PLAN_CRON etc.
 from __future__ import annotations
 
 import json
-import logging
 import os
 from datetime import UTC, datetime, timedelta
 
@@ -20,9 +19,7 @@ from sqlalchemy import create_engine, text
 
 from apps.api.core.metrics import PLANS_CREATED_TOTAL, SOLVES_TOTAL
 
-logger = logging.getLogger("railbloc.worker")
-
-REDIS_URL = os.environ.get("REDIS_URL", "redis://:rail_redis_password@redis:6379/0")
+REDIS_URL = os.environ.get("REDIS_URL", "redis://redis:6379/0")
 DSN = os.environ.get("DATABASE_URL_SYNC") or os.environ.get("DATABASE_URL", "").replace("+asyncpg", "+psycopg2")
 
 app = Celery("railbloc", broker=REDIS_URL, backend=REDIS_URL)
@@ -113,7 +110,7 @@ def _sse_publish(event: str, data: dict) -> None:
         sync_redis.Redis.from_url(REDIS_URL).publish(
             "live_blocks", json.dumps({"event": event, **data}, default=str))
     except Exception:
-        logger.exception("worker SSE publish failed for %s", event)
+        pass
 
 
 def solve_weights():
