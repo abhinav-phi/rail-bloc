@@ -57,7 +57,7 @@ app = FastAPI(title="RAIL-BLOC API", version="1.1.0",
 
 configure_logging()
 
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True,
+app.add_middleware(CORSMiddleware, allow_origins=["*"],
                    allow_methods=["*"], allow_headers=["*"])
 
 
