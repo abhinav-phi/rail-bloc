@@ -78,6 +78,7 @@ describe('frontend core behaviors', () => {
 
     render(<HookHarness />);
 
+    await waitFor(() => expect(instance).not.toBeNull());
     await act(async () => {
       instance?.onopen?.();
     });
