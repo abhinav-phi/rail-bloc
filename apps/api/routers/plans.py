@@ -278,6 +278,10 @@ async def acknowledge_signal(plan_id: str, body: AckSignalIn,
     if plan is None:
         raise HTTPException(404, "plan not found")
     role_field = "sm" if body.as_role == "STATION_MASTER" else "controller"
+    # Concurrency safety: uq_sigack_plan serializes competing INSERTs for the
+    # same plan. A losing request follows the UPDATE path, where the IS NULL
+    # predicate provides first-write-wins semantics and prevents an accepted
+    # actor/timestamp from being overwritten. Do not remove that predicate.
     await session.execute(text(
         f"""INSERT INTO operations.signal_acknowledgments (plan_id, {role_field}_actor, {role_field}_acked_at)
             VALUES (:p, :a, now())
