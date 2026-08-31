@@ -204,8 +204,14 @@ async def summary(actor: Actor = Depends(get_actor), session: AsyncSession = Dep
            FROM demands.block_demands d JOIN infrastructure.block_sections s ON s.id = d.section_id
            WHERE d.status = 'ESCALATED_OVERDUE' ORDER BY d.urgency_score DESC LIMIT 20"""))).mappings().all()
     machines = (await session.execute(text(
-        """SELECT machine_id, count(*) AS jobs, sum(EXTRACT(EPOCH FROM (travel_end - travel_start))/60) AS mins
-           FROM optimization.machine_rosters GROUP BY 1"""))).fetchall()
+    """SELECT mr.machine_id,
+              count(*) AS jobs,
+              sum(EXTRACT(EPOCH FROM (p.end_time - p.start_time))/60)
+                  AS work_minutes
+       FROM optimization.machine_rosters AS mr
+       JOIN optimization.block_plans AS p ON p.id = mr.plan_id
+       GROUP BY mr.machine_id"""
+    ))).fetchall()
     delay = (await session.execute(text(
         "SELECT coalesce(sum(loss_pax_minutes),0), coalesce(sum(loss_frt_minutes),0) "
         "FROM optimization.block_plans WHERE approval_status IN ('AUTHORIZED_DRM','TRANSMITTED_COA','ACTIVE_GRANTED')"))).one()
