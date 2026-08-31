@@ -34,7 +34,18 @@ async def decide(body: DecisionIn, actor: Actor = Depends(require_roles("SR_DOM"
         raise HTTPException(403, "cross-division object access denied")
     if not body.signature or len(body.signature) < 8:
         raise HTTPException(400, "digital signature required")
-
+        # SAFE-002: a superseded plan must never be approved.
+    if plan["approval_status"] == "SUPERSEDED":
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "error": "HASH_MISMATCH",
+                "detail": (
+                    "Plan was superseded by a newer revision; "
+                    "approve the latest revision instead."
+                ),
+            },
+        )
     # SAFE-002 / R6.2 — recompute the content hash server-side before accepting any decision.
     ch = await recompute_hash(session, plan)
     sentinel_hash = plan["sentinel_hash"] or ""
