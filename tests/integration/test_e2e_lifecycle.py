@@ -3,6 +3,7 @@ Authorize → Transmit(outbox) → Activate → Complete → Archive, plus the e
 drill and a rejected modify-after-verify attempt. Requires DB + seeded data."""
 from __future__ import annotations
 
+import json
 import time
 import uuid
 from datetime import UTC, timedelta
