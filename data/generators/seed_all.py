@@ -1,21 +1,6 @@
 """Idempotent seeder: corridor + machines + feeding map + 26-week demands + WTT/FOIS +
 weather + demo users + signal-ack rows. Re-running never duplicates (DB-006 upsert keys)."""
 from __future__ import annotations
-<<<<<<< Updated upstream
-
-import hashlib
-import json
-import os
-import sys
-from datetime import UTC, datetime, timedelta
-
-from sqlalchemy import create_engine, text
-
-from .corridor_gen import MACHINES, corridor
-from .demand_gen import gen_demands
-from .traffic_gen import gen_freight, gen_timetable, gen_weather
-
-=======
 
 import hashlib
 import json
@@ -30,7 +15,6 @@ from .corridor_gen import MACHINES, corridor
 from .demand_gen import gen_demands
 from .traffic_gen import gen_freight, gen_timetable, gen_weather
 
->>>>>>> Stashed changes
 DS = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
 
 

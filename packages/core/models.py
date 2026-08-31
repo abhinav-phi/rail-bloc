@@ -2,20 +2,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-<<<<<<< Updated upstream
 from enum import Enum
-=======
-from enum import StrEnum
->>>>>>> Stashed changes
 
 
-class Department(StrEnum):
+class Department(str, Enum):
     ENGINEERING = "ENGINEERING"
     TRD = "TRD"
     SIGNAL_TELECOM = "SIGNAL_TELECOM"
 
 
-class PlanHorizon(StrEnum):
+class PlanHorizon(str, Enum):
     STRATEGIC_26W = "STRATEGIC_26W"
     WEEKLY = "WEEKLY"
     REALTIME = "REALTIME"

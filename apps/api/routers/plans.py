@@ -8,11 +8,7 @@ import json
 import uuid as uuidlib
 from datetime import UTC, datetime, timedelta
 
-<<<<<<< Updated upstream
 from fastapi import APIRouter, Depends, HTTPException, Query
-=======
-from fastapi import APIRouter, Depends, HTTPException
->>>>>>> Stashed changes
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
