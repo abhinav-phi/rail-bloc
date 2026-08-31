@@ -27,7 +27,8 @@ def test_cors_middleware_does_not_allow_credentials_with_wildcard_origin():
     cors_middleware = next(
         middleware for middleware in app.user_middleware if middleware.cls.__name__ == 'CORSMiddleware'
     )
-    assert cors_middleware.kwargs.get('allow_credentials') is False
+    # #75 removed the flag entirely (default False); absent or False both mean no credentials
+    assert not cors_middleware.kwargs.get('allow_credentials')
     assert cors_middleware.kwargs.get('allow_origins') == ['*']
 
 

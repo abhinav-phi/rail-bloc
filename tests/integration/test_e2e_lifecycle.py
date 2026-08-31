@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import time
 import uuid
-from datetime import UTC
+from datetime import UTC, timedelta
 
 from sqlalchemy import text
 
