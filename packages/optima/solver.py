@@ -35,7 +35,7 @@ def cluster(schedule: dict[str, int], demands: dict[str, DemandInput], params: S
         by_sec.setdefault(d.section_id, []).append((start, d))
     candidates: list[PlanCandidate] = []
     gap = params.bundling_gap_mins
-    for sec, items in by_sec.items():
+    for _sec, items in by_sec.items():
         items.sort(key=lambda x: x[0])
         clusters: list[list[tuple[int, DemandInput]]] = []
         for start, d in items:

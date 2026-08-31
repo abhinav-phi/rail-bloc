@@ -11,6 +11,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 from sqlalchemy import text
 from starlette.responses import Response
 
@@ -18,6 +20,7 @@ from .core.config import settings
 from .core.database import SessionLocal, ping
 from .core.logging import configure_logging, get_logger
 from .core.metrics import OUTBOX_PENDING, REQUESTS_TOTAL
+from .core.security import limiter
 from .routers import approvals, auth, demands, emergency, ledger, operations, optimize, plans, stream, weather
 from .services import coa_adapter
 
@@ -54,6 +57,8 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="RAIL-BLOC API", version="1.1.0",
               description="Post-audit hardened block planning system (SIH26027)",
               lifespan=lifespan)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 configure_logging()
 

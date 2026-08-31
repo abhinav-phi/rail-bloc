@@ -2,12 +2,14 @@
 S&T plan stays DRAFT until BOTH Station Master and Controller acknowledge;
 then it transitions to SENTINEL_PASSED with sentinel_hash bound."""
 from __future__ import annotations
+
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import text
 
 from packages.chronicle.canonical import content_hash
+
 from .conftest import auth_header, make_token
 
 
@@ -24,12 +26,12 @@ def _mk_draft_snt_plan(engine) -> str:
                        :es,:ld,0.65,'SUBMITTED')
                RETURNING id"""),
             {"ref": f"ACK-{uuid.uuid4()}", "sec": sec,
-             "es": datetime.now(timezone.utc) + timedelta(days=4),
-             "ld": datetime.now(timezone.utc) + timedelta(days=7)}).scalar()
+             "es": datetime.now(UTC) + timedelta(days=4),
+             "ld": datetime.now(UTC) + timedelta(days=7)}).scalar()
         run = conn.execute(text(
             "INSERT INTO optimization.solver_runs (horizon, division, status) "
             "VALUES ('WEEKLY','DLI','COMPLETED') RETURNING id")).scalar()
-        st = datetime.now(timezone.utc) + timedelta(days=2)
+        st = datetime.now(UTC) + timedelta(days=2)
         et = st + timedelta(hours=2)
         ch = content_hash(str(sec), st, et, str(dem), [])
         return str(conn.execute(text(

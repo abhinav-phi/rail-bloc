@@ -2,17 +2,20 @@
 Authorize → Transmit(outbox) → Activate → Complete → Archive, plus the emergency
 drill and a rejected modify-after-verify attempt. Requires DB + seeded data."""
 from __future__ import annotations
+
+import json
 import time
 import uuid
+from datetime import UTC, timedelta
 
 from sqlalchemy import text
 
 from packages.chronicle.canonical import content_hash
+
 from .conftest import auth_header, make_token
 
 
 def _seed_plan_ready_for_approval(engine) -> str:
-    from datetime import timedelta
     with engine.begin() as conn:
         st, et = datetime_now_plus(1), datetime_now_plus(2)
         # Pick a section with no ACTIVE plan overlapping this window: earlier
@@ -49,8 +52,8 @@ def _seed_plan_ready_for_approval(engine) -> str:
 
 
 def datetime_now_plus(days: int):
-    from datetime import datetime, timedelta, timezone
-    return datetime.now(timezone.utc) + timedelta(days=days)
+    from datetime import datetime, timedelta
+    return datetime.now(UTC) + timedelta(days=days)
 
 
 def test_full_lifecycle(client, engine):
@@ -96,6 +99,126 @@ def test_full_lifecycle(client, engine):
     assert client.post(f"/api/v1/plans/{plan_id}/activate", headers=ctl).status_code == 200
     assert client.post(f"/api/v1/plans/{plan_id}/complete-fitness", headers=eng).status_code == 200
     assert client.post(f"/api/v1/plans/{plan_id}/archive", headers=adm).json()["status"] == "ARCHIVED_SEALED"
+
+
+def test_emergency_breakdown_idempotency_replays_without_duplicate_effect(client, engine):
+    """APP-001: repeated emergency submissions with the same key must replay and
+    create no second incident or provisional plan."""
+    ctl = auth_header(make_token("controller_dli", "CONTROLLER"))
+    import uuid as _u
+
+    with engine.begin() as conn:
+        code = "TDL-ETW-" + ("UP" if int(_u.uuid4().hex[:2], 16) % 2 else "DN")
+        sec_row = conn.execute(text(
+            "SELECT s.id, s.section_code FROM infrastructure.block_sections s WHERE s.section_code=:c"),
+            {"c": code}).one()
+        conn.execute(text(
+            "UPDATE optimization.block_plans SET approval_status='CANCELLED' "
+            "WHERE section_id=:s AND approval_status IN ('AUTHORIZED_DRM','TRANSMITTED_COA','ACTIVE_GRANTED')"),
+            {"s": sec_row.id})
+        dem = conn.execute(text(
+            """INSERT INTO demands.block_demands
+               (external_source, external_ref_id, department, section_id, activity_code,
+                min_duration_mins, earliest_start, latest_deadline, urgency_score, status)
+               VALUES ('TMS',:ref,'ENGINEERING',:sec,'DTT_TAMPING',120,
+                       now()+interval '6 hours', now()+interval '3 days',0.9,'SUBMITTED')
+               RETURNING id"""),
+            {"ref": f"IDEM-{uuid.uuid4()}", "sec": sec_row.id}).scalar()
+        run = conn.execute(text(
+            "INSERT INTO optimization.solver_runs (horizon, division, status) "
+            "VALUES ('REALTIME','PRYJ','COMPLETED') RETURNING id")).scalar()
+        st, et = datetime_now_plus(0.25), datetime_now_plus(0.5)
+        ch = content_hash(str(sec_row.id), st, et, str(dem), [])
+        conn.execute(text(
+            """INSERT INTO optimization.block_plans
+               (plan_horizon, section_id, start_time, end_time, primary_demand_id,
+                solver_run_id, content_hash, sentinel_hash, sentinel_verified, approval_status)
+               VALUES ('REALTIME',:sec,:st,:et,:dem,:run,:ch,:ch,true,'TRANSMITTED_COA')
+               RETURNING id"""),
+            {"sec": sec_row.id, "st": st, "et": et, "dem": dem, "run": run, "ch": ch})
+
+    key = f"idem-emg-{uuid.uuid4()}"
+    payload = {"section_id": str(sec_row.id), "breakdown_type": "TRACK_FRACTURE",
+               "estimated_duration_mins": 90, "confirmation": True,
+               "idempotency_key": key}
+
+    r1 = client.post("/api/v1/emergency/breakdown", headers=ctl, json=payload)
+    assert r1.status_code == 201, r1.text
+    first = r1.json()
+    assert first["provisional"] is True
+    assert first["awaiting_controller_acknowledgment"] is True
+
+    r2 = client.post("/api/v1/emergency/breakdown", headers=ctl, json=payload)
+    assert r2.status_code == 201, r2.text
+    second = r2.json()
+    assert second["replayed"] is True
+    assert {k: first[k] for k in first if k != "replayed"} == {
+        k: second[k] for k in second if k != "replayed"
+    }
+
+    with engine.begin() as conn:
+        incident_count = conn.execute(text(
+            "SELECT count(*) FROM operations.incidents WHERE id=:i"),
+            {"i": first["incident_id"]}).scalar()
+        plan_count = conn.execute(text(
+            "SELECT count(*) FROM optimization.block_plans WHERE incident_id=:i"),
+            {"i": first["incident_id"]}).scalar()
+        replay_count = conn.execute(text(
+            "SELECT count(*) FROM audit.idempotency_keys WHERE key=:k AND endpoint='/emergency/breakdown' "
+            "AND actor_id=:a"),
+            {"k": key, "a": "controller_dli"}).scalar()
+
+    assert incident_count == 1
+    assert plan_count == 1
+    assert replay_count == 1
+
+
+def test_transmit_rejects_when_t2h_recheck_fails(client, engine):
+    """R6.2 gate: a plan that conflicts with the latest train occupancy must be
+    rejected at T-2h before enqueueing COA transmission."""
+    srdom = auth_header(make_token("srdom_dli", "SR_DOM"))
+    with engine.begin() as conn:
+        sec = conn.execute(text(
+            "SELECT id, section_code FROM infrastructure.block_sections "
+            "WHERE division='DLI' ORDER BY section_code LIMIT 1")).one()
+        dem = conn.execute(text(
+            """INSERT INTO demands.block_demands
+               (external_source, external_ref_id, department, section_id, activity_code,
+                min_duration_mins, earliest_start, latest_deadline, urgency_score, status)
+               VALUES ('TMS',:ref,'ENGINEERING',:sec,'DTT_TAMPING',180,
+                       :es,:ld,0.75,'SUBMITTED')
+               RETURNING id"""),
+            {"ref": f"TX-FAIL-{uuid.uuid4()}", "sec": sec.id,
+             "es": datetime_now_plus(1), "ld": datetime_now_plus(4)}).scalar()
+        run = conn.execute(text(
+            "INSERT INTO optimization.solver_runs (horizon, division, status) "
+            "VALUES ('WEEKLY','DLI','COMPLETED') RETURNING id")).scalar()
+        st, et = datetime_now_plus(1), datetime_now_plus(2)
+        ch = content_hash(str(sec.id), st, et, str(dem), [])
+        plan_id = conn.execute(text(
+            """INSERT INTO optimization.block_plans
+               (plan_horizon, section_id, start_time, end_time, primary_demand_id,
+                solver_run_id, content_hash, sentinel_hash, sentinel_verified,
+                approval_status, decided_by, authorized_by)
+               VALUES ('WEEKLY',:sec,:st,:et,:dem,:run,:ch,:ch,true,'AUTHORIZED_DRM','srdom_dli','drm_dli')
+               RETURNING id"""),
+            {"sec": sec.id, "st": st, "et": et, "dem": dem, "run": run, "ch": ch}).scalar()
+        conn.execute(text(
+            """INSERT INTO operations.train_paths
+               (train_number, train_type, section_id, scheduled_entry, scheduled_exit,
+                priority_rank, source, metadata)
+               VALUES (:n, 'MAIL_EXP', :sec, :entry, :exit, 1, 'WTT', CAST(:m AS jsonb))
+               ON CONFLICT (train_number, section_id, scheduled_entry) DO NOTHING"""),
+            {"n": f"FAIL-CHK-{uuid.uuid4().hex[:7]}", "sec": sec.id,
+             "entry": st - timedelta(minutes=30), "exit": et + timedelta(minutes=30),
+             "m": json.dumps({"note": "conflicting train inserted for T-2h re-check fail path"})})
+
+    r = client.post(f"/api/v1/plans/{plan_id}/transmit", headers=srdom)
+    assert r.status_code == 400, r.text
+    body = r.json()
+    detail = body["detail"]
+    assert detail["error"] == "structural re-check failed at T-2h"
+    assert any("G&SR-1" in failed for failed in detail["failed_checks"])
 
 
 def test_emergency_drill_provisional_and_ack_gate(client, engine):
@@ -171,6 +294,6 @@ def test_emergency_drill_provisional_and_ack_gate(client, engine):
 
     # The PROVISIONAL plan must NOT be transmitted before Controller acknowledgment.
     inc_id = body["incident_id"]
-    provisional_plan = body["plan_id"]
+    body["plan_id"]
     r = client.post(f"/api/v1/emergency/incidents/{inc_id}/acknowledge", headers=ctl)
     assert r.status_code == 200

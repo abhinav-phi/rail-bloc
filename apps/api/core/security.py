@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import os
 import time
 import uuid
 from dataclasses import dataclass
@@ -11,8 +12,12 @@ import jwt
 import redis
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from .config import settings
+
+limiter = Limiter(key_func=get_remote_address)
 
 bearer = HTTPBearer(auto_error=False)
 
@@ -67,8 +72,11 @@ def _store_setex(key: str, value: str, ttl_seconds: int) -> None:
         _FALLBACK_TICKETS[key] = {"value": value}
 
 
-def hash_pw(pw: str) -> str:
-    return hashlib.pbkdf2_hmac("sha256", pw.encode(), b"railbloc-salt", 60_000).hex()
+def hash_pw(pw: str, salt: str | bytes = "") -> str:
+    salt_bytes = salt.encode() if isinstance(salt, str) else salt
+    if not salt_bytes:
+        salt_bytes = os.urandom(32)
+    return hashlib.pbkdf2_hmac("sha256", pw.encode(), salt_bytes, 600_000).hex()
 
 
 def create_token(username: str, role: str, division: str) -> str:

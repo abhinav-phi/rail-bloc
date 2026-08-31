@@ -268,6 +268,7 @@ CREATE TABLE audit.idempotency_keys (
 CREATE TABLE auth.users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     username VARCHAR(64) NOT NULL UNIQUE,
+    salt VARCHAR(64) NOT NULL,
     password_hash VARCHAR(256) NOT NULL,
     role VARCHAR(24) NOT NULL CHECK (role IN ('SR_DOM','DRM','CONTROLLER','ENGINEER','AUDITOR','ADMIN','STATION_MASTER')),
     division VARCHAR(16) NOT NULL,

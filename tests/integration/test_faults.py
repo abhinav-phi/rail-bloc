@@ -10,10 +10,11 @@
       live-event fan-out degrades silently, authorizations unaffected.
 """
 from __future__ import annotations
+
 import threading
 import time
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy import text
@@ -159,7 +160,6 @@ def test_f2_sentinel_fail_all_hits_retry_cap_then_escalates(engine, eager_worker
     # run_solve imports validate_set locally at call time → patch the source module.
     monkeypatch.setattr("packages.sentinel.validator.validate_set", fail_all)
 
-    calls = {"n": 0}
     orig_solve_calls = {"n": 0}
     import packages.optima.solver as solver_mod
     real_solve = solver_mod.solve
@@ -201,7 +201,7 @@ def test_f3_postgres_backend_kill_midflow_rolls_back_everything(engine):
         run = c.execute(text(
             "INSERT INTO optimization.solver_runs (horizon, division, status) "
             "VALUES ('WEEKLY','DLI','COMPLETED') RETURNING id")).scalar()
-        st = datetime.now(timezone.utc) + timedelta(days=5)
+        st = datetime.now(UTC) + timedelta(days=5)
         et = st + timedelta(hours=3)
         plan_id = str(c.execute(text(
             """INSERT INTO optimization.block_plans
@@ -290,7 +290,7 @@ def test_f4_redis_down_does_not_block_authorization(client, engine, monkeypatch)
         run = c.execute(text(
             "INSERT INTO optimization.solver_runs (horizon, division, status) "
             "VALUES ('WEEKLY','DLI','COMPLETED') RETURNING id")).scalar()
-        st = datetime.now(timezone.utc) + timedelta(days=5)
+        st = datetime.now(UTC) + timedelta(days=5)
         et = st + timedelta(hours=3)
         ch = content_hash(str(sec), st, et, str(dem), [])
         plan_id = str(c.execute(text(

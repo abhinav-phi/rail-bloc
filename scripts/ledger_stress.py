@@ -9,7 +9,7 @@ DSN = "postgresql+psycopg2://rail_admin:rail_secure_password@localhost:5432/rail
 
 def worker(n):
     eng = create_engine(DSN)
-    for i in range(5):
+    for _i in range(5):
         with eng.begin() as c:
             c.execute(text(
                 "SELECT audit.append_event('T_STRESS', :a, CAST(:p AS jsonb))"),
