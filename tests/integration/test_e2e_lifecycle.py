@@ -216,8 +216,9 @@ def test_transmit_rejects_when_t2h_recheck_fails(client, engine):
     r = client.post(f"/api/v1/plans/{plan_id}/transmit", headers=srdom)
     assert r.status_code == 400, r.text
     body = r.json()
-    assert "failed_checks" in body
-    assert any("G&SR-1" in failed for failed in body["failed_checks"])
+    detail = body["detail"]
+    assert detail["error"] == "structural re-check failed at T-2h"
+    assert any("G&SR-1" in failed for failed in detail["failed_checks"])
 
 
 def test_emergency_drill_provisional_and_ack_gate(client, engine):
