@@ -81,9 +81,13 @@ async def _build_sentinel_context(session: AsyncSession) -> SentinelContext:
         feeds.setdefault(str(fsid), set()).add(str(sec))
     feeding = [FeedingMapEntry(k, frozenset(v)) for k, v in feeds.items()]
     acks = {}
-    for pid, sm, ctl in (await session.execute(text(
-            "SELECT plan_id, sm_acked_at, controller_acked_at FROM operations.signal_acknowledgments"))).fetchall():
-        acks[str(pid)] = AckRecord(str(pid), bool(sm), bool(ctl))
+    for ch, pid, sm, ctl in (await session.execute(text(
+            """SELECT p.content_hash, a.plan_id,
+                      a.sm_acked_at, a.controller_acked_at
+               FROM operations.signal_acknowledgments a
+               JOIN optimization.block_plans p ON p.id = a.plan_id"""
+    ))).fetchall():
+        acks[str(ch)] = AckRecord(str(pid), bool(sm), bool(ctl))
     machines = [MachineInfo(str(r[0]), str(r[1]), float(r[2]), int(r[3]))
                 for r in (await session.execute(text(
                     "SELECT machine_code, machine_class, depot_km, transit_speed_kmph FROM infrastructure.machines"))).fetchall()]

@@ -66,7 +66,20 @@ def test_gsr2_ack_flow(client, engine):
     r = client.post(f"/api/v1/plans/{plan_id}/acknowledge-signal",
                     headers=ctl, json={"as_role": "CONTROLLER"})
     assert r.status_code == 200 and r.json()["both_acknowledged"] is True
+        # The API report must also recognize both acknowledgments.
+    report_response = client.get(
+        f"/api/v1/plans/{plan_id}/sentinel-report",
+        headers=auth_header(make_token("srdom_dli", "SR_DOM")),
+    )
+    assert report_response.status_code == 200
 
+    report = report_response.json()
+    gsr2 = next(
+        check for check in report["checks"]
+        if check["id"].startswith("G&SR-2")
+    )
+    assert gsr2["passed"] is True
+    assert gsr2["pending"] is False
     with engine.begin() as conn:
         row = conn.execute(text(
             "SELECT approval_status, sentinel_verified, sentinel_hash, content_hash "
