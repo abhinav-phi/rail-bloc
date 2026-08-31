@@ -63,8 +63,12 @@ async def revise_plan(session: AsyncSession, plan: dict, actor: str,
          "pd": plan["primary_demand_id"], "sb": plan["is_shadow_block"], "sr": plan["solver_run_id"],
          "ch": ch, "rev": plan["revision_no"] + 1, "sup": plan["id"], "inc": plan.get("incident_id")})
     await session.execute(text(
-        "UPDATE optimization.block_plans SET approval_status = 'SUPERSEDED' WHERE id = :i"),
-        {"i": plan["id"]})
+    """UPDATE optimization.block_plans
+       SET approval_status = 'SUPERSEDED',
+           sentinel_verified = false,
+           sentinel_hash = NULL
+       WHERE id = :i"""),
+    {"i": plan["id"]})
     for sid in shadows:
         await session.execute(text(
             "INSERT INTO optimization.plan_shadow_demands (plan_id, demand_id) VALUES (:p, :d) "

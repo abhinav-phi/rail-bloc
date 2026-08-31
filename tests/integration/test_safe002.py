@@ -96,3 +96,65 @@ def test_revise_creates_new_draft_revision_clearing_sentinel(client, engine):
     assert new.approval_status == "DRAFT"
     assert not new.sentinel_verified
     assert new.revision_no == 2 and str(new.supersedes_id) == plan_id
+
+def test_revise_api_then_approve_old_plan_rejected_409(client, engine):
+    with engine.begin() as conn:
+        plan_id = _mk_plan(conn)
+
+    with engine.begin() as conn:
+        original = conn.execute(
+            text(
+                """SELECT start_time, end_time, approval_status, sentinel_verified
+                   FROM optimization.block_plans
+                   WHERE id = :i"""
+            ),
+            {"i": plan_id},
+        ).one()
+
+    new_start = original.start_time + timedelta(minutes=30)
+    new_end = original.end_time + timedelta(minutes=30)
+
+    revise_response = client.post(
+        f"/api/v1/plans/{plan_id}/revise",
+        headers=auth_header(make_token("srdom_dli", "SR_DOM")),
+        json={
+            "start_time": new_start.isoformat(),
+            "end_time": new_end.isoformat(),
+        },
+    )
+
+    assert revise_response.status_code == 200
+
+    revised = revise_response.json()
+    new_plan_id = revised["new_plan_id"]
+
+    assert new_plan_id != plan_id
+    assert revised["sentinel_verified"] is False
+
+    approval_response = client.post(
+        "/api/v1/approvals/decide",
+        headers=auth_header(make_token("srdom_dli", "SR_DOM")),
+        json={
+            "plan_id": plan_id,
+            "decision": "APPROVE",
+            "signature": "sig-12345678",
+            "idempotency_key": f"k-{plan_id}-api-revise",
+        },
+    )
+
+    assert approval_response.status_code == 409
+    print("APPROVAL RESPONSE:", approval_response.json())
+    assert approval_response.json()["detail"]["error"] == "HASH_MISMATCH"
+
+    with engine.begin() as conn:
+        new_revision = conn.execute(
+            text(
+                """SELECT approval_status, sentinel_verified
+                   FROM optimization.block_plans
+                   WHERE id = :i"""
+            ),
+            {"i": new_plan_id},
+        ).one()
+
+    assert new_revision.approval_status == "DRAFT"
+    assert not new_revision.sentinel_verified
