@@ -5,7 +5,7 @@ demand kills x-flicker by construction (MILP-004); shadow bundling is window
 containment at block level (MILP-C3); low-confidence freight enters as an
 expected-delay cost, never as a feasibility constraint (Rules.md §2)."""
 from __future__ import annotations
-
+from math import ceil
 from dataclasses import dataclass, field
 
 from ortools.sat.python import cp_model
@@ -43,11 +43,13 @@ def _travel_minutes(a: DemandInput, b: DemandInput, machines: list[MachineInfo])
         info = next((m for m in machines if m.machine_code == a.machinery[0]), None)
         if info:
             speed = max(info.transit_speed_kmph, 1)
-    return int(abs(km_b - km_a) / speed * 60)
+    # Round upward so CP-SAT never underestimates physical travel time.
+    return ceil(abs(km_b - km_a) / speed * 60)
 
 
 def build_model(demands: list[DemandInput], trains: list[TrainPathInput],
-                weights: SolveWeights, params: SolverParams, base,
+                machines: list[MachineInfo], weights: SolveWeights,
+                params: SolverParams, base,
                 shadow_weight_scale: float = 1.0) -> BuiltModel:
     m = cp_model.CpModel()
     built = BuiltModel(model=m, base=base)
@@ -132,7 +134,6 @@ def build_model(demands: list[DemandInput], trains: list[TrainPathInput],
             built.shadow[(a.demand.id, b.demand.id)] = s
 
     # Machine disjunctive with travel time (MILP-C5 feasibility side).
-    machines: list[MachineInfo] = params.machines if hasattr(params, "machines") else []
     by_machine: dict[str, list[DemandVar]] = {}
     for dv in built.dvars.values():
         for mach in dv.demand.machinery:
