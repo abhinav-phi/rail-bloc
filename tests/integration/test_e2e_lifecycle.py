@@ -209,7 +209,7 @@ def test_transmit_rejects_when_t2h_recheck_fails(client, engine):
                 priority_rank, source, metadata)
                VALUES (:n, 'MAIL', :sec, :entry, :exit, 1, 'WTT', CAST(:m AS jsonb))
                ON CONFLICT (train_number, section_id, scheduled_entry) DO NOTHING"""),
-            {"n": f"FAIL-CHK-{uuid.uuid4()}", "sec": sec.id,
+            {"n": f"FAIL-CHK-{uuid.uuid4().hex[:7]}", "sec": sec.id,
              "entry": st - timedelta(minutes=30), "exit": et + timedelta(minutes=30),
              "m": json.dumps({"note": "conflicting train inserted for T-2h re-check fail path"})})
 
