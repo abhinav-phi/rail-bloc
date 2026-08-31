@@ -5,8 +5,9 @@ demand kills x-flicker by construction (MILP-004); shadow bundling is window
 containment at block level (MILP-C3); low-confidence freight enters as an
 expected-delay cost, never as a feasibility constraint (Rules.md §2)."""
 from __future__ import annotations
-from math import ceil
+
 from dataclasses import dataclass, field
+from math import ceil
 
 from ortools.sat.python import cp_model
 
