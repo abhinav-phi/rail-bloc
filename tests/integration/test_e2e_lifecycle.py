@@ -207,7 +207,7 @@ def test_transmit_rejects_when_t2h_recheck_fails(client, engine):
             """INSERT INTO operations.train_paths
                (train_number, train_type, section_id, scheduled_entry, scheduled_exit,
                 priority_rank, source, metadata)
-               VALUES (:n, 'MAIL', :sec, :entry, :exit, 1, 'WTT', CAST(:m AS jsonb))
+               VALUES (:n, 'MAIL_EXP', :sec, :entry, :exit, 1, 'WTT', CAST(:m AS jsonb))
                ON CONFLICT (train_number, section_id, scheduled_entry) DO NOTHING"""),
             {"n": f"FAIL-CHK-{uuid.uuid4().hex[:7]}", "sec": sec.id,
              "entry": st - timedelta(minutes=30), "exit": et + timedelta(minutes=30),
