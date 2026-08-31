@@ -70,7 +70,7 @@
 | TASK-045 | Solver | Eng A | [ ] | Machine VRP sub-model + `machine_rosters` persistence. |
 | TASK-046 | Solver | Eng A | [ ] | Time-weighted urgency + $B_1$ warm-start hint. |
 | TASK-047 | Sentinel | Eng A | [ ] | 10-enumerated-check module + OHE feeding-boundary check. |
-| TASK-048 | Workflow | Eng D | [ ] | Signal acknowledgment enforcement wired into Sentinel G&SR-2. |
+| TASK-048 | Workflow | Eng D | [x] | Signal acknowledgment enforcement wired into Sentinel G&SR-2; /acknowledge-signal HTTP flow integration-tested (report shows G&SR-2 passed after both acks). |
 | TASK-049 | Workflow | Eng D | [ ] | Plan Lifecycle Service: revisions, content_hash, supersedes, re-verification. |
 | TASK-050 | Workflow | Eng D | [ ] | Approval Service: distinct-approver CHECK, idempotency, division scoping. |
 | TASK-051 | Workflow | Eng D | [ ] | Emergency Service: incident coalescing, PROVISIONAL semantics, Controller ack. |
@@ -134,8 +134,8 @@
 
 ### 4.2 Task-status deltas vs §2 (only where evidence now exists)
 
-- **[x] with evidence:** TASK-002, 003, 004 (incl. DB-001b hardening above), 005, 006, 007–010, 011, 012–019, 020, 021, 023–025, 041, 043, 044–047, 049, 050, 051, 052, 055, 056.
-- **[/] implemented, runtime-evidence pending:** TASK-001 (api/worker/web image builds + full `docker compose up --build` not yet executed on this host — only postgres/redis/seeder-path verified), TASK-022 (retry-cap code in `run_solve`; no injected-failure run yet), TASK-026–037 & 053–054 (frontend complete in TS strict; `npm install && npm run build` not yet run here), TASK-039 (field endpoints tested via lifecycle activate/fitness; dedicated mobile-terminal mock flow pending), TASK-048 (G&SR-2 validator path unit-tested; `/acknowledge-signal` HTTP flow now integration-tested — remaining gap is none), TASK-058 (per-solve wall times recorded in `solver_runs.stats`; GiST indexes present; FPS profiling pending), TASK-060 (hardened full-stack demo script pending the remaining builds).
+- **[x] with evidence:** TASK-002, 003, 004 (incl. DB-001b hardening above), 005, 006, 007–010, 011, 012–019, 020, 021, 023–025, 041, 043, 044–049, 050, 051, 052, 055, 056.
+- **[/] implemented, runtime-evidence pending:** TASK-001 (api/worker/web image builds + full `docker compose up --build` not yet executed on this host — only postgres/redis/seeder-path verified), TASK-022 (retry-cap code in `run_solve`; no injected-failure run yet), TASK-026–037 & 053–054 (frontend complete in TS strict; `npm install && npm run build` not yet run here), TASK-039 (field endpoints tested via lifecycle activate/fitness; dedicated mobile-terminal mock flow pending), TASK-058 (per-solve wall times recorded in `solver_runs.stats`; GiST indexes present; FPS profiling pending), TASK-060 (hardened full-stack demo script pending the remaining builds).
 - **[!] blocked / unverified state known:** TASK-057 (fault-injection suite) — three genuine test-bugs were fixed after the Docker-dead-period failure run (isolated division seeding, monkeypatch target, SQL literal); **a clean rerun has never happened** and is blocked pending a stable Docker daemon plus full compose boot. Status moves to `[x]` only when `pytest tests/integration/test_faults.py` passes clean.
 - **[x] just completed by this pass:** TASK-059 documentation-consistency sync (this §4 log; Schema.md `append_event` addition + change-log row; README quickstart).
 
