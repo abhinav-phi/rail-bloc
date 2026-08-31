@@ -518,7 +518,12 @@ def fois_forecast_poll():
 
         from data.generators.traffic_gen import gen_freight
         tomorrow = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=2)
-        paths = gen_freight([dict(s) for s in sections], tomorrow, seed=int(tomorrow.timestamp()) % 100000)
+        # Calendar-day seed: reproducible for repeated polls of the same forecast day.
+        paths = gen_freight(
+        [dict(s) for s in sections],
+         tomorrow,
+        seed=tomorrow.toordinal(),
+        )
         conf_by_hour = None
         for p in paths:
             meta = p["metadata"]
