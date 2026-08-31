@@ -77,3 +77,62 @@ def test_saturated_corridor_solves_without_infeasibility_and_replays_zero_pax_de
                                            t.scheduled_exit, t.priority_rank) for t in trains],
                                  weights(), params())
     assert det["pax_delay_minutes"] == 0.0
+
+
+    
+def test_machine_disjunction_uses_supplied_transit_speed():
+    from packages.core.models import MachineInfo
+
+    machine_code = "FAST-TAMPER"
+    deadline = T0 + timedelta(minutes=180)
+
+    first = DemandInput(
+        id="machine-a",
+        section_id="A",
+        section_code="A",
+        division="DLI",
+        section_start_km=0,
+        section_end_km=10,
+        department="ENGINEERING",
+        activity_code="DTT_TAMPING",
+        min_duration_mins=60,
+        earliest_start=T0,
+        latest_deadline=deadline,
+        urgency_score=0.9,
+        machinery=[machine_code],
+    )
+
+    second = DemandInput(
+        id="machine-b",
+        section_id="B",
+        section_code="B",
+        division="DLI",
+        section_start_km=95,
+        section_end_km=105,
+        department="ENGINEERING",
+        activity_code="DTT_TAMPING",
+        min_duration_mins=60,
+        earliest_start=T0,
+        latest_deadline=deadline,
+        urgency_score=0.9,
+        machinery=[machine_code],
+    )
+
+    machine = MachineInfo(
+        machine_code=machine_code,
+        machine_class="TAMPER",
+        depot_km=0,
+        transit_speed_kmph=120,
+    )
+
+    result = solve(
+        [first, second],
+        [],
+        [machine],
+        weights(),
+        params(5),
+    )
+
+    assert result.status in ("OPTIMAL", "FEASIBLE")
+    assert result.scheduled_count == 2
+    assert result.machine_violations == []

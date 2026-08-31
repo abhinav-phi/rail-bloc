@@ -97,3 +97,66 @@ def test_revise_creates_new_draft_revision_clearing_sentinel(client, engine):
     assert new.approval_status == "DRAFT"
     assert not new.sentinel_verified
     assert new.revision_no == 2 and str(new.supersedes_id) == plan_id
+
+def test_revise_api_then_old_plan_approval_rejected_hash_mismatch(client, engine):
+    with engine.begin() as conn:
+        old_plan_id = _mk_plan(conn)
+
+        old_plan = conn.execute(
+            text(
+                """SELECT start_time, end_time
+                   FROM optimization.block_plans
+                   WHERE id = :id"""
+            ),
+            {"id": old_plan_id},
+        ).one()
+
+    new_start = old_plan.start_time + timedelta(hours=2)
+    new_end = old_plan.end_time + timedelta(hours=2)
+
+    revise_response = client.post(
+        f"/api/v1/plans/{old_plan_id}/revise",
+        headers=auth_header(make_token("engineer_dli", "ENGINEER")),
+        json={
+            "start_time": new_start.isoformat(),
+            "end_time": new_end.isoformat(),
+        },
+    )
+
+    assert revise_response.status_code == 200, revise_response.text
+
+    revision = revise_response.json()
+    new_plan_id = revision["new_plan_id"]
+
+    assert revision["revision_no"] == 2
+    assert revision["sentinel_verified"] is False
+
+    approval_response = client.post(
+        "/api/v1/approvals/decide",
+        headers=auth_header(make_token("srdom_dli", "SR_DOM")),
+        json={
+            "plan_id": old_plan_id,
+            "decision": "APPROVE",
+            "signature": "safe002-test-signature",
+            "idempotency_key": f"safe002-revise-{old_plan_id}",
+        },
+    )
+
+    assert approval_response.status_code == 409
+    assert approval_response.json()["detail"]["error"] == "HASH_MISMATCH"
+
+    with engine.begin() as conn:
+        new_plan = conn.execute(
+            text(
+                """SELECT approval_status, sentinel_verified,
+                          revision_no, supersedes_id
+                   FROM optimization.block_plans
+                   WHERE id = :id"""
+            ),
+            {"id": new_plan_id},
+        ).one()
+
+    assert new_plan.approval_status == "DRAFT"
+    assert new_plan.sentinel_verified is False
+    assert new_plan.revision_no == 2
+    assert str(new_plan.supersedes_id) == old_plan_id

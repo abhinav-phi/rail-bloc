@@ -81,9 +81,13 @@ async def _build_sentinel_context(session: AsyncSession) -> SentinelContext:
         feeds.setdefault(str(fsid), set()).add(str(sec))
     feeding = [FeedingMapEntry(k, frozenset(v)) for k, v in feeds.items()]
     acks = {}
-    for pid, sm, ctl in (await session.execute(text(
-            "SELECT plan_id, sm_acked_at, controller_acked_at FROM operations.signal_acknowledgments"))).fetchall():
-        acks[str(pid)] = AckRecord(str(pid), bool(sm), bool(ctl))
+    for ch, pid, sm, ctl in (await session.execute(text(
+            """SELECT p.content_hash, a.plan_id,
+                      a.sm_acked_at, a.controller_acked_at
+               FROM operations.signal_acknowledgments a
+               JOIN optimization.block_plans p ON p.id = a.plan_id"""
+    ))).fetchall():
+        acks[str(ch)] = AckRecord(str(pid), bool(sm), bool(ctl))
     machines = [MachineInfo(str(r[0]), str(r[1]), float(r[2]), int(r[3]))
                 for r in (await session.execute(text(
                     "SELECT machine_code, machine_class, depot_km, transit_speed_kmph FROM infrastructure.machines"))).fetchall()]
@@ -200,8 +204,14 @@ async def summary(actor: Actor = Depends(get_actor), session: AsyncSession = Dep
            FROM demands.block_demands d JOIN infrastructure.block_sections s ON s.id = d.section_id
            WHERE d.status = 'ESCALATED_OVERDUE' ORDER BY d.urgency_score DESC LIMIT 20"""))).mappings().all()
     machines = (await session.execute(text(
-        """SELECT machine_id, count(*) AS jobs, sum(EXTRACT(EPOCH FROM (travel_end - travel_start))/60) AS mins
-           FROM optimization.machine_rosters GROUP BY 1"""))).fetchall()
+    """SELECT mr.machine_id,
+              count(*) AS jobs,
+              sum(EXTRACT(EPOCH FROM (p.end_time - p.start_time))/60)
+                  AS work_minutes
+       FROM optimization.machine_rosters AS mr
+       JOIN optimization.block_plans AS p ON p.id = mr.plan_id
+       GROUP BY mr.machine_id"""
+    ))).fetchall()
     delay = (await session.execute(text(
         "SELECT coalesce(sum(loss_pax_minutes),0), coalesce(sum(loss_frt_minutes),0) "
         "FROM optimization.block_plans WHERE approval_status IN ('AUTHORIZED_DRM','TRANSMITTED_COA','ACTIVE_GRANTED')"))).one()
@@ -274,6 +284,10 @@ async def acknowledge_signal(plan_id: str, body: AckSignalIn,
     if plan is None:
         raise HTTPException(404, "plan not found")
     role_field = "sm" if body.as_role == "STATION_MASTER" else "controller"
+    # Concurrency safety: uq_sigack_plan serializes competing INSERTs for the
+    # same plan. A losing request follows the UPDATE path, where the IS NULL
+    # predicate provides first-write-wins semantics and prevents an accepted
+    # actor/timestamp from being overwritten. Do not remove that predicate.
     await session.execute(text(
         f"""INSERT INTO operations.signal_acknowledgments (plan_id, {role_field}_actor, {role_field}_acked_at)
             VALUES (:p, :a, now())

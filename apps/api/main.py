@@ -62,7 +62,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 configure_logging()
 
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=False,
+app.add_middleware(CORSMiddleware, allow_origins=["*"],
                    allow_methods=["*"], allow_headers=["*"])
 
 
