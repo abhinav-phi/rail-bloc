@@ -66,7 +66,9 @@ def solve(demands: list[DemandInput], trains: list[TrainPathInput], machines: li
     demand_map = {d.id: d for d in active}
 
     hint_schedule = greedy_schedule(active, trains, params, base)
-    built = build_model(active, trains, weights, params, base, shadow_weight_scale)
+    built = build_model(
+    active, trains, machines, weights, params, base, shadow_weight_scale
+    )
     add_hint(built, hint_schedule)
 
     solver = cp_model.CpSolver()
