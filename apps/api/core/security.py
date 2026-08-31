@@ -11,10 +11,10 @@ import jwt
 import redis
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer
-
-from .config import settings
 from slowapi import Limiter
 from slowapi.util import get_remote_address
+
+from .config import settings
 
 limiter = Limiter(key_func=get_remote_address)
 
