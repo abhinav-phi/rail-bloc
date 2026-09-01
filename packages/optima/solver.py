@@ -58,7 +58,7 @@ def cluster(schedule: dict[str, int], demands: dict[str, DemandInput], params: S
 
 def solve(demands: list[DemandInput], trains: list[TrainPathInput], machines: list[MachineInfo],
           weights: SolveWeights, params: SolverParams, horizon: str = "WEEKLY",
-          incident_id: str | None = None, shadow_weight_scale: float = 1.0) -> SolveResult:
+          incident_id: str | None = None) -> SolveResult:
     active = [d for d in demands]
     if not active:
         return SolveResult("OPTIMAL", 0.0, 0.0, 0.0, [], [], 0.0, [], 0, 0, 0.0)
@@ -67,7 +67,7 @@ def solve(demands: list[DemandInput], trains: list[TrainPathInput], machines: li
 
     hint_schedule = greedy_schedule(active, trains, params, base)
     built = build_model(
-    active, trains, machines, weights, params, base, shadow_weight_scale
+    active, trains, machines, weights, params, base
     )
     add_hint(built, hint_schedule)
 
