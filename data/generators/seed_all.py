@@ -49,16 +49,16 @@ def main(dsn: str, seed_password: str = "railbloc") -> None:
             sec_ids[s["section_code"]] = str(sid)
         feed_ids = {}
         for f in feeding:
-            row = c.execute(text("SELECT id FROM infrastructure.ohe_feeding_sections WHERE feeding_section_code=:c AND division='DLI'"),
-                            {"c": f["feeding_section_code"]}).fetchone()
+            row = c.execute(text("SELECT id FROM infrastructure.ohe_feeding_sections WHERE feeding_section_code=:c AND division=:d"),
+                            {"c": f["feeding_section_code"], "d": f["division"]}).fetchone()
             if row:
                 feed_ids[f["feeding_section_code"]] = str(row[0]); continue
             geom = f"ST_GeomFromGeoJSON('{json.dumps({'type': 'LineString', 'coordinates': f['coordinates']})}')"
             fid = c.execute(text(
                 f"""INSERT INTO infrastructure.ohe_feeding_sections
                     (feeding_section_code, division, isolator_boundary_geom, substation_ref)
-                    VALUES (:c, 'DLI', {geom}, :s) RETURNING id"""),
-                {"c": f["feeding_section_code"], "s": f["substation_ref"]}).scalar()
+                    VALUES (:c, :d, {geom}, :s) RETURNING id"""),
+                {"c": f["feeding_section_code"], "d": f["division"], "s": f["substation_ref"]}).scalar()
             feed_ids[f["feeding_section_code"]] = str(fid)
             for sc in f["section_codes"]:
                 c.execute(text("INSERT INTO infrastructure.section_feeding_map (section_id, feeding_section_id) "
