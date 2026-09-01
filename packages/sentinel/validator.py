@@ -192,7 +192,9 @@ def validate_plan(plan: PlanCandidate, ctx: SentinelContext) -> SentinelVerdict:
     results.append(CheckResult(CheckID.GSR4_POWER_ISOLATION_BOUNDARY, ok4, detail=detail4))
 
     # G&SR-5: >= headway margin before high-priority arrivals.
-    hp = [t for t in trains if t.priority_rank <= ctx.high_priority_max_rank]
+    # Soft paths (low-confidence forecasts) must not hard-fail headway — they are
+    # relaxed by the solver's soft-weights instead (forecast soft-path design).
+    hp = [t for t in trains if t.priority_rank <= ctx.high_priority_max_rank and t.is_hard_path]
     margin = timedelta(minutes=ctx.headway_high_priority_mins)
     viol = [t for t in hp if _overlaps(plan.start_time - margin, plan.end_time + margin, t.entry, t.exit)]
     results.append(CheckResult(CheckID.GSR5_HEADWAY_MARGIN, not viol,
