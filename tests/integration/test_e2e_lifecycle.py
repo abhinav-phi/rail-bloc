@@ -6,7 +6,7 @@ from __future__ import annotations
 import json
 import time
 import uuid
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import text
 
@@ -52,7 +52,7 @@ def _seed_plan_ready_for_approval(engine) -> str:
 
 
 def datetime_now_plus(days: int):
-    from datetime import datetime, timedelta
+    from datetime import timedelta
     return datetime.now(UTC) + timedelta(days=days)
 
 
