@@ -88,13 +88,14 @@ async def _build_sentinel_context(session: AsyncSession) -> SentinelContext:
     machines = [MachineInfo(str(r[0]), str(r[1]), float(r[2]), int(r[3]))
                 for r in (await session.execute(text(
                     "SELECT machine_code, machine_class, depot_km, transit_speed_kmph FROM infrastructure.machines"))).fetchall()]
-    plan_rows = (await session.execute(text(
+    plan_result = await session.execute(text(
         """SELECT p.id, p.start_time, p.end_time, p.section_id, s.start_km, s.end_km,
                   d.machinery_req
              FROM optimization.block_plans p
              JOIN infrastructure.block_sections s ON s.id = p.section_id
              LEFT JOIN optimization.plan_shadow_demands psd ON psd.plan_id = p.id
-             LEFT JOIN demands.block_demands d ON d.id = p.primary_demand_id OR d.id = psd.demand_id""")).mappings().all())
+             LEFT JOIN demands.block_demands d ON d.id = p.primary_demand_id OR d.id = psd.demand_id"""))
+    plan_rows = plan_result.mappings().all()
     machine_assignments: dict[str, list[tuple[datetime, datetime, float]]] = {}
     for row in plan_rows:
         machs = row["machinery_req"] or []
