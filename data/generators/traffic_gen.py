@@ -22,7 +22,7 @@ def gen_timetable(sections, day_start: datetime, seed: int = 52):
     return paths
 
 
-def gen_freight(sections, day_start: datetime, seed: int = 43):
+def gen_freight(sections, day_start: datetime, seed: int = 53):
     from .corridor_gen import FREIGHT_TRAINS
     rng = random.Random(seed)
     paths = []
