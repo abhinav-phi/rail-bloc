@@ -160,3 +160,17 @@ def test_revise_api_then_old_plan_approval_rejected_hash_mismatch(client, engine
     assert new_plan.sentinel_verified is False
     assert new_plan.revision_no == 2
     assert str(new_plan.supersedes_id) == old_plan_id
+
+    # The superseded revision must not keep a live Sentinel verdict.
+    with engine.begin() as conn:
+        old_row = conn.execute(
+            text(
+                """SELECT approval_status, sentinel_verified, sentinel_hash
+                   FROM optimization.block_plans
+                   WHERE id = :i"""
+            ),
+            {"i": old_plan_id},
+        ).one()
+    assert old_row.approval_status == "SUPERSEDED"
+    assert old_row.sentinel_verified is False
+    assert old_row.sentinel_hash is None

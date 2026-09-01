@@ -62,8 +62,14 @@ async def revise_plan(session: AsyncSession, plan: dict, actor: str,
         {"id": new_id, "h": plan["plan_horizon"], "sec": plan["section_id"], "st": start, "et": end,
          "pd": plan["primary_demand_id"], "sb": plan["is_shadow_block"], "sr": plan["solver_run_id"],
          "ch": ch, "rev": plan["revision_no"] + 1, "sup": plan["id"], "inc": plan.get("incident_id")})
+    # SAFE-002: a superseded revision must never carry a live Sentinel verdict —
+    # the old plan's hash-bound approval would otherwise be reusable.
     await session.execute(text(
-        "UPDATE optimization.block_plans SET approval_status = 'SUPERSEDED' WHERE id = :i"),
+        "UPDATE optimization.block_plans "
+        "SET approval_status = 'SUPERSEDED', "
+        "sentinel_verified = false, "
+        "sentinel_hash = NULL "
+        "WHERE id = :i"),
         {"i": plan["id"]})
     for sid in shadows:
         await session.execute(text(

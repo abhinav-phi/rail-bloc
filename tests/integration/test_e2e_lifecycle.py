@@ -177,10 +177,19 @@ def test_transmit_rejects_when_t2h_recheck_fails(client, engine):
     """R6.2 gate: a plan that conflicts with the latest train occupancy must be
     rejected at T-2h before enqueueing COA transmission."""
     srdom = auth_header(make_token("srdom_dli", "SR_DOM"))
+    st, et = datetime_now_plus(1), datetime_now_plus(2)
     with engine.begin() as conn:
+        # Conflict-free section: earlier tests (e.g. APP-001) leave AUTHORIZED_DRM
+        # rows on random sections with the same [now+1d, now+2d] window and would
+        # trip excl_active_overlap on this insert.
         sec = conn.execute(text(
-            "SELECT id, section_code FROM infrastructure.block_sections "
-            "WHERE division='DLI' ORDER BY section_code LIMIT 1")).one()
+            """SELECT s.id, s.section_code FROM infrastructure.block_sections s
+               WHERE s.division='DLI' AND s.is_active AND NOT EXISTS (
+                     SELECT 1 FROM optimization.block_plans p
+                      WHERE p.section_id = s.id
+                        AND p.approval_status IN ('AUTHORIZED_DRM','TRANSMITTED_COA','ACTIVE_GRANTED')
+                        AND tstzrange(p.start_time, p.end_time) && tstzrange(:st,:et))
+               ORDER BY s.section_code LIMIT 1"""), {"st": st, "et": et}).one()
         dem = conn.execute(text(
             """INSERT INTO demands.block_demands
                (external_source, external_ref_id, department, section_id, activity_code,
@@ -193,7 +202,6 @@ def test_transmit_rejects_when_t2h_recheck_fails(client, engine):
         run = conn.execute(text(
             "INSERT INTO optimization.solver_runs (horizon, division, status) "
             "VALUES ('WEEKLY','DLI','COMPLETED') RETURNING id")).scalar()
-        st, et = datetime_now_plus(1), datetime_now_plus(2)
         ch = content_hash(str(sec.id), st, et, str(dem), [])
         plan_id = conn.execute(text(
             """INSERT INTO optimization.block_plans

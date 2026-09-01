@@ -9,6 +9,8 @@ from packages.sentinel.validator import (
     FeedingMapEntry,
     SentinelContext,
     TrainInterval,
+    build_ack_lookup,
+    build_machine_assignments,
     validate_plan,
     validate_set,
     validate_structural_subset,
@@ -63,6 +65,16 @@ def test_gsr1_conflicting_train_fails():
     v = validate_plan(plan([work(demand())]), ctx(trains=trains))
     g = next(r for r in v.results if r.check_id == CheckID.GSR1_ABSOLUTE_BLOCK_EXCLUSION)
     assert not g.passed
+
+
+def test_ack_lookup_uses_content_hash_key_and_record_id():
+    ch = "a" * 64
+    rows = [(ch, datetime.now(UTC), datetime.now(UTC))]
+    acks = build_ack_lookup(rows)
+    assert set(acks) == {ch}
+    assert acks[ch].plan_id == ch
+    assert acks[ch].sm_acked is True
+    assert acks[ch].controller_acked is True
 
 
 def test_gsr2_pending_until_both_acks_then_pass():
@@ -140,6 +152,17 @@ def test_milp_c1_set_level_overlap_detected():
     verdicts = validate_set([a, b], ctx())
     assert all(not next(r for r in v.results if r.check_id == CheckID.MILP_C1_SECTION_EXCLUSION).passed
                for v in verdicts)
+
+
+def test_build_machine_assignments_from_candidates():
+    d1 = _rep(demand("m1", sec="S1"), machinery=["M1"], section_start_km=0.0, section_end_km=10.0)
+    d2 = _rep(demand("m2", sec="S2"), machinery=["M1"], section_start_km=100.0, section_end_km=110.0)
+    a = plan([ScheduledWork(d1, T0, T0 + timedelta(hours=2))], sec="S1")
+    b = plan([ScheduledWork(d2, T0 + timedelta(hours=2, minutes=1), T0 + timedelta(hours=4))], sec="S2")
+    assert build_machine_assignments([a, b]) == {
+        "M1": [(T0, T0 + timedelta(hours=2), 5.0),
+               (T0 + timedelta(hours=2, minutes=1), T0 + timedelta(hours=4), 105.0)]
+    }
 
 
 def test_milp_c5_machine_travel_infeasible_detected():
