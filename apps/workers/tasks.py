@@ -150,7 +150,7 @@ def refresh_weather_alerts_if_stale(conn) -> int:
     if fresh:
         return 0
     from data.generators.traffic_gen import gen_weather
-    alerts = gen_weather(now, seed=int(now.timestamp()) // 3600 % 100000)
+    alerts = gen_weather(now, seed=now.toordinal())
     n = 0
     for a in alerts:
         poly = json.dumps({"type": "Polygon", "coordinates": [a["polygon"]]})
