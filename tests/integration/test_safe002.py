@@ -86,6 +86,12 @@ def test_revise_creates_new_draft_revision_clearing_sentinel(client, engine):
             await s.commit()
             return new_id
 
+    # Cross-loop guard: the shared async engine may still hold connections
+    # bound to a previous test's event loop (conftest's client teardown
+    # disposes it, but timing can leave one behind). Dispose on a throwaway
+    # loop first so _do() gets fresh connections on its own loop.
+    from apps.api.core.database import engine as app_engine
+    asyncio.run(app_engine.dispose())
     new_id = asyncio.run(_do())
     with engine.begin() as conn:
         old = conn.execute(text(
