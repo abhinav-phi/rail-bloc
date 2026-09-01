@@ -23,7 +23,6 @@ from packages.sentinel.validator import (
     SentinelContext,
     TrainInterval,
     build_ack_lookup,
-    build_machine_assignments,
     validate_plan,
     validate_structural_subset,
 )
