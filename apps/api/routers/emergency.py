@@ -119,8 +119,14 @@ async def breakdown(body: BreakdownIn, actor: Actor = Depends(require_roles("CON
                 "JOIN infrastructure.section_feeding_map m ON m.feeding_section_id = f.id"))).fetchall():
             feeds.setdefault(str(fsid), set()).add(str(secid))
         ctx = SentinelContext(
-            train_intervals=[TrainInterval(t.section_id, t.priority_rank, t.scheduled_entry, t.scheduled_exit)
-                             for t in trains],
+            train_intervals=[TrainInterval(
+                t.section_id,
+                t.priority_rank,
+                t.scheduled_entry,
+                t.scheduled_exit,
+                source=t.source,
+                forecast_confidence=t.forecast_confidence,
+            ) for t in trains],
             feeding_map=[FeedingMapEntry(k, frozenset(v)) for k, v in feeds.items()],
             now=datetime.now(UTC),
             staleness_ttl=timedelta(hours=settings.demand_staleness_ttl_hours),
