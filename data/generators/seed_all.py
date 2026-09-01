@@ -44,17 +44,33 @@ def main(dsn: str, seed_password: str = "railbloc") -> None:
                  "cp": json.dumps(s["crossover_points"])}).scalar()
             sec_ids[s["section_code"]] = str(sid)
         feed_ids = {}
+        section_divisions = {
+            s["section_code"]: s["division"]
+            for s in sections
+        }
+
         for f in feeding:
-            row = c.execute(text("SELECT id FROM infrastructure.ohe_feeding_sections WHERE feeding_section_code=:c AND division='DLI'"),
-                            {"c": f["feeding_section_code"]}).fetchone()
+            divisions = {section_divisions[sc] for sc in f["section_codes"]}
+            if len(divisions) != 1:
+                raise ValueError(
+                    f"Feeding section {f['feeding_section_code']} spans multiple divisions: "
+                    f"{sorted(divisions)}"
+                )
+            division = divisions.pop()
+
+            row = c.execute(
+                text("SELECT id FROM infrastructure.ohe_feeding_sections "
+                     "WHERE feeding_section_code=:c AND division=:d"),
+                {"c": f["feeding_section_code"], "d": division}).fetchone()
             if row:
                 feed_ids[f["feeding_section_code"]] = str(row[0]); continue
+
             geom = f"ST_GeomFromGeoJSON('{json.dumps({'type': 'LineString', 'coordinates': f['coordinates']})}')"
             fid = c.execute(text(
                 f"""INSERT INTO infrastructure.ohe_feeding_sections
                     (feeding_section_code, division, isolator_boundary_geom, substation_ref)
-                    VALUES (:c, 'DLI', {geom}, :s) RETURNING id"""),
-                {"c": f["feeding_section_code"], "s": f["substation_ref"]}).scalar()
+                    VALUES (:c, :d, {geom}, :s) RETURNING id"""),
+                {"c": f["feeding_section_code"], "d": division, "s": f["substation_ref"]}).scalar()
             feed_ids[f["feeding_section_code"]] = str(fid)
             for sc in f["section_codes"]:
                 c.execute(text("INSERT INTO infrastructure.section_feeding_map (section_id, feeding_section_id) "
