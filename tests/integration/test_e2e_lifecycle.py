@@ -253,13 +253,14 @@ def test_emergency_drill_provisional_and_ack_gate(client, engine):
         # flaky. Clear interfering paths on this section for the drill window.
         # The seeded demand window is [now+6h, now+3d]; the provisional candidate
         # can land anywhere in it, so clear every interfering path across the
-        # whole span (plus the 15-min G&SR-5 headway margin).
+        # whole span (plus the 15-min G&SR-5 headway margin). The provisional
+        # candidate is anchored to now() and can land anywhere in the seeded
+        # demand windows, so clear every hard path on this section regardless
+        # of when the suite runs — otherwise the drill's G&SR-5 verdict depends
+        # on the wall clock.
         conn.execute(text(
-            """DELETE FROM operations.train_paths
-               WHERE section_id=:s AND scheduled_exit > :ws AND scheduled_entry < :we"""),
-            {"s": sec_row.id,
-             "ws": datetime.now(timezone.utc) + timedelta(hours=5, minutes=30),
-             "we": datetime.now(timezone.utc) + timedelta(days=3, minutes=30)})
+            "DELETE FROM operations.train_paths WHERE section_id=:s"),
+            {"s": sec_row.id})
         dem = conn.execute(text(
             """INSERT INTO demands.block_demands
                (external_source, external_ref_id, department, section_id, activity_code,
