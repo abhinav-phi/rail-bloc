@@ -96,6 +96,35 @@ def _overlaps(a_start: datetime, a_end: datetime, b_start: datetime, b_end: date
     return a_start < b_end and b_start < a_end
 
 
+def build_ack_lookup(rows: list[tuple[str | None, object, object]]) -> dict[str, AckRecord]:
+    """Normalize acknowledgment rows to the single source of truth used by the
+    validator: content_hash as the map key and the record's plan_id field.
+    """
+    acks: dict[str, AckRecord] = {}
+    for ch, sm_acked_at, controller_acked_at in rows:
+        if ch is None:
+            continue
+        ch_str = str(ch)
+        acks[ch_str] = AckRecord(ch_str, bool(sm_acked_at), bool(controller_acked_at))
+    return acks
+
+
+def build_machine_assignments(candidates: list[PlanCandidate]) -> dict[str, list[tuple[datetime, datetime, float]]]:
+    """Collapse planned work windows into the set-level machine map used by
+    MILP-C5. Each machine key points to the list of (work_start, work_end,
+    section_mid_km) tuples from every candidate plan.
+    """
+    by_machine: dict[str, list[tuple[datetime, datetime, float]]] = {}
+    for cand in candidates:
+        for w in cand.works:
+            for machine_code in list(w.demand.machinery or []):
+                km = (w.demand.section_start_km + w.demand.section_end_km) / 2.0
+                by_machine.setdefault(str(machine_code), []).append((w.start, w.end, float(km)))
+    for machine_code, windows in by_machine.items():
+        by_machine[machine_code] = sorted(windows, key=lambda item: item[0])
+    return by_machine
+
+
 def validate_plan(plan: PlanCandidate, ctx: SentinelContext) -> SentinelVerdict:
     ch = content_hash(plan.section_id, plan.start_time, plan.end_time,
                       plan.primary_demand_id, plan.shadow_demand_ids)

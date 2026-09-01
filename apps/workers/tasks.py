@@ -219,10 +219,11 @@ def run_solve(self, run_id: str):
     from packages.optima.objectives import replay_train_detention
     from packages.optima.solver import solve as optima_solve
     from packages.sentinel.validator import (
-        AckRecord,
         FeedingMapEntry,
         SentinelContext,
         TrainInterval,
+        build_ack_lookup,
+        build_machine_assignments,
         validate_set,
     )
 
@@ -307,12 +308,10 @@ def run_solve(self, run_id: str):
                 "JOIN infrastructure.section_feeding_map m ON m.feeding_section_id=f.id")).fetchall():
             feeds.setdefault(str(fsid), set()).add(str(secid))
         feeding_map = [FeedingMapEntry(k, frozenset(v)) for k, v in feeds.items()]
-        acks = {}
-        for ch_, sm, ctl in conn.execute(text(
+        acks = build_ack_lookup(conn.execute(text(
                 """SELECT p.content_hash, s.sm_acked_at, s.controller_acked_at
                    FROM operations.signal_acknowledgments s
-                   JOIN optimization.block_plans p ON p.id = s.plan_id""")).fetchall():
-            acks[str(ch_)] = AckRecord(str(ch_), bool(sm), bool(ctl))
+                   JOIN optimization.block_plans p ON p.id = s.plan_id""")).fetchall())
 
         committed_windows: dict[str, list[tuple[datetime, datetime]]] = {}
         for sid, pst, pet in conn.execute(text(
@@ -326,6 +325,7 @@ def run_solve(self, run_id: str):
                                                          forecast_confidence=t.forecast_confidence)
                                            for t in trains],
                           feeding_map=feeding_map, acks=acks, machine_infos=machines,
+                          machine_assignments={},
                           committed_windows=committed_windows,
                           now=datetime.now(UTC),
                           staleness_ttl=timedelta(hours=_env_float("DEMAND_STALENESS_TTL_HOURS", 12)),
@@ -343,6 +343,7 @@ def run_solve(self, run_id: str):
         result = optima_solve(demands_all, trains, machines, weights, params, horizon=horizon)
         if not result.candidates:
             break  # INFEASIBLE/UNKNOWN — retrying with softer soft-weights will not help
+        ctx.machine_assignments = build_machine_assignments(result.candidates)
         verdicts = validate_set(result.candidates, ctx)
         acceptable = [v for v in verdicts if v.passed or v.only_gsr2_outstanding()]
         if len(acceptable) == len(verdicts):

@@ -19,10 +19,11 @@ from packages.core.models import (
     ScheduledWork,
 )
 from packages.sentinel.validator import (
-    AckRecord,
     FeedingMapEntry,
     SentinelContext,
     TrainInterval,
+    build_ack_lookup,
+    build_machine_assignments,
     validate_plan,
     validate_structural_subset,
 )
@@ -80,19 +81,32 @@ async def _build_sentinel_context(session: AsyncSession) -> SentinelContext:
             "JOIN infrastructure.section_feeding_map m ON m.feeding_section_id = f.id"))).fetchall():
         feeds.setdefault(str(fsid), set()).add(str(sec))
     feeding = [FeedingMapEntry(k, frozenset(v)) for k, v in feeds.items()]
-    acks = {}
-    for ch, pid, sm, ctl in (await session.execute(text(
-            """SELECT p.content_hash, a.plan_id,
-                      a.sm_acked_at, a.controller_acked_at
+    acks = build_ack_lookup((await session.execute(text(
+            """SELECT p.content_hash, a.sm_acked_at, a.controller_acked_at
                FROM operations.signal_acknowledgments a
                JOIN optimization.block_plans p ON p.id = a.plan_id"""
-    ))).fetchall():
-        acks[str(ch)] = AckRecord(str(pid), bool(sm), bool(ctl))
+    ))).fetchall())
     machines = [MachineInfo(str(r[0]), str(r[1]), float(r[2]), int(r[3]))
                 for r in (await session.execute(text(
                     "SELECT machine_code, machine_class, depot_km, transit_speed_kmph FROM infrastructure.machines"))).fetchall()]
+    plan_rows = (await session.execute(text(
+        """SELECT p.id, p.start_time, p.end_time, p.section_id, s.start_km, s.end_km,
+                  d.machinery_req
+             FROM optimization.block_plans p
+             JOIN infrastructure.block_sections s ON s.id = p.section_id
+             LEFT JOIN optimization.plan_shadow_demands psd ON psd.plan_id = p.id
+             LEFT JOIN demands.block_demands d ON d.id = p.primary_demand_id OR d.id = psd.demand_id""")).mappings().all())
+    machine_assignments: dict[str, list[tuple[datetime, datetime, float]]] = {}
+    for row in plan_rows:
+        machs = row["machinery_req"] or []
+        if not machs:
+            continue
+        mid_km = (float(row["start_km"]) + float(row["end_km"])) / 2.0
+        for machine_code in map(str, machs):
+            machine_assignments.setdefault(machine_code, []).append(
+                (row["start_time"], row["end_time"], mid_km))
     return SentinelContext(train_intervals=trains, feeding_map=feeding, acks=acks,
-                           machine_infos=machines, now=now,
+                           machine_infos=machines, machine_assignments=machine_assignments, now=now,
                            staleness_ttl=timedelta(hours=settings.demand_staleness_ttl_hours),
                            committed_windows=committed_windows,
                            headway_high_priority_mins=settings.headway_high_priority_mins)
