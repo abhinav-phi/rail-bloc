@@ -6,7 +6,7 @@ from __future__ import annotations
 import json
 import time
 import uuid
-from datetime import UTC, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 
 from sqlalchemy import text
 
@@ -247,6 +247,16 @@ def test_emergency_drill_provisional_and_ack_gate(client, engine):
             """UPDATE optimization.block_plans SET approval_status='CANCELLED'
                WHERE section_id=:s AND approval_status IN ('AUTHORIZED_DRM','TRANSMITTED_COA','ACTIVE_GRANTED')"""),
             {"s": sec_row.id})
+        # The provisional plan is anchored to now (~90 min) and G&SR-5 checks
+        # headway against every hard path — whether a seeded train happens to
+        # sit there depends on the run's time of day, which made this test
+        # flaky. Clear interfering paths on this section for the drill window.
+        conn.execute(text(
+            """DELETE FROM operations.train_paths
+               WHERE section_id=:s AND scheduled_exit > :ws AND scheduled_entry < :we"""),
+            {"s": sec_row.id,
+             "ws": datetime.now(timezone.utc) - timedelta(minutes=30),
+             "we": datetime.now(timezone.utc) + timedelta(hours=3)})
         dem = conn.execute(text(
             """INSERT INTO demands.block_demands
                (external_source, external_ref_id, department, section_id, activity_code,
