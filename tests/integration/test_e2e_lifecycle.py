@@ -251,15 +251,13 @@ def test_emergency_drill_provisional_and_ack_gate(client, engine):
         # headway against every hard path — whether a seeded train happens to
         # sit there depends on the run's time of day, which made this test
         # flaky. Clear interfering paths on this section for the drill window.
-        # The seeded demand window is [now+6h, now+3d]; the provisional candidate
-        # can land anywhere in it, so clear every interfering path across the
-        # whole span (plus the 15-min G&SR-5 headway margin).
-        conn.execute(text(
-            """DELETE FROM operations.train_paths
-               WHERE section_id=:s AND scheduled_exit > :ws AND scheduled_entry < :we"""),
-            {"s": sec_row.id,
-             "ws": datetime.now(timezone.utc) + timedelta(hours=5, minutes=30),
-             "we": datetime.now(timezone.utc) + timedelta(days=3, minutes=30)})
+        # The emergency re-plan solves across the whole blast radius (incident +
+        # neighbor sections, all seeded SUBMITTED demands), so the winning
+        # candidate can be on ANY section and its G&SR-5 headway verdict
+        # depended on the run's wall clock vs the fixed daily seed schedule.
+        # Clear every train path — CI starts from a fresh database per run and
+        # no other test in this file depends on seeded trains.
+        conn.execute(text("DELETE FROM operations.train_paths"))
         dem = conn.execute(text(
             """INSERT INTO demands.block_demands
                (external_source, external_ref_id, department, section_id, activity_code,
