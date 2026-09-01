@@ -50,8 +50,8 @@ def _travel_minutes(a: DemandInput, b: DemandInput, machines: list[MachineInfo])
 
 def build_model(demands: list[DemandInput], trains: list[TrainPathInput],
                 machines: list[MachineInfo], weights: SolveWeights,
-                params: SolverParams, base,
-                shadow_weight_scale: float = 1.0) -> BuiltModel:
+                params: SolverParams, base
+                ) -> BuiltModel:
     m = cp_model.CpModel()
     built = BuiltModel(model=m, base=base)
 
@@ -158,7 +158,7 @@ def build_model(demands: list[DemandInput], trains: list[TrainPathInput],
             es = _mins(dv.demand.earliest_start, base)
             terms.append(weights.early_start * dv.demand.urgency_score * (dv.start - es))
     for (_aid, _bid), s in built.shadow.items():
-        terms.append(-weights.shadow_reward * shadow_weight_scale * s)
+        terms.append(-weights.shadow_reward * s)
     for c, w in soft_freight_terms:
         terms.append(w * c)
     m.Minimize(sum(terms))
