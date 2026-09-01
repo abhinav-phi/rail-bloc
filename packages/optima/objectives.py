@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-from packages.core.models import DemandInput, SolverParams, SolveWeights
+from packages.core.models import DemandInput, SolverParams
 
 
 def time_weighted_urgency(d: DemandInput, at: datetime) -> float:
@@ -28,12 +28,11 @@ def timedelta_h(minutes: int) -> timedelta:
 
 def replay_train_detention(blocks: list[tuple[str, datetime, datetime]],
                            trains: list[tuple[str, str, datetime, datetime, int]],
-                           weights: SolveWeights, params: SolverParams) -> dict[str, float]:
+                           params: SolverParams) -> dict[str, float]:
     """Deterministic path-replay (TechSpec §2): a train whose raw occupancy intersects a
-    block is held until the block clears + headway. Used by the benchmark harness and by
-    plan persistence (loss_pax_minutes / loss_frt_minutes); RAIL-BLOC plans replay to ~0
-    detention by construction — checked, never assumed."""
-    del weights  # weights kept in signature for benchmark parity across configurations
+    block is held until the block clears + headway. The replay metric is driven by the
+    actual occupancy conflicts and headway policy, not by objective weights; keeping the
+    weights out of the signature avoids a misleading dead parameter."""
     det_pax = det_frt = 0.0
     block_by_sec: dict[str, list[tuple[datetime, datetime]]] = {}
     for sec, bstart, bend in blocks:

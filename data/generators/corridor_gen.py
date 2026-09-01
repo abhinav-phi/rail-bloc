@@ -67,8 +67,14 @@ def corridor(seed: int = 42):
                              speed_limit_mps=speed, crossover_points=crossovers,
                              coordinates=_linestring(a, b)))
     feeding = []
+    section_divisions = {code: division for code, division, _, _, _ in SECTIONS}
     for gi, group in enumerate(FEEDING_GROUPS):
+        divisions = {section_divisions[section_code] for section_code in group}
+        if len(divisions) != 1:
+            raise ValueError(f"Feeding group {group} spans multiple divisions: {sorted(divisions)}")
+        division = next(iter(divisions))
         feeding.append(dict(feeding_section_code=f"ES-{gi + 1:03d}",
+                            division=division,
                             substation_ref=f"TSS-{group[0].split('-')[1]}",
                             section_codes=group,
                             coordinates=_linestring(STATIONS[min(gi * 2, 4)], STATIONS[min(gi * 2 + 1, 5)], 8)))

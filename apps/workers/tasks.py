@@ -406,7 +406,7 @@ def run_solve(self, run_id: str):
             blocks = [(cand.section_id, w.start, w.end) for w in cand.works]
             ttuples = [(t.section_id, t.train_number, t.scheduled_entry, t.scheduled_exit, t.priority_rank)
                        for t in trains if t.section_id == cand.section_id]
-            delays = replay_train_detention(blocks, ttuples, weights, params)
+            delays = replay_train_detention(blocks, ttuples, params)
             plan_id = str(__import__("uuid").uuid4())
             conn.execute(text(
                 """INSERT INTO optimization.block_plans

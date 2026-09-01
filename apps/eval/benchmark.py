@@ -73,7 +73,7 @@ def kpis(schedule: dict[str, int], demand_map: dict[str, DemandInput], trains, p
                        start_dt(did, start + d.min_duration_mins, demand_map)))
     ttuples = [(t.section_id, t.train_number, t.scheduled_entry, t.scheduled_exit, t.priority_rank)
                for t in trains]
-    det = replay_train_detention(blocks, ttuples, weights(), p)
+    det = replay_train_detention(blocks, ttuples, p)
     unaddr = sum(demand_map[k].urgency_score for k in demand_map if k not in schedule)
     return {"scheduled": len(schedule), "total": len(demand_map),
             "pax_delay_minutes": round(det["pax_delay_minutes"], 1),

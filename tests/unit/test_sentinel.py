@@ -139,11 +139,32 @@ def test_milp_c2_c3_c4_enclosure_and_fragmentation():
     v = validate_plan(plan([escaping]), ctx())
     c2 = next(r for r in v.results if r.check_id == CheckID.MILP_C2_MAINTENANCE_ENCLOSURE)
     c3 = next(r for r in v.results if r.check_id == CheckID.MILP_C3_SHADOW_CONTAINMENT)
-    assert not c2.passed and not c3.passed
+    assert not c2.passed and c3.passed
     short = ScheduledWork(demand(dur=120), T0 + timedelta(hours=1), T0 + timedelta(hours=1, minutes=30))
     v2 = validate_plan(plan([short]), ctx())
     c4 = next(r for r in v2.results if r.check_id == CheckID.MILP_C4_NON_FRAGMENTED_DURATION)
     assert not c4.passed
+
+
+def test_milp_c3_shadow_bundle_must_fit_primary_window():
+    primary = ScheduledWork(demand("p", dur=30), T0, T0 + timedelta(minutes=30))
+    shadow = ScheduledWork(demand("s", dept="TRD", dur=30), T0 + timedelta(minutes=20), T0 + timedelta(minutes=50))
+    p = PlanCandidate(
+        section_id="S1",
+        section_code="SC",
+        division="DLI",
+        start_time=T0,
+        end_time=T0 + timedelta(minutes=60),
+        primary_demand_id="p",
+        works=[primary, shadow],
+        is_shadow_block=True,
+        plan_horizon="WEEKLY",
+    )
+    v = validate_plan(p, ctx())
+    c2 = next(r for r in v.results if r.check_id == CheckID.MILP_C2_MAINTENANCE_ENCLOSURE)
+    c3 = next(r for r in v.results if r.check_id == CheckID.MILP_C3_SHADOW_CONTAINMENT)
+    assert c2.passed
+    assert not c3.passed
 
 
 def test_milp_c1_set_level_overlap_detected():

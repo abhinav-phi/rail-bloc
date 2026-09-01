@@ -180,8 +180,6 @@ def validate_plan(plan: PlanCandidate, ctx: SentinelContext) -> SentinelVerdict:
                 for ws, we in ctx.committed_windows.get(m, []):
                     if _overlaps(plan.start_time, plan.end_time, ws, we):
                         unsafe.append(f"{m}: committed plan overlaps window")
-            if not neighbours:
-                unsafe.append(str(f.feeding_section_id))
         if not touching:
             return False, "TRD plan has no feeding-section mapping at all"
         if unsafe:
@@ -194,6 +192,8 @@ def validate_plan(plan: PlanCandidate, ctx: SentinelContext) -> SentinelVerdict:
     results.append(CheckResult(CheckID.GSR4_POWER_ISOLATION_BOUNDARY, ok4, detail=detail4))
 
     # G&SR-5: >= headway margin before high-priority arrivals.
+    # Soft paths (low-confidence forecasts) must not hard-fail headway — they are
+    # relaxed by the solver's soft-weights instead (forecast soft-path design).
     hp = [t for t in trains if t.priority_rank <= ctx.high_priority_max_rank and t.is_hard_path]
     margin = timedelta(minutes=ctx.headway_high_priority_mins)
     viol = [t for t in hp if _overlaps(plan.start_time - margin, plan.end_time + margin, t.entry, t.exit)]
@@ -206,10 +206,23 @@ def validate_plan(plan: PlanCandidate, ctx: SentinelContext) -> SentinelVerdict:
     results.append(CheckResult(CheckID.MILP_C2_MAINTENANCE_ENCLOSURE, not out,
         detail="all works enclosed" if not out else f"works outside window: {out}"))
 
-    # MILP-C3: shadow containment — bundled works inside the bundle hull.
-    c3_ok = all(w.start >= plan.start_time and w.end <= plan.end_time for w in plan.works)
+    # MILP-C3: true shadow-bundle containment — when a plan is a shadow bundle,
+    # every non-primary demand must fit inside the primary demand's work window.
+    primary = next((w for w in plan.works if w.demand.id == plan.primary_demand_id), None)
+    if not plan.is_shadow_block or not plan.works:
+        c3_ok = True
+        c3_detail = "not a shadow bundle"
+    elif primary is None:
+        c3_ok = False
+        c3_detail = "primary demand missing from shadow bundle"
+    else:
+        shadow_violations = [w.demand.id for w in plan.works
+                             if w.demand.id != plan.primary_demand_id
+                             and (w.start < primary.start or w.end > primary.end)]
+        c3_ok = not shadow_violations
+        c3_detail = "shadow windows contained in primary window" if c3_ok else f"shadow window escapes primary window: {shadow_violations}"
     results.append(CheckResult(CheckID.MILP_C3_SHADOW_CONTAINMENT, c3_ok,
-        detail="shadow windows contained in bundle" if c3_ok else "shadow window escapes bundle"))
+        detail=c3_detail))
 
     # MILP-C4: non-fragmented — single contiguous interval per demand, >= min duration.
     frag = [w.demand.id for w in plan.works

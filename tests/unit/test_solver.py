@@ -75,11 +75,19 @@ def test_saturated_corridor_solves_without_infeasibility_and_replays_zero_pax_de
     from packages.optima.objectives import replay_train_detention
     det = replay_train_detention(blocks, [(t.section_id, t.train_number, t.scheduled_entry,
                                            t.scheduled_exit, t.priority_rank) for t in trains],
-                                 weights(), params())
+                                 params())
     assert det["pax_delay_minutes"] == 0.0
 
 
-    
+def test_feeding_groups_preserve_section_division():
+    sections, feeding, _ = corridor(seed=42)
+    by_code = {s["section_code"]: s["division"] for s in sections}
+    for feed in feeding:
+        divisions = {by_code[sc] for sc in feed["section_codes"]}
+        assert len(divisions) == 1
+        assert feed["division"] == next(iter(divisions))
+
+
 def test_machine_disjunction_uses_supplied_transit_speed():
     from packages.core.models import MachineInfo
 
