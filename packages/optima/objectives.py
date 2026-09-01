@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-from packages.core.models import DemandInput, SolverParams, SolveWeights
+from packages.core.models import DemandInput, SolverParams
 
 
 def time_weighted_urgency(d: DemandInput, at: datetime) -> float:
