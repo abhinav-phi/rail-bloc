@@ -36,16 +36,20 @@ def _mins(dt, base) -> int:
     return int((dt - base).total_seconds() // 60)
 
 
-def _travel_minutes(a: DemandInput, b: DemandInput, machines: list[MachineInfo]) -> int:
+def _travel_minutes(a, b, machine_code, machines):
     km_a = (a.section_start_km + a.section_end_km) / 2
     km_b = (b.section_start_km + b.section_end_km) / 2
+
     speed = 40
-    if a.machinery:
-        info = next((m for m in machines if m.machine_code == a.machinery[0]), None)
-        if info:
-            speed = max(info.transit_speed_kmph, 1)
-    # Round upward so CP-SAT never underestimates physical travel time.
-    return ceil(abs(km_b - km_a) / speed * 60)
+    info = next(
+        (m for m in machines if m.machine_code == machine_code),
+        None,
+    )
+
+    if info:
+        speed = max(info.transit_speed_kmph, 1)
+
+    return int(abs(km_b - km_a) / speed * 60)
 
 
 def build_model(demands: list[DemandInput], trains: list[TrainPathInput],
