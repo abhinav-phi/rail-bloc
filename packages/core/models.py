@@ -124,6 +124,7 @@ class RosterEntry:
     plan_start: datetime
     plan_end: datetime
     travel_start: datetime
+    # Machine arrival timestamp: travel ends when scheduled work begins.
     travel_end: datetime
     origin: str
 
