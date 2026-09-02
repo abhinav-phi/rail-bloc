@@ -1,12 +1,11 @@
-"""Baseline 1 (B1) — honest, tunable greedy heuristic (Rules.md §3). Doubles as the
-CP-SAT warm-start hint (TechSpec §2.5): RAIL-BLOC is therefore never worse than B1."""
+"""Baseline 1 (B1) – honest, tunable greedy heuristic (Rules.md §3). Doubles as the
+CP-SAT warm-start hint (TechSpec §2.5): RAIL-BLOC is therefore never worse than B1.
+"""
 from __future__ import annotations
 
 from datetime import datetime
 
-
-def _mins(dt: datetime, base: datetime) -> int:
-    return int((dt - base).total_seconds() // 60)
+from .formulations import _mins
 
 
 def greedy_schedule(demands, trains, params, base: datetime, urgency_weight: float = 1.0,
