@@ -49,7 +49,8 @@ def _travel_minutes(a, b, machine_code, machines):
     if info:
         speed = max(info.transit_speed_kmph, 1)
 
-    return int(abs(km_b - km_a) / speed * 60)
+    # Round upward so CP-SAT never underestimates physical travel time.
+    return ceil(abs(km_b - km_a) / speed * 60)
 
 
 def build_model(demands: list[DemandInput], trains: list[TrainPathInput],
@@ -149,7 +150,7 @@ def build_model(demands: list[DemandInput], trains: list[TrainPathInput],
                 a, b = dvs[i], dvs[j]
                 if a.interval is None or b.interval is None:
                     continue
-                T = _travel_minutes(a.demand, b.demand, machines)
+                T = _travel_minutes(a.demand, b.demand, mach, machines)
                 ab = m.NewBoolVar("")
                 m.Add(b.start >= a.start + int(a.demand.min_duration_mins) + T).OnlyEnforceIf([ab, a.present, b.present])
                 m.Add(a.start >= b.start + int(b.demand.min_duration_mins) + T).OnlyEnforceIf([ab.Not(), a.present, b.present])
