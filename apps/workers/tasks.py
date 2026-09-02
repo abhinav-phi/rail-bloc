@@ -53,8 +53,6 @@ def _parse_cron_field(field: str, lo, hi, dow=False):
         if t.startswith("*/"):
             return f"*/{int(t[2:])}"
         v = int(t)
-        if dow and v in _DOW_NAMES and not (lo <= v <= hi and v != 7):
-            pass
         if dow:
             return _DOW_NAMES[v % 7]
         return v
