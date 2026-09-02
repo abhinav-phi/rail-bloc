@@ -36,18 +36,38 @@ def _mins(dt, base) -> int:
     return int((dt - base).total_seconds() // 60)
 
 
-def _travel_minutes(a, b, machine_code, machines):
+def _travel_minutes(
+    a: DemandInput,
+    b: DemandInput,
+    machine_code: str | list[MachineInfo] | None = None,
+    machines: list[MachineInfo] | None = None,
+) -> int:
+    """Compute physical transit minutes between demands a and b.
+
+    Accepts machine_code directly, or falls back to checking a.machinery and b.machinery.
+    Also supports legacy 3-argument invocation _travel_minutes(a, b, machines).
+    """
+    if isinstance(machine_code, list) and machines is None:
+        machines = machine_code
+        machine_code = None
+
+    if not machine_code:
+        if getattr(a, "machinery", None):
+            machine_code = a.machinery[0]
+        elif getattr(b, "machinery", None):
+            machine_code = b.machinery[0]
+
     km_a = (a.section_start_km + a.section_end_km) / 2
     km_b = (b.section_start_km + b.section_end_km) / 2
 
     speed = 40
-    info = next(
-        (m for m in machines if m.machine_code == machine_code),
-        None,
-    )
-
-    if info:
-        speed = max(info.transit_speed_kmph, 1)
+    if machines and machine_code:
+        info = next(
+            (m for m in machines if m.machine_code == machine_code),
+            None,
+        )
+        if info:
+            speed = max(info.transit_speed_kmph, 1)
 
     # Round upward so CP-SAT never underestimates physical travel time.
     return ceil(abs(km_b - km_a) / speed * 60)

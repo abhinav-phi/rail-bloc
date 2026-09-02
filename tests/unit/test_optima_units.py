@@ -83,3 +83,65 @@ def test_benchmark_smoke():
     _, k1 = run_b1(dem, tr, p, urgency_weight=1.0, step_mins=15)
     for k in (k0, k1):
         assert {"scheduled", "pax_delay_minutes", "frt_delay_minutes", "unaddressed_urgency"} <= set(k)
+
+
+def test_travel_minutes_uses_specified_machine_code():
+    from packages.core.models import DemandInput as D
+    from packages.core.models import MachineInfo
+    from packages.optima.formulations import _travel_minutes
+
+    m = MachineInfo("M1", "TAMPING", 0.0, transit_speed_kmph=60)
+    d1 = D(id="d1", section_id="S", section_code="SC", division="DLI",
+           section_start_km=0.0, section_end_km=0.0, department="ENGINEERING",
+           activity_code="X", min_duration_mins=60, earliest_start=T0,
+           latest_deadline=T0 + timedelta(days=1), urgency_score=0.5, machinery=["M1"])
+    d2 = D(id="d2", section_id="S", section_code="SC", division="DLI",
+           section_start_km=60.0, section_end_km=60.0, department="ENGINEERING",
+           activity_code="X", min_duration_mins=60, earliest_start=T0,
+           latest_deadline=T0 + timedelta(days=1), urgency_score=0.5, machinery=["M1"])
+
+    # 60 km at 60 km/h = 60 minutes
+    assert _travel_minutes(d1, d2, "M1", [m]) == 60
+
+
+def test_travel_minutes_falls_back_to_b_machinery_when_a_has_no_machinery():
+    """Bug fix: if a has no machinery but b does, travel time must use b's machine speed."""
+    from packages.core.models import DemandInput as D
+    from packages.core.models import MachineInfo
+    from packages.optima.formulations import _travel_minutes
+
+    fast_machine = MachineInfo("FAST", "TAMPING", 0.0, transit_speed_kmph=120)
+    # d_no_mach has no machinery
+    d_no_mach = D(id="d1", section_id="S", section_code="SC", division="DLI",
+                  section_start_km=0.0, section_end_km=0.0, department="ENGINEERING",
+                  activity_code="X", min_duration_mins=60, earliest_start=T0,
+                  latest_deadline=T0 + timedelta(days=1), urgency_score=0.5, machinery=[])
+    # d_with_mach has FAST machine
+    d_with_mach = D(id="d2", section_id="S", section_code="SC", division="DLI",
+                    section_start_km=60.0, section_end_km=60.0, department="ENGINEERING",
+                    activity_code="X", min_duration_mins=60, earliest_start=T0,
+                    latest_deadline=T0 + timedelta(days=1), urgency_score=0.5, machinery=["FAST"])
+
+    # Both 3-arg and 4-arg calls should inspect b.machinery when a.machinery is empty
+    # 60 km at 120 km/h = 30 minutes (vs 90 minutes at default 40 km/h)
+    assert _travel_minutes(d_no_mach, d_with_mach, [fast_machine]) == 30
+    assert _travel_minutes(d_no_mach, d_with_mach, None, [fast_machine]) == 30
+
+
+def test_travel_minutes_ceil_rounding_and_default_speed():
+    from packages.core.models import DemandInput as D
+    from packages.optima.formulations import _travel_minutes
+
+    # No machinery on either -> default speed 40 km/h
+    d1 = D(id="d1", section_id="S", section_code="SC", division="DLI",
+           section_start_km=0.0, section_end_km=0.0, department="ENGINEERING",
+           activity_code="X", min_duration_mins=60, earliest_start=T0,
+           latest_deadline=T0 + timedelta(days=1), urgency_score=0.5, machinery=[])
+    # 10.1 km at 40 km/h = 15.15 minutes -> ceil = 16 minutes
+    d2 = D(id="d2", section_id="S", section_code="SC", division="DLI",
+           section_start_km=10.1, section_end_km=10.1, department="ENGINEERING",
+           activity_code="X", min_duration_mins=60, earliest_start=T0,
+           latest_deadline=T0 + timedelta(days=1), urgency_score=0.5, machinery=[])
+
+    assert _travel_minutes(d1, d2, []) == 16
+
