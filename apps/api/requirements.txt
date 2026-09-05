@@ -18,5 +18,6 @@ prometheus-client>=0.20
 pandas>=2.0
 numpy>=1.26
 xgboost>=2.0
+scikit-learn>=1.5
 pytest>=8.0
 slowapi>=0.1.10

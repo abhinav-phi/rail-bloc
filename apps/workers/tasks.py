@@ -63,23 +63,37 @@ def _parse_cron_field(field: str, lo, hi, dow=False):
     return tok(field)
 
 
-def weekly_beat_schedule() -> dict:
-    expr = os.environ.get("WEEKLY_PLAN_CRON", "0 15 * * 4").split()
+def _horizon_beat_schedule(name: str, task_path: str, env_key: str, default_cron: str) -> dict:
+    expr = os.environ.get(env_key, default_cron).split()
     if len(expr) != 5:
-        expr = "0 15 * * 4".split()
+        expr = default_cron.split()
     minute = _parse_cron_field(expr[0], 0, 59)
     hour = _parse_cron_field(expr[1], 0, 23)
     day_of_month = _parse_cron_field(expr[2], 1, 31)
     month = _parse_cron_field(expr[3], 1, 12)
     day_of_week = _parse_cron_field(expr[4], 0, 6, dow=True)
-    return {"generate-weekly-plans": {
-        "task": "apps.workers.tasks.generate_weekly_plans",
+    return {name: {
+        "task": task_path,
         "schedule": crontab(minute=minute, hour=hour, day_of_month=day_of_month,
                             month_of_year=month, day_of_week=day_of_week),
     }}
 
 
+def weekly_beat_schedule() -> dict:
+    return _horizon_beat_schedule("generate-weekly-plans",
+                                  "apps.workers.tasks.generate_weekly_plans",
+                                  "WEEKLY_PLAN_CRON", "0 15 * * 4")
+
+
+def monthly_beat_schedule() -> dict:
+    # PS multi-horizon: rolling-month (4-week) planning — 06:00 UTC on the 1st by default.
+    return _horizon_beat_schedule("generate-monthly-plans",
+                                  "apps.workers.tasks.generate_monthly_plans",
+                                  "MONTHLY_PLAN_CRON", "0 6 1 * *")
+
+
 app.conf.beat_schedule.update(weekly_beat_schedule())
+app.conf.beat_schedule.update(monthly_beat_schedule())
 app.conf.beat_schedule.update({
     "simulate-feed-ingest": {
         "task": "apps.workers.tasks.simulate_feed_ingest",
@@ -134,7 +148,7 @@ def solver_params(budget_seconds: float | None = None) -> SolverParams:
         max_retries=_env_int("MAX_SENTINEL_RETRIES", 3))
 
 
-HORIZON_DAYS = {"WEEKLY": 7, "STRATEGIC_26W": 182, "REALTIME": 2}
+HORIZON_DAYS = {"WEEKLY": 7, "MONTHLY": 28, "STRATEGIC_26W": 182, "REALTIME": 2}
 
 
 def refresh_weather_alerts_if_stale(conn) -> int:
@@ -401,6 +415,11 @@ def run_solve(self, run_id: str):
             verdict = by_hash[ch]
             passed = verdict.passed
             plan_status = "SENTINEL_PASSED" if passed else "DRAFT"  # DRAFT = awaiting G&SR-2 acks
+            # Demand-level status lives in a DIFFERENT enum than plan approval_status:
+            # block_demands.status has no DRAFT — the FSM state for "scheduled but
+            # awaiting approvals" is SCHEDULED_DRAFT (same state plan_lifecycle uses
+            # for displaced revisions). Writing plan approval_status here caused
+            # CheckViolation + a stuck RUNNING solve for every G&SR-2 plan (#102).
             blocks = [(cand.section_id, w.start, w.end) for w in cand.works]
             ttuples = [(t.section_id, t.train_number, t.scheduled_entry, t.scheduled_exit, t.priority_rank)
                        for t in trains if t.section_id == cand.section_id]
@@ -426,9 +445,10 @@ def run_solve(self, run_id: str):
                     "ON CONFLICT DO NOTHING"), {"p": plan_id, "d": did})
             involved = cand.shadow_demand_ids + [str(cand.primary_demand_id)]
             scheduled_ids.update(involved)
+            demand_status = "SENTINEL_PASSED" if passed else "SCHEDULED_DRAFT"
             conn.execute(text(
                 "UPDATE demands.block_demands SET status=:ds WHERE id = ANY(CAST(:ids AS uuid[]))"),
-                {"ds": plan_status, "ids": involved})
+                {"ds": demand_status, "ids": involved})
             # DB-005: per-plan machine roster persistence via the VRP sub-model stage.
             from packages.optima.vrp import build_roster
             roster, idle, violations = build_roster(cand.works, machines)
@@ -469,9 +489,10 @@ def run_solve(self, run_id: str):
     return stats
 
 
-@app.task(name="apps.workers.tasks.generate_weekly_plans")
-def generate_weekly_plans():
-    """FR-013 tactical generator — fires on WEEKLY_PLAN_CRON per division."""
+def _queue_division_solves(horizon: str, cron_env_key: str) -> dict:
+    """One solver_runs row per active division for the given horizon, then dispatch.
+    Shared by the weekly (FR-013) and monthly (PS multi-horizon) beat generators —
+    run_solve is horizon-agnostic via HORIZON_DAYS."""
     eng = _eng()
     with eng.begin() as conn:
         divisions = [r[0] for r in conn.execute(text(
@@ -480,17 +501,30 @@ def generate_weekly_plans():
         for div in divisions:
             rid = str(__import__("uuid").uuid4())
             conn.execute(text(
-                "INSERT INTO optimization.solver_runs (id, horizon, division, status) VALUES (:i,'WEEKLY',:d,'QUEUED')"),
-                {"i": rid, "d": div})
+                "INSERT INTO optimization.solver_runs (id, horizon, division, status) "
+                "VALUES (:i,:h,:d,'QUEUED')"),
+                {"i": rid, "h": horizon, "d": div})
             conn.execute(text(
                 "SELECT audit.append_event(:t, :a, CAST(:p AS jsonb))"),
-                {"t": "WEEKLY_PLAN_TRIGGERED", "a": "beat",
-                 "p": json.dumps({"run_id": rid, "division": div,
-                                  "cron": os.environ.get("WEEKLY_PLAN_CRON")})})
+                {"t": f"{horizon}_PLAN_TRIGGERED", "a": "beat",
+                 "p": json.dumps({"run_id": rid, "division": div, "horizon": horizon,
+                                  "cron": os.environ.get(cron_env_key)})})
             run_ids.append(rid)
     for rid in run_ids:
         run_solve.delay(rid)
-    return {"queued": run_ids}
+    return {"horizon": horizon, "queued": run_ids}
+
+
+@app.task(name="apps.workers.tasks.generate_weekly_plans")
+def generate_weekly_plans():
+    """FR-013 tactical generator — fires on WEEKLY_PLAN_CRON per division."""
+    return _queue_division_solves("WEEKLY", "WEEKLY_PLAN_CRON")
+
+
+@app.task(name="apps.workers.tasks.generate_monthly_plans")
+def generate_monthly_plans():
+    """PS multi-horizon monthly generator — rolling 4-week window, MONTHLY_PLAN_CRON."""
+    return _queue_division_solves("MONTHLY", "MONTHLY_PLAN_CRON")
 
 
 @app.task(name="apps.workers.tasks.simulate_feed_ingest")

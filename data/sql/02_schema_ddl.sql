@@ -145,7 +145,7 @@ CREATE INDEX idx_weather_alerts_geom ON operations.weather_alerts USING GIST (im
 -- RES-04: solver run registry (block_plans.solver_run_id now references something real)
 CREATE TABLE optimization.solver_runs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    horizon VARCHAR(16) NOT NULL CHECK (horizon IN ('STRATEGIC_26W','WEEKLY','REALTIME')),
+    horizon VARCHAR(16) NOT NULL CHECK (horizon IN ('STRATEGIC_26W','MONTHLY','WEEKLY','REALTIME')),
     division VARCHAR(16) NOT NULL,
     status VARCHAR(16) NOT NULL DEFAULT 'QUEUED' CHECK (status IN ('QUEUED','RUNNING','COMPLETED','FAILED','CONFLICT')),
     attempt SMALLINT NOT NULL DEFAULT 1,
@@ -156,7 +156,7 @@ CREATE TABLE optimization.solver_runs (
 
 CREATE TABLE optimization.block_plans (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    plan_horizon VARCHAR(16) NOT NULL CHECK (plan_horizon IN ('STRATEGIC_26W','WEEKLY','REALTIME')),
+    plan_horizon VARCHAR(16) NOT NULL CHECK (plan_horizon IN ('STRATEGIC_26W','MONTHLY','WEEKLY','REALTIME')),
     section_id UUID NOT NULL REFERENCES infrastructure.block_sections(id) ON DELETE RESTRICT,
     start_time TIMESTAMPTZ NOT NULL,
     end_time TIMESTAMPTZ NOT NULL,

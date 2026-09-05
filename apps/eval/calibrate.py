@@ -1,8 +1,9 @@
 """TASK-055 — ML calibration & sensitivity (ML-001, Rules.md §2).
 
 Held-out split evaluation of the PyTorch urgency estimator with a reliability
-diagram (text form), plus the ±20% Pi perturbation analysis that must accompany
-every ML-derived figure (Model Calibration Transparency rule).
+diagram (text form) cross-checked against scikit-learn's calibration_curve and
+Brier score, plus the ±20% Pi perturbation analysis that must accompany every
+ML-derived figure (Model Calibration Transparency rule).
 
 Usage:  python -m apps.eval.calibrate
 """
@@ -10,6 +11,8 @@ from __future__ import annotations
 
 import numpy as np
 import torch
+from sklearn.metrics import brier_score_loss
+from sklearn.calibration import calibration_curve
 
 from packages.ml.degradation_model import UrgencyNet, make_dataset, physical_urgency, train
 
@@ -34,6 +37,17 @@ def reliability(model: UrgencyNet, n: int = 1200, seed: int = 777, bins: int = 8
         ece += abs(pm - tm) * m.sum() / n
         print(f"{edges[i]:.2f}-{edges[i+1]:.2f} {pm:10.3f} {tm:10.3f} {int(m.sum()):6d}")
     print(f"Expected Calibration Error (ECE): {ece:.4f}")
+    # scikit-learn cross-check (PS 027 recommended-stack item): urgency is a
+    # continuous target, so the sklearn readout is thresholded at the 0.5 action
+    # boundary — "does predicted urgency indicate true high-urgency (>0.5)?" —
+    # scored by an independent, standard implementation.
+    y_bin = (y > 0.5).astype(int)
+    sk_frac, sk_mean = calibration_curve(y_bin, pred, n_bins=bins, strategy="quantile")
+    brier = brier_score_loss(y_bin, pred)
+    print("scikit-learn calibration_curve (quantile bins, target = true urgency > 0.5):")
+    for pf, mf in zip(sk_frac, sk_mean):
+        print(f"  pred_mean {mf:.3f}  true_high_fraction {pf:.3f}")
+    print(f"scikit-learn Brier score (threshold 0.5): {brier:.4f}")
 
 
 def sensitivity(model: UrgencyNet) -> None:

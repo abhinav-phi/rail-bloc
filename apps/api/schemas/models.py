@@ -36,7 +36,7 @@ class DemandIngestIn(BaseModel):
 
 
 class SolveIn(BaseModel):
-    horizon: Literal["WEEKLY", "STRATEGIC_26W", "REALTIME"] = "WEEKLY"
+    horizon: Literal["WEEKLY", "MONTHLY", "STRATEGIC_26W", "REALTIME"] = "WEEKLY"
     division: str
 
 

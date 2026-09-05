@@ -166,6 +166,10 @@ CP-SAT is warm-started using Baseline 1's ($B_1$) greedy heuristic solution as a
 | Layer | Selected Technology | Version | Rationale & Trade-off Justification |
 |---|---|---|---|
 | Frontend Core | Next.js 13 (app router, static export) + TypeScript | Next 13.5 / React 18.2 | Type safety, file-based routing, framework build optimizations (replaced the original Vite SPA — see Tracker TASK-026 supersession). |
+| Spatial Imagery Catalog | Not applicable (STAC) | — | PS 027 lists STAC "where applicable" — no satellite-imagery catalog is in scope; GeoJSON is the spatial interchange format for every map layer (see Schema.md geometry columns). |
+| Auth Protocol | JWT + role/division RBAC (PS: "OAuth2 / RBAC") | PyJWT 2.x |
+| Alternative Optimizer | Not used (Pyomo) | — | PS 027 lists Pyomo under Optimization. Pyomo is a modeling layer, not a solver; the interval problem (OptionalIntervalVar, NoOverlap, horizon-agnostic windows) is CP-SAT-native, so a Pyomo/ABC-model wrapper would add translation risk without solver benefit. Revisit only if a MILP solver swap is required. |
+| COA Integration | Outbox + acknowledgment-gated transmission (simulated COA) | — | PS background: COA manages corridor availability. Prototype scope: corridor data ingested via infrastructure/WTT feeds; COA integration completed on the transmission side (outbox, TRANSMITTED_COA only on ack). A COA corridor-availability read-API is the documented production extension. | Stateless bearer auth with jti revocation; per PS either OAuth2 *or* RBAC is acceptable — IR SSO (OAuth2) remains the documented production upgrade path. |
 | Geospatial Map | MapLibre GL JS | v6.6+ | Open-source, GPU-accelerated vector rendering of large track graphs. |
 | Backend Framework | FastAPI (Python) | v0.111+ | Asynchronous I/O, native Pydantic validation, OpenAPI compliance. |
 | Optimization Core | Google OR-Tools (CP-SAT) | v9.9+ | High-performance interval/constraint scheduling — see §2 reformulation. |

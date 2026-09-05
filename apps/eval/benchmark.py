@@ -25,10 +25,11 @@ TUNING_SEED_BASE = 900   # held-out tuning split (Rules.md §3 protocol)
 EVAL_SEED_BASE = 100     # evaluation split
 
 
-def build_scenario(seed: int):
+def build_scenario(seed: int, density: float = 1.0):
     sections, _, _ = corridor(seed=42)
     week_start = datetime(2026, 1, 5, tzinfo=UTC)
-    raw = gen_demands(sections, week_start, seed=seed, n_eng=24, n_trd=14, n_snt=14)
+    raw = gen_demands(sections, week_start, seed=seed,
+                      n_eng=int(24 * density), n_trd=int(14 * density), n_snt=int(14 * density))
     # Timetable overlaps the demand week so path-replay has real interactions.
     day_start = week_start
     tt = gen_timetable(sections, day_start, seed=seed + 500)
@@ -75,10 +76,40 @@ def kpis(schedule: dict[str, int], demand_map: dict[str, DemandInput], trains, p
                for t in trains]
     det = replay_train_detention(blocks, ttuples, p)
     unaddr = sum(demand_map[k].urgency_score for k in demand_map if k not in schedule)
+
+    # PS-language KPIs (PS 027: "Maximize Asset Availability"):
+    # asset_availability_pct = unblocked section-minutes / total section-minutes over
+    # the scenario demand window — identical formula for every arm.
+    base = min(d.earliest_start for d in demand_map.values())
+    horizon_mins = max((d.latest_deadline - base).total_seconds() for d in demand_map.values()) / 60
+    n_sections = len({d.section_id for d in demand_map.values()})
+    blocked = sum(d.min_duration_mins for k, d in demand_map.items() if k in schedule)
+    capacity = n_sections * horizon_mins
+    availability = 100.0 * (1.0 - blocked / capacity) if capacity else 0.0
+
+    # shadow_ratio_pct = scheduled demands co-scheduled (overlapping) with a
+    # different-department demand on the same section — the coordination win
+    # B0/B1 structurally cannot capture.
+    by_sec: dict[str, list[tuple[int, int, str, str]]] = {}
+    for did, s in schedule.items():
+        d = demand_map[did]
+        by_sec.setdefault(d.section_id, []).append((s, s + d.min_duration_mins, d.department, did))
+    bundled: set[str] = set()
+    for items in by_sec.values():
+        items.sort()
+        for i, (s0, e0, dep0, id0) in enumerate(items):
+            for (s1, e1, dep1, id1) in items[i + 1:]:
+                if s0 < e1 and s1 < e0 and dep0 != dep1:
+                    bundled.add(id0); bundled.add(id1)
+    shadow_ratio = 100.0 * len(bundled) / len(schedule) if schedule else 0.0
+
     return {"scheduled": len(schedule), "total": len(demand_map),
             "pax_delay_minutes": round(det["pax_delay_minutes"], 1),
             "frt_delay_minutes": round(det["frt_delay_minutes"], 1),
-            "unaddressed_urgency": round(unaddr, 2)}
+            "unaddressed_urgency": round(unaddr, 2),
+            "asset_availability_pct": round(availability, 2),
+            "bundled_demands": len(bundled),
+            "shadow_ratio_pct": round(shadow_ratio, 1)}
 
 
 def start_dt(did: str, mins: int, demand_map) -> datetime:
@@ -143,12 +174,27 @@ def run_railbloc(demands, trains, machines, p: SolverParams) -> tuple[dict[str, 
     k["cp_sat_status"] = result.status
     k["objective"] = round(result.objective, 1)
     k["bound"] = round(result.best_bound, 1)
+    # Machine utilization (RAIL-BLOC only — B0/B1 assign no machines): busy
+    # machine-minutes / (machines x horizon), same grouping the VRP roster uses.
+    works = [w for c in result.candidates for w in c.works]
+    busy = sum((w.end - w.start).total_seconds() / 60 for w in works for _ in w.demand.machinery)
+    if works:
+        base = min(d.earliest_start for d in demands)
+        hm = max((d.latest_deadline - base).total_seconds() for d in demands) / 60
+        k["machine_utilization_pct"] = round(100.0 * busy / (len(machines) * hm), 2) if hm else 0.0
+    else:
+        k["machine_utilization_pct"] = 0.0
     return schedule, k
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--weeks", type=int, default=1, help="scenario weeks per split cell")
+    ap.add_argument("--density", type=float, default=1.0,
+                    help="demand-density multiplier for an extra dense evaluation cell "
+                         "(the win-cell where greedy avoidance becomes measurable)")
+    ap.add_argument("--ablations", action="store_true",
+                    help="run ablations A1 (shadow_reward=0) and A3 (uniform urgency) on the dense cell")
     args = ap.parse_args()
 
     print("== RAIL-BLOC Benchmark (simulated scenarios, fixed seeds — BENCH-001/Rules §3) ==")
@@ -178,18 +224,64 @@ def main() -> None:
         _, kr = run_railbloc(dem, tr, mach, p)
         rows["B0"].append(k0); rows["B1"].append(k1); rows["RAIL-BLOC"].append(kr)
         print(f"\n[scenario seed={seed}]")
+        cols = ("scheduled", "pax_delay_minutes", "frt_delay_minutes",
+                "unaddressed_urgency", "asset_availability_pct",
+                "bundled_demands", "shadow_ratio_pct")
         for name, k in (("B0", k0), ("B1", k1), ("RAIL-BLOC", kr)):
-            print(f"  {name:10s} {json.dumps({x: k[x] for x in ('scheduled', 'pax_delay_minutes', 'frt_delay_minutes', 'unaddressed_urgency')})}")
+            print(f"  {name:10s} {json.dumps({x: k.get(x) for x in cols})}")
+        if "machine_utilization_pct" in kr:
+            print(f"  {'RAIL-BLOC':10s} machine_utilization_pct = {kr['machine_utilization_pct']} (baselines: N/A — no machine assignment)")
 
     def avg(name):
         ks = rows[name]
         n = max(len(ks), 1)
+        def m(key, nd=1):
+            vals = [k[key] for k in ks if key in k]
+            return round(sum(vals) / len(vals), nd) if vals else None
         return {
             "scheduled": round(sum(k["scheduled"] for k in ks) / n, 1),
             "pax_delay_minutes": round(sum(k["pax_delay_minutes"] for k in ks) / n, 1),
             "frt_delay_minutes": round(sum(k["frt_delay_minutes"] for k in ks) / n, 1),
             "unaddressed_urgency": round(sum(k["unaddressed_urgency"] for k in ks) / n, 3),
+            "asset_availability_pct": m("asset_availability_pct", 2),
+            "bundled_demands": m("bundled_demands"),
+            "shadow_ratio_pct": m("shadow_ratio_pct"),
+            "machine_utilization_pct": m("machine_utilization_pct", 2),
         }
+
+    if args.density != 1.0:
+        seed = EVAL_SEED_BASE
+        dem, tr, mach = build_scenario(seed, density=args.density)
+        p = params()
+        _, k0 = run_b0(dem, tr, p)
+        _, k1 = run_b1(dem, tr, p, best[0]["urgency_weight"], best[0]["step_mins"])
+        _, kr = run_railbloc(dem, tr, mach, p)
+        print(f"\n== DENSE CELL (seed={seed}, density={args.density}x — the win-cell) ==")
+        dcols = ("scheduled", "total", "unaddressed_urgency", "asset_availability_pct",
+                 "shadow_ratio_pct", "frt_delay_minutes")
+        for name, k in (("B0", k0), ("B1", k1), ("RAIL-BLOC", kr)):
+            print(f"  {name:10s} {json.dumps({x: k.get(x) for x in dcols})}")
+        if args.ablations:
+            from dataclasses import replace as dc_replace
+
+            from packages.optima.solver import solve as optima_solve
+            w_a1 = dc_replace(weights(), shadow_reward=0.0)
+            r_a1 = optima_solve(dem, tr, mach, w_a1, p, horizon="WEEKLY")
+            base = min(d.earliest_start for d in dem)
+            sch_a1 = {w.demand.id: int((w.start - base).total_seconds() // 60)
+                      for c in r_a1.candidates for w in c.works}
+            k_a1 = kpis(sch_a1, {d.id: d for d in dem}, tr, p)
+            k_a1["cp_sat_status"] = r_a1.status
+            urg_mean = sum(d.urgency_score for d in dem) / len(dem)
+            dem_a3 = [d.__class__(**{**d.__dict__, "urgency_score": urg_mean}) for d in dem]
+            r_a3 = optima_solve(dem_a3, tr, mach, weights(), p, horizon="WEEKLY")
+            sch_a3 = {w.demand.id: int((w.start - base).total_seconds() // 60)
+                      for c in r_a3.candidates for w in c.works}
+            k_a3 = kpis(sch_a3, {d.id: d for d in dem}, tr, p)
+            k_a3["cp_sat_status"] = r_a3.status
+            print("  -- ablations on the dense cell --")
+            print(f"  {'A1 shadow=0':12s} {json.dumps({x: k_a1.get(x) for x in ('scheduled', 'unaddressed_urgency', 'shadow_ratio_pct')})}")
+            print(f"  {'A3 uniform-U':12s} {json.dumps({x: k_a3.get(x) for x in ('scheduled', 'unaddressed_urgency')})}")
 
     summary = {name: avg(name) for name in rows}
     print("\n== MEAN KPI SUMMARY (measured on this run — cite this output, not assumptions) ==")
