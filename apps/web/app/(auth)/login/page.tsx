@@ -40,6 +40,14 @@ const DEMO_PERSONAS = [
     username: 'engineer_dli',
   },
   {
+    id: 'station-master',
+    name: 'H. Khan',
+    role: 'Station Master',
+    division: 'DLI Division',
+    badge: 'SM/DLI',
+    username: 'sm_dli',
+  },
+  {
     id: 'auditor',
     name: 'V. Krishnan',
     role: 'Vigilance Auditor',
@@ -63,20 +71,26 @@ const DEMO_PASSWORD = 'railbloc';
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
-  const { login, loginAsDemo } = usePersona();
+  const { login } = usePersona();
   const router = useRouter();
+
+  const [error, setError] = useState<string | null>(null);
 
   const handleLogin = async (persona: (typeof DEMO_PERSONAS)[0]) => {
     setIsLoading(true);
+    setError(null);
     try {
-      // Real API login first: mints a JWT so SSE stream tickets and every
-      // authorized call work. Visual-only personas left the live hook permanently
-      // STALE (found in the TASK-061 runtime smoke, 2026-09-05).
+      // Real API login — mints a JWT so SSE stream tickets and every
+      // authorized call work. NO fake logged-in state: if the backend is
+      // unreachable we show an error instead of pretending (Rules §5).
       await login({ username: persona.username, password: DEMO_PASSWORD });
+      router.push('/dashboard');
     } catch {
-      loginAsDemo(persona);
+      setError(
+        'Backend unreachable — is the Docker stack running? (docker compose up --build)',
+      );
+      setIsLoading(false);
     }
-    router.push('/dashboard');
   };
 
   return (
@@ -88,6 +102,15 @@ export default function LoginPage() {
       <p className="text-muted-foreground text-center mb-8 text-sm">
         AI-Powered Block Planning System — Select a persona to begin.
       </p>
+
+      {error ? (
+        <div
+          role="alert"
+          className="mb-4 rounded-lg border border-[#f5c2ca] bg-[#fdecef] px-3 py-2 text-xs text-[#d6293e] dark:border-[#7f1d1d] dark:bg-[#450a0a]/40 dark:text-[#f87171]"
+        >
+          {error}
+        </div>
+      ) : null}
 
       <div className="flex flex-col gap-3">
         {DEMO_PERSONAS.map((persona) => (

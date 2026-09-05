@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { usePersona } from '@/context/persona-context';
+import { AtlasWeather } from '@/components/dashboard/atlas-weather';
 import { AlertTriangle, CheckCircle2, Radio } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -44,6 +45,7 @@ export function AtlasDisruptions() {
   const { persona } = usePersona();
   const [sections, setSections] = useState<SectionRow[] | null>(null);
   const [incidents, setIncidents] = useState<Incident[] | null>(null);
+  const [ackBusy, setAckBusy] = useState<string | null>(null);
   const [sectionId, setSectionId] = useState<string>('');
   const [type, setType] =
     useState<(typeof BREAKDOWN_TYPES)[number]>('TRACK_FRACTURE');
@@ -56,6 +58,30 @@ export function AtlasDisruptions() {
 
   const isController =
     persona?.role === 'CHIEF_CONTROLLER' || persona?.role === 'ADMIN';
+
+  const ackIncident = useCallback(async (incidentId: string) => {
+    setAckBusy(incidentId);
+    setError(null);
+    try {
+      await api.post(
+        `/api/v1/emergency/incidents/${incidentId}/acknowledge`,
+        {},
+      );
+      setIncidents(
+        (prev) =>
+          prev?.map((i) =>
+            i.id === incidentId ? { ...i, controller_acknowledged: true } : i,
+          ) ?? prev,
+      );
+      setResult(
+        'Incident acknowledged — the PROVISIONAL plan is now authoritative and can be transmitted.',
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setAckBusy(null);
+    }
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -313,11 +339,34 @@ export function AtlasDisruptions() {
                     {i.reported_by}
                     {i.coalesced_into_incident_id ? ' · coalesced' : ''}
                   </p>
+                  {!i.controller_acknowledged ? (
+                    <button
+                      type="button"
+                      data-action="true"
+                      disabled={!isController || ackBusy === i.id}
+                      onClick={() => void ackIncident(i.id)}
+                      title={
+                        isController
+                          ? 'Record Controller acknowledgment — PROVISIONAL becomes authoritative'
+                          : 'CONTROLLER role required (demo: A. P. Singh)'
+                      }
+                      className="atlas-btn-primary atlas-btn mt-2 text-xs"
+                    >
+                      {ackBusy === i.id
+                        ? 'Acknowledging…'
+                        : 'Acknowledge Incident — Controller'}
+                    </button>
+                  ) : null}
                 </li>
               ))}
             </ul>
           )}
         </div>
+      </div>
+
+      {/* Weather — G&SR-3 fail-closed storytelling (audit RANK 9) */}
+      <div className="mt-5">
+        <AtlasWeather />
       </div>
     </div>
   );

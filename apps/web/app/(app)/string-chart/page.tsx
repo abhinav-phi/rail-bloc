@@ -2,7 +2,7 @@ import React from 'react';
 import { SimulatedDataWatermark } from '@/components/shell/simulated-data-watermark';
 import { SectionDateSelector } from '@/components/string-chart/section-date-selector';
 import { StringChartLegend } from '@/components/string-chart/string-chart-legend';
-import { TimeDistanceStringChart } from '@/components/visualizations/time-distance-string-chart';
+import { AtlasStringChart } from '@/components/visualizations/atlas-string-chart';
 
 export default function StringChartPage() {
   return (
@@ -17,7 +17,7 @@ export default function StringChartPage() {
 
       <SectionDateSelector />
       <StringChartLegend />
-      <TimeDistanceStringChart />
+      <AtlasStringChart />
     </div>
   );
 }

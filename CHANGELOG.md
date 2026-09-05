@@ -54,6 +54,20 @@ Full word-by-word code audit (38 findings) plus a second security/observability/
 - **S4 — token exposure reduced**: `jti`-based revocation, no more JWT-in-URL for SSE (one-time tickets), Redis-backed deny list surviving restarts. (#48)
 - **S5 — Redis authenticated** and every long-running service restarts on crash. (#49)
 
+### Added (Missing-buttons batch — 2026-09-06)
+
+- **G&SR-2 dual-ack UI**: Pending-Ack section + Station Master persona (7th) + ack buttons — live DRAFT→SENTINEL_PASSED flip verified (both_acknowledged=true).
+- **SAFE-002 flow UI**: Modify Parameters dialog → revise → stale-approve → **409 HASH_MISMATCH** banner + Approve disabled (verified live, rev 1→2).
+- **Full lifecycle action bar**: Approve → Authorize & Seal → Transmit to COA (T−2h re-check, outbox) → Activate → Certify Track Fitness → Seal & Archive — all roles gated; **live E2E reached ARCHIVED_SEALED**.
+- **Authorized watchlist**: TRANSMITTED_COA badges flip live via SSE (BLOCK_TRANSMITTED).
+- **Emergency ack button** on incidents (CONTROLLER role) — closes the ADR-006 loop.
+- **SIMULATED DATA watermark** global on authenticated pages (Rules §5, non-dismissible).
+- **Corridor Map real wiring**: /plans/geo GeoJSON layers (sections red-when-blocked, block overlays, dashed OHE boundaries) + toggles + click popups — demo tiles removed.
+- **String Chart real wiring**: /plans/timetable (real train numbers/types) + plan blocks with striped shadow bundles — demo trains removed.
+- **Weather fail-closed card**: alerts with severity chips + deferred work types + amber STALE banner (G&SR-3 visual).
+- **Auth guard**: unauthenticated /dashboard redirects to /login; backend-down login shows an error instead of a fake logged-in state.
+- **Polish**: idempotency keys auto-generated (never user-visible), hash click-to-copy, full-name restore, role unions extended (SM/CONTROLLER/AUDITOR/ENGINEER/ADMIN).
+
 ### Added (Atlas redesign port — 2026-09-05, late)
 
 - **Team design share ported as the Atlas design system** into the Next.js app: palette/tokens + component primitives (`apps/web/app/atlas.css`), restyled shell (sidebar with LIVE/STALE stream pill, header status chips), 6 login personas.

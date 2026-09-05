@@ -250,7 +250,7 @@ Reading, honestly: passenger delay is provably zero wherever hard NoOverlap hold
 | 2 | Optima + Sentinel (reformulated, 10 checks, warm-start) | ✅ done, verified |
 | 3 | Plan Lifecycle + Approval services | ✅ done, verified |
 | 4 | Emergency + COA outbox | ✅ done, verified (API-level) |
-| 5 | Atlas frontend | ✅ **team design system ported** (tokens/shell/pages) on live data — Monthly selector UI, 10-check Sentinel card, ledger verdict view; all pages browser-smoked |
+| 5 | Atlas frontend | ✅ **full backend surface in UI** (G&SR-2 dual-ack, revise/409, lifecycle actions, emergency ack, real map/chart, weather fail-closed) — team design + live data, every flow browser-verified |
 | 6 | ML + benchmark/calibration | ✅ harness + measured cell; ablations open |
 > **Freight number, explained (read this before judging G2):** RAIL-BLOC deliberately accepts expected-delay on low-confidence forecast freight — Rules §2 *forbids hard-blocking forecast freight* (fail-closed semantics). B1's 0.0 freight minutes come from avoidance behaviour, not coordination. The 2.5× dense cell is published as measured: inside the ≤35 s NFR-001 budget the solver went budget-bound (126/130, unaddressed 0.93) while B1 stayed complete — the honest differentiation of RAIL-BLOC is the formal 10-check Sentinel verification, VRP machine rostering with real transit times (11.7% measured utilization), shadow-bundle infrastructure, and reproducible seeds — not KPI dominance on a single synthetic cell. Dense win-cells at longer budgets are queued.
 

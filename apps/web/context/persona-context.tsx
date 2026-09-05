@@ -30,15 +30,30 @@ function toPersonaRole(role: string): PersonaRole {
     SR_DOM: 'SR_DOM',
     'Sr. DOM': 'SR_DOM',
     ADMIN: 'ADMIN',
+    STATION_MASTER: 'STATION_MASTER',
+    'Station Master': 'STATION_MASTER',
     DRM: 'DRM',
     CHIEF_CONTROLLER: 'CHIEF_CONTROLLER',
     'Chief Controller': 'CHIEF_CONTROLLER',
+    CONTROLLER: 'CONTROLLER',
+    AUDITOR: 'AUDITOR',
     SR_DEN: 'SR_DEN',
+    ENGINEER: 'ENGINEER',
     SSE: 'SSE',
     'SSE Engineer': 'SSE',
   };
   return map[role] ?? 'SR_DOM';
 }
+
+const DISPLAY_NAMES: Record<string, string> = {
+  admin: 'System Administrator',
+  srdom_dli: 'R. K. Sharma',
+  drm_dli: 'Sunita Verma',
+  controller_dli: 'A. P. Singh',
+  engineer_dli: 'Meena Nair',
+  sm_dli: 'H. Khan',
+  auditor: 'V. Krishnan',
+};
 
 export function PersonaProvider({ children }: { children: React.ReactNode }) {
   const [persona, setPersona] = useState<Persona | null>(null);
@@ -51,7 +66,7 @@ export function PersonaProvider({ children }: { children: React.ReactNode }) {
       if (me) {
         setPersona({
           id: me.username,
-          name: me.username,
+          name: DISPLAY_NAMES[me.username] ?? me.username,
           role: toPersonaRole(me.role),
           division: me.division,
           divisionId: me.division,
@@ -71,7 +86,7 @@ export function PersonaProvider({ children }: { children: React.ReactNode }) {
     if (me) {
       setPersona({
         id: me.username,
-        name: me.username,
+        name: DISPLAY_NAMES[me.username] ?? me.username,
         role: toPersonaRole(me.role),
         division: me.division,
         divisionId: me.division,
