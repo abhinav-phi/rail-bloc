@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/api';
 import { usePersona } from '@/context/persona-context';
-import { ShieldCheck, X } from 'lucide-react';
+import { PenLine, ShieldCheck, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /* ── API shapes (verified against live backend 2026-09-05) ──────────── */
@@ -24,6 +24,7 @@ interface PlanRow {
   primary_demand_id: string;
   decided_by?: string | null;
   authorized_by?: string | null;
+  supersedes_id?: string | null;
 }
 
 interface SentinelReport {
@@ -48,6 +49,22 @@ const THE_TEN: Record<string, string> = {
 
 const ACTIONABLE = new Set(['SENTINEL_PASSED', 'APPROVED_SR_DOM']);
 
+/** The ONE idempotency-key factory (trap #1): callers never type a key. */
+const idemKey = (scope: string): string => `${scope}-${crypto.randomUUID()}`;
+
+/** A 409 is the SAFE-002 story ONLY when the code is HASH_MISMATCH (trap #3);
+ *  other 409s (solve locks, illegal transitions) render as generic errors. */
+function parseError(e: unknown): { message: string; hashMismatch: boolean } {
+  const raw = e instanceof Error ? e.message : String(e);
+  const hashMismatch = /HASH_MISMATCH|hash mismatch|superseded/i.test(raw);
+  return {
+    message: hashMismatch
+      ? 'Plan changed — reload to review the latest revision (SAFE-002: approve is disabled on stale content).'
+      : raw,
+    hashMismatch,
+  };
+}
+
 function fmtPlanTime(iso: string): string {
   return new Date(iso).toLocaleString('en-IN', {
     day: '2-digit',
@@ -63,6 +80,12 @@ function fmtMinutes(m: number): string {
   return m >= 60
     ? `${Math.floor(m / 60)}h ${Math.round(m % 60)}m`
     : `${Math.round(m)} min`;
+}
+
+function toLocalInput(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 /* ── Sentinel 10-check card (their design idiom, our live report) ───── */
@@ -158,26 +181,27 @@ function SignDialog(props: {
   action: 'APPROVE' | 'AUTHORIZE';
   onClose: () => void;
   onDone: () => void;
+  onError: (msg: string, hashMismatch: boolean) => void;
 }) {
-  const { plan, action, onClose, onDone } = props;
+  const { plan, action, onClose, onDone, onError } = props;
   const [signature, setSignature] = useState('');
-  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const isDrm = action === 'AUTHORIZE';
 
   const submit = async () => {
     setBusy(true);
-    setError(null);
     try {
       await api.post('/api/v1/approvals/decide', {
         plan_id: plan.id,
         decision: 'APPROVE',
         signature,
-        idempotency_key: `${action}-${plan.id}-${signature.length}-${Math.floor(Date.now() / 1000)}`,
+        idempotency_key: idemKey(action),
       });
       onDone();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      const { message, hashMismatch } = parseError(e);
+      onError(message, hashMismatch);
+      onClose();
     } finally {
       setBusy(false);
     }
@@ -254,15 +278,6 @@ function SignDialog(props: {
           onChange={(e) => setSignature(e.target.value)}
         />
 
-        {error ? (
-          <div
-            role="alert"
-            className="mt-3 rounded-lg border border-[#f5c2ca] bg-[#fdecef] px-3 py-2 text-xs text-[#d6293e] dark:border-[#7f1d1d] dark:bg-[#450a0a]/40"
-          >
-            {error}
-          </div>
-        ) : null}
-
         <div className="mt-4 flex justify-end gap-2">
           <button
             type="button"
@@ -295,10 +310,30 @@ export function AtlasApprovals() {
   const [signAction, setSignAction] = useState<'APPROVE' | 'AUTHORIZE' | null>(
     null,
   );
+  const [modifyOpen, setModifyOpen] = useState(false);
+  const [banner, setBanner] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
+  const role = persona?.role;
+  const canApprove = role === 'SR_DOM' || role === 'ADMIN';
+  const canAuthorize = role === 'DRM' || role === 'ADMIN';
+  const canModify =
+    role === 'SR_DOM' || role === 'ENGINEER' || role === 'ADMIN';
+  const canTransmit =
+    role === 'CONTROLLER' || role === 'SR_DOM' || role === 'ADMIN';
+  const canActivate = role === 'CONTROLLER' || role === 'ADMIN';
+  const canFitness =
+    role === 'ENGINEER' ||
+    role === 'STATION_MASTER' ||
+    role === 'CONTROLLER' ||
+    role === 'ADMIN';
+  const canArchive = role === 'ADMIN' || role === 'AUDITOR';
+  const canCancel = role === 'SR_DOM' || role === 'DRM' || role === 'ADMIN';
+  const canAckSm = role === 'STATION_MASTER' || role === 'ADMIN';
+  const canAckCtl = role === 'CHIEF_CONTROLLER' || role === 'ADMIN';
+
   const load = useCallback(async () => {
-    const rows = await api.get<PlanRow[]>('/api/v1/plans?limit=200');
+    const rows = await api.get<PlanRow[]>('/api/v1/plans?limit=500');
     setPlans(rows);
     return rows;
   }, []);
@@ -325,6 +360,93 @@ export function AtlasApprovals() {
     () => (plans ?? []).filter((p) => ACTIONABLE.has(p.approval_status)),
     [plans],
   );
+  // G&SR-2: DRAFT plans awaiting the SM + Controller dual acknowledgment.
+  const pendingAcks = useMemo(
+    () => (plans ?? []).filter((p) => p.approval_status === 'DRAFT'),
+    [plans],
+  );
+  // Post-authorization watchlist — badges flip live via SSE (BLOCK_TRANSMITTED).
+  const watchlist = useMemo(
+    () =>
+      (plans ?? [])
+        .filter((p) =>
+          [
+            'AUTHORIZED_DRM',
+            'TRANSMITTED_COA',
+            'ACTIVE_GRANTED',
+            'COMPLETED_FITNESS',
+          ].includes(p.approval_status),
+        )
+        .sort((a, b) => (a.approval_status > b.approval_status ? 1 : -1)),
+    [plans],
+  );
+
+  /** One lifecycle action (transmit/activate/fitness/archive/cancel).
+   *  Idempotency keys are generated internally — the user never sees one. */
+  const lifecycleAction = useCallback(
+    async (
+      plan: PlanRow,
+      action:
+        | 'transmit'
+        | 'activate'
+        | 'complete-fitness'
+        | 'archive'
+        | 'cancel',
+    ) => {
+      setBanner(null);
+      try {
+        await api.post(
+          `/api/v1/plans/${plan.id}/${action}`,
+          action === 'cancel'
+            ? { confirmation: true, idempotency_key: idemKey(action) }
+            : undefined,
+        );
+        setNotice(
+          action === 'transmit'
+            ? 'T−2h structural re-check passed — outbox PENDING. The COA bridge acknowledges within seconds; the badge flips live.'
+            : action === 'cancel'
+              ? 'Plan cancelled — demands return to the unscheduled pool.'
+              : `Plan ${action} committed — ledger event appended.`,
+        );
+        const rows = await load();
+        const next = rows.find((r) => r.id === plan.id);
+        if (next) await openPlan(next);
+      } catch (e) {
+        const { message } = parseError(e);
+        setBanner(message);
+        const rows = await load().catch(() => null);
+        if (rows) {
+          const next = rows.find((r) => r.id === plan.id);
+          if (next) await openPlan(next);
+        }
+      }
+    },
+    [load, openPlan],
+  );
+
+  /** G&SR-2 dual acknowledgment — second ack flips DRAFT → SENTINEL_PASSED. */
+  const ackSignal = useCallback(
+    async (plan: PlanRow, asRole: 'STATION_MASTER' | 'CONTROLLER') => {
+      setBanner(null);
+      try {
+        await api.post(`/api/v1/plans/${plan.id}/acknowledge-signal`, {
+          as_role: asRole,
+        });
+        setNotice(
+          asRole === 'STATION_MASTER'
+            ? 'Station Master acknowledgment recorded (SIGNAL_ACK).'
+            : 'Controller acknowledgment recorded — both acks present, plan flipped to SENTINEL_PASSED (G&SR-2).',
+        );
+        const rows = await load();
+        const next = rows.find((r) => r.id === plan.id);
+        if (next) await openPlan(next);
+      } catch (e) {
+        const { message } = parseError(e);
+        setBanner(message);
+      }
+    },
+    [load, openPlan],
+  );
 
   const refreshAfterDecision = useCallback(async () => {
     setSignAction(null);
@@ -337,9 +459,6 @@ export function AtlasApprovals() {
     const next = rows.find((r) => selected && r.id === selected.id);
     if (next) await openPlan(next);
   }, [load, openPlan, selected, signAction]);
-
-  const canApprove = persona?.role === 'SR_DOM' || persona?.role === 'ADMIN';
-  const canAuthorize = persona?.role === 'DRM' || persona?.role === 'ADMIN';
 
   return (
     <div className="mx-auto w-full max-w-[1600px] px-6 py-6 lg:px-8">
@@ -374,6 +493,81 @@ export function AtlasApprovals() {
       ) : null}
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+        {/* Pending Signal Acknowledgment (G&SR-2) */}
+        <div className="atlas-card overflow-hidden border-[#f3dfb1] dark:border-[#78350f] lg:col-span-2">
+          <div className="atlas-card-header border-[#f3dfb1] dark:border-[#78350f]">
+            <h2 className="atlas-card-title">
+              🔴 Pending Signal Acknowledgment (G&SR-2)
+            </h2>
+            <span className="atlas-badge border-[#f3dfb1] bg-[#fff7e6] text-[#b7791f] dark:border-[#78350f] dark:bg-[#451a03]/60 dark:text-[#fbbf24]">
+              {pendingAcks.length}
+            </span>
+          </div>
+          <p className="px-5 pt-3 text-xs text-muted-foreground">
+            S&amp;T plans stay DRAFT until the Station Master AND the Chief
+            Controller both acknowledge — pending ≠ passed.
+          </p>
+          {pendingAcks.length === 0 ? (
+            <div className="atlas-empty-state m-5">
+              No plans awaiting signal acknowledgment.
+            </div>
+          ) : (
+            <ul className="divide-y divide-border">
+              {pendingAcks.map((p) => (
+                <li key={p.id} className="px-4 py-3">
+                  <button
+                    type="button"
+                    onClick={() => void openPlan(p)}
+                    className="w-full text-left"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-mono text-xs text-foreground">
+                        {p.section_code}
+                      </span>
+                      <span className="atlas-badge border-border bg-muted text-muted-foreground">
+                        DRAFT · rev {p.revision_no}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {fmtPlanTime(p.start_time)} → {fmtPlanTime(p.end_time)}
+                    </p>
+                  </button>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      data-action="true"
+                      onClick={() => void ackSignal(p, 'STATION_MASTER')}
+                      disabled={!canAckSm}
+                      title={
+                        canAckSm
+                          ? 'Record SM acknowledgment'
+                          : 'Requires Station Master role (demo: H. Khan)'
+                      }
+                      className="atlas-btn-secondary atlas-btn text-xs"
+                    >
+                      Acknowledge — Station Master
+                    </button>
+                    <button
+                      type="button"
+                      data-action="true"
+                      onClick={() => void ackSignal(p, 'CONTROLLER')}
+                      disabled={!canAckCtl}
+                      title={
+                        canAckCtl
+                          ? 'Record Controller acknowledgment'
+                          : 'Requires Chief Controller role (demo: A. P. Singh)'
+                      }
+                      className="atlas-btn-secondary atlas-btn text-xs"
+                    >
+                      Acknowledge — Controller
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
         {/* Queue */}
         <div className="atlas-card overflow-hidden">
           <div className="atlas-card-header">
@@ -511,14 +705,127 @@ export function AtlasApprovals() {
 
               <SentinelChecklist report={report} />
 
+              {/* Lifecycle action bar — conditional on status + role */}
+              <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-4">
+                {canModify && ACTIONABLE.has(selected.approval_status) ? (
+                  <button
+                    type="button"
+                    data-action="true"
+                    onClick={() => setModifyOpen(true)}
+                    className="atlas-btn-secondary atlas-btn text-sm"
+                    title="Create revision — resets the Sentinel verdict (SAFE-002)"
+                  >
+                    <PenLine size={14} /> Modify Parameters
+                  </button>
+                ) : null}
+                {canApprove &&
+                selected.approval_status === 'SENTINEL_PASSED' ? (
+                  <button
+                    type="button"
+                    data-action="true"
+                    onClick={() => setSignAction('APPROVE')}
+                    className="atlas-btn-primary atlas-btn text-sm"
+                  >
+                    Approve (Sr. DOM)
+                  </button>
+                ) : null}
+                {canAuthorize &&
+                selected.approval_status === 'APPROVED_SR_DOM' ? (
+                  <button
+                    type="button"
+                    data-action="true"
+                    onClick={() => setSignAction('AUTHORIZE')}
+                    className="atlas-btn-primary atlas-btn text-sm"
+                  >
+                    Authorize &amp; Seal
+                  </button>
+                ) : null}
+                {canTransmit &&
+                selected.approval_status === 'AUTHORIZED_DRM' ? (
+                  <button
+                    type="button"
+                    data-action="true"
+                    onClick={() => void lifecycleAction(selected, 'transmit')}
+                    className="atlas-btn-primary atlas-btn text-sm"
+                    title="T−2h structural re-check → COA outbox (TRANSMITTED_COA only on ack)"
+                  >
+                    Transmit to COA
+                  </button>
+                ) : null}
+                {canActivate &&
+                selected.approval_status === 'TRANSMITTED_COA' ? (
+                  <button
+                    type="button"
+                    data-action="true"
+                    onClick={() => void lifecycleAction(selected, 'activate')}
+                    className="atlas-btn-primary atlas-btn text-sm"
+                  >
+                    Activate Block
+                  </button>
+                ) : null}
+                {canFitness && selected.approval_status === 'ACTIVE_GRANTED' ? (
+                  <button
+                    type="button"
+                    data-action="true"
+                    onClick={() =>
+                      void lifecycleAction(selected, 'complete-fitness')
+                    }
+                    className="atlas-btn-primary atlas-btn text-sm"
+                    title="Engineer / SM certify track fitness after the block"
+                  >
+                    Certify Track Fitness
+                  </button>
+                ) : null}
+                {canArchive &&
+                selected.approval_status === 'COMPLETED_FITNESS' ? (
+                  <button
+                    type="button"
+                    data-action="true"
+                    onClick={() => void lifecycleAction(selected, 'archive')}
+                    className="atlas-btn-primary atlas-btn text-sm"
+                  >
+                    Seal &amp; Archive
+                  </button>
+                ) : null}
+                {canCancel &&
+                ![
+                  'TRANSMITTED_COA',
+                  'ACTIVE_GRANTED',
+                  'COMPLETED_FITNESS',
+                  'ARCHIVED_SEALED',
+                  'CANCELLED',
+                  'SUPERSEDED',
+                  'SUPERSEDED_EMERGENCY',
+                ].includes(selected.approval_status) ? (
+                  <button
+                    type="button"
+                    data-action="true"
+                    onClick={() => void lifecycleAction(selected, 'cancel')}
+                    className="atlas-btn-danger atlas-btn text-sm"
+                  >
+                    Cancel Plan
+                  </button>
+                ) : null}
+              </div>
+
               <div className="mt-4 grid gap-2 rounded-lg border border-border bg-muted/40 p-3 text-xs">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-muted-foreground">
                     sealed content_hash
                   </span>
-                  <span className="atlas-hash truncate">
+                  <button
+                    type="button"
+                    className="atlas-hash truncate"
+                    title="Click to copy the full hash"
+                    onClick={() => {
+                      void navigator.clipboard?.writeText(
+                        selected.content_hash,
+                      );
+                      setNotice('Full content_hash copied to clipboard.');
+                    }}
+                  >
                     {selected.content_hash}
-                  </span>
+                  </button>
                 </div>
                 <p className="text-muted-foreground">
                   Tenants of the seal: decided_by ≠ authorized_by (APP-001),
@@ -531,14 +838,152 @@ export function AtlasApprovals() {
         </div>
       </div>
 
+      {modifyOpen && selected ? (
+        <ModifyDialog
+          plan={selected}
+          onClose={() => setModifyOpen(false)}
+          onDone={() => {
+            setModifyOpen(false);
+            setNotice(
+              'Revision created — the plan re-entered the Sentinel chain (SAFE-002). The old revision is now SUPERSEDED.',
+            );
+            void load();
+          }}
+          onError={(msg) => {
+            setBanner(msg);
+            void load();
+          }}
+        />
+      ) : null}
       {signAction && selected ? (
         <SignDialog
           plan={selected}
           action={signAction}
           onClose={() => setSignAction(null)}
           onDone={() => void refreshAfterDecision()}
+          onError={(msg, hashMismatch) => {
+            setBanner(msg);
+            if (hashMismatch) void load();
+          }}
         />
       ) : null}
+    </div>
+  );
+}
+
+/* ── Modify Parameters dialog (revise → SAFE-002 chain) ─────────────── */
+
+function ModifyDialog(props: {
+  plan: PlanRow;
+  onClose: () => void;
+  onDone: () => void;
+  onError: (msg: string, hashMismatch: boolean) => void;
+}) {
+  const { plan, onClose, onDone, onError } = props;
+  const [start, setStart] = useState(toLocalInput(plan.start_time));
+  const [end, setEnd] = useState(toLocalInput(plan.end_time));
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    setBusy(true);
+    try {
+      await api.post(`/api/v1/plans/${plan.id}/revise`, {
+        start_time: new Date(start).toISOString(),
+        end_time: new Date(end).toISOString(),
+      });
+      onDone();
+    } catch (e) {
+      const { message, hashMismatch } = parseError(e);
+      onError(message, hashMismatch);
+      onClose();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Modify plan parameters"
+    >
+      <div className="atlas-card w-full max-w-md p-6">
+        <div className="mb-4 flex items-start justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">
+              Modify Plan
+            </h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Revision {plan.revision_no + 1} will be created at DRAFT — the
+              Sentinel verdict resets and the plan re-enters the verification
+              chain (SAFE-002). The current revision becomes SUPERSEDED.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="grid gap-3">
+          <div>
+            <label
+              className="mb-1 block text-xs font-medium text-foreground"
+              htmlFor="mstart"
+            >
+              Start time
+            </label>
+            <input
+              id="mstart"
+              type="datetime-local"
+              className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground"
+              value={start}
+              onChange={(e) => setStart(e.target.value)}
+            />
+          </div>
+          <div>
+            <label
+              className="mb-1 block text-xs font-medium text-foreground"
+              htmlFor="mend"
+            >
+              End time
+            </label>
+            <input
+              id="mend"
+              type="datetime-local"
+              className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground"
+              value={end}
+              onChange={(e) => setEnd(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="atlas-btn-secondary atlas-btn text-sm"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            data-action="true"
+            disabled={
+              busy || !start || !end || new Date(end) <= new Date(start)
+            }
+            onClick={() => void submit()}
+            className="atlas-btn-primary atlas-btn text-sm"
+          >
+            {busy ? 'Revising…' : 'Create Revision'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

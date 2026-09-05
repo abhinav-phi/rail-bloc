@@ -36,8 +36,12 @@ export type PersonaRole =
   | 'SR_DOM'
   | 'DRM'
   | 'ADMIN'
+  | 'STATION_MASTER'
   | 'CHIEF_CONTROLLER'
+  | 'CONTROLLER'
+  | 'AUDITOR'
   | 'SR_DEN'
+  | 'ENGINEER'
   | 'SSE';
 
 export interface Persona {
