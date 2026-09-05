@@ -79,6 +79,14 @@ def hash_pw(pw: str, salt: str | bytes = "") -> str:
     return hashlib.pbkdf2_hmac("sha256", pw.encode(), salt_bytes, 600_000).hex()
 
 
+def legacy_hash_pw(pw: str) -> str:
+    """Pre-v1.1 scheme: fixed salt + 60k iterations. Only used to recognize and
+    upgrade old password hashes at login — every existing row was hashed this way
+    (the salt migration backfilled the literal 'railbloc-salt'), so the iteration
+    count here MUST stay 60_000 or the transparent re-salting path can never match."""
+    return hashlib.pbkdf2_hmac("sha256", pw.encode(), b"railbloc-salt", 60_000).hex()
+
+
 def create_token(username: str, role: str, division: str) -> str:
     payload = {
         "sub": username,

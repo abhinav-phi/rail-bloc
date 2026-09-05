@@ -2,7 +2,7 @@
 
 > **Single source of truth** quick reference distilled from the 8 canonical specification files (`PRD.md` · `TechSpec.md` · `AppFlow.md` · `Design.md` · `Schema.md` · `ImplementationPlan.md` · `Tracker.md` · `Rules.md`). Where this summary and the detailed docs disagree, **the detailed docs win**.
 >
-> **Status Sync Note (honest, per Rules.md R6.6):** Revision 1.1 (post-audit hardened) design is fully implemented as a working codebase. Measured verification of record: **22 unit tests passed** (Sentinel property suite, known-optimum solver test, saturated-corridor feasibility, canonical-hash determinism), **18 integration tests passed** against **host-started** PostgreSQL 16 + PostGIS + Redis 7.2 containers (**not** the full Docker Compose stack — see `Tracker.md §4.2` TASK-001 `[/]`) (SAFE-002 modify-after-verify → HTTP 409; APP-001 distinct-approver/self-authorize → 403 + DB-CHECK proof; TEL-001 spoofed/stale/contradicted ingestion rejected; G&SR-2 dual-ack flow; E2E lifecycle approve→authorize→transmit→outbox-ack→activate→fitness→archive; emergency drill ≤45 s budget with synchronous structural checks). Ledger hardening DB-001b (`audit.append_event()` pre-statement advisory lock) was added after an empirically reproduced concurrent-writer chain-fork; 8-process stress now reports `chain_ok=true`. The fixed-seed benchmark harness has **measured** one evaluation cell (seed=100: scheduled 52/52/52, pax delay 0.0 min on all arms by path-replay proof, freight detention minutes B0 3512.9 / B1 0.0 / RAIL-BLOC 1505.2 — *simulated-scenario results*, not production figures). ML calibration measured: held-out **ECE = 0.0331**, ±20 % feature perturbation shifts urgency ≤ 0.095 absolute. Remaining open verifications are tracked honestly in `Tracker.md §4`: full multi-image `docker compose up --build` boot, Celery broker-driven solve end-to-end, fault-injection clean rerun, browser FPS profiling, **frontend runtime browser smoke (the Atlas page has never been opened in a browser — MapLibre style load, Canvas edge cases and JWT decode are untested runtime concerns), and the SSE heartbeat-lapse → STALE-overlay server-client combo (end-to-end untested)**. No figure anywhere in this file is assumed without a cited measurement.
+> **Status Sync Note (honest, per Rules.md R6.6):** Revision 1.1 (post-audit hardened) design is fully implemented as a working codebase. Measured verification of record: **72 tests passed (0 failed, 0 skipped) on 2026-09-05** — the combined unit + integration + fault-injection suite (`pytest tests -q`, 4 min) against live PostgreSQL 16 + PostGIS + Redis 7.2 containers, including the **fault-injection suite's first clean rerun** (`Tracker.md §4.2` TASK-057 → `[x]`) (SAFE-002 modify-after-verify → HTTP 409; APP-001 distinct-approver/self-authorize → 403 + DB-CHECK proof; TEL-001 spoofed/stale/contradicted ingestion rejected; G&SR-2 dual-ack flow; E2E lifecycle approve→authorize→transmit→outbox-ack→activate→fitness→archive; emergency drill ≤45 s budget with synchronous structural checks). Ledger hardening DB-001b (`audit.append_event()` pre-statement advisory lock) was added after an empirically reproduced concurrent-writer chain-fork; 8-process stress now reports `chain_ok=true`. The fixed-seed benchmark harness has **measured** one evaluation cell (seed=100: scheduled 52/52/52, pax delay 0.0 min on all arms by path-replay proof, freight detention minutes B0 3512.9 / B1 0.0 / RAIL-BLOC 1505.2 — *simulated-scenario results*, not production figures). ML calibration measured: held-out **ECE = 0.0331**, ±20 % feature perturbation shifts urgency ≤ 0.095 absolute. Remaining open verifications are tracked honestly in `Tracker.md §4`: browser FPS profiling (PERF-003, a figure must be measured before it is quoted), the runtime browser smoke of the redesigned Atlas console (TASK-061, deferred until the in-progress frontend redesign lands — vitest covers the core behaviors meanwhile), and the SSE heartbeat-lapse → STALE-overlay server-client combo (end-to-end untested). No figure anywhere in this file is assumed without a cited measurement.
 
 ---
 
@@ -16,7 +16,7 @@
 | **Tagline** | Coordinated blocks. Verified safe. Human-sealed. |
 | **Governing Principle** | **"ML estimates parameters (Π_k, ρ_f); CP-SAT solver decides; Sentinel verifies; humans authorize; COA executes."** |
 | **Integration Reality** | Fully simulated. TMS/TDMS/SMMS/FOIS/COA/IMD are internal IR systems with no student-accessible API. All feeds are synthetic seeders with fixed seeds (42–44 corridor/demands, 52 timetable, 53 freight, 44 weather). Persistent `[SIMULATED]` watermark on every synthetic UI layer per `Rules.md §5`. Zero real credentials required. |
-| **Current Status** | Implemented (post-audit hardened v1.1). Verified: 40 automated tests green against live containers; ledger concurrency stress green; seeded demo dataset (12 sections / 286 demands / 276 train paths); frontend production build passing. Open: container-image final rebuild, broker-driven solve drill, fault-suite clean rerun, FPS profiling — all tracked in `Tracker.md §4`. |
+| **Current Status** | Implemented (post-audit hardened v1.1). Verified: 72-test suite green (unit + integration + fault injection) against live containers; ledger concurrency stress green; seeded demo dataset (12 sections / 286 demands / 276 train paths); Next.js frontend typecheck + vitest + production build green; CI enforces the backend suite on every PR. Remaining opens tracked in `Tracker.md §4`. |
 | **What It Is NOT** | ❌ Not autonomous dispatch. ❌ Not LLM/RL-based scheduling. ❌ Not a real IR API integration. ❌ Not blockchain. ❌ Not multi-tenant SaaS. ❌ Not a guarantee of global optimality under a time budget (ADR-002 corrected — CP-SAT reports status + best bound). |
 
 ---
@@ -47,7 +47,7 @@ Proof is honest by construction: B0 (manual BDMS), B1 (grid-search-tuned greedy,
 | **G3** | Enforce G&SR invariants deterministically | 0 Sentinel violations on presented plans (NFR-003) — property-tested |
 | **G4** | Safety by construction: content-hash binding | 100 % of TRANSMITTED_COA plans satisfy content_hash == sentinel_hash (NFR-007) — integration-tested |
 | **G5** | Reproducibility & proof | One-command `docker compose up --build`; fixed-seed harness; documented B1 tuning protocol |
-| **G6** | Fail-closed fault tolerance | Zero new authorizations under feed/solver/Sentinel/Redis/PG failure (G&SR-3) — fault-injection suite (clean rerun pending) |
+| **G6** | Fail-closed fault tolerance | Zero new authorizations under feed/solver/Sentinel/Redis/PG failure (G&SR-3) — fault-injection suite **clean rerun passed 2026-09-05** (72/72 suite green, incl. PG-kill rollback + Redis-down) |
 
 **Non-Goals:** ❌ Autonomous dispatch (humans + COA retain authority) · ❌ LLM/RL scheduling (CP-SAT only — ADR-002) · ❌ Real IR API integration · ❌ Blockchain · ❌ Multi-tenant SaaS billing.
 
@@ -133,7 +133,7 @@ There is **no autonomous agent**. ML touches priority and forecast capacity only
 
 | Subsystem | Responsibility | Architectural Nature |
 |---|---|---|
-| **Atlas** | MapLibre GIS, Canvas string chart, Action Preview Card, stale overlay, watermark | React 18 + TypeScript(strict) + Vite + Tailwind + nginx |
+| **Atlas** | MapLibre GIS, string chart, Action Preview Card, stale overlay, watermark | Next.js 13 (static export) + TypeScript(strict) + Tailwind + nginx |
 | **Nexus** | TMS/TDMS/SMMS/WTT/FOIS/IMD ingestion; per-source creds; TTL; upserts | FastAPI routers + Pydantic v2 |
 | **Optima** | Interval CP-SAT; shadow containment; machine VRP; B1 warm-start; replay detention | OR-Tools CP-SAT Python package |
 | **Sentinel** | 10 enumerated checks; structural subset for T−2h & emergencies | Pure Python library |
@@ -161,7 +161,7 @@ flowchart TD
 
 | Layer | Technology | Version | Justification |
 |---|---|---|---|
-| Frontend | React + TypeScript(strict) + Vite + Tailwind + MapLibre GL JS + Canvas | 18.3+ / 4.1+ | Type safety; GPU vector map; hand-rolled time-distance chart |
+| Frontend | Next.js 13 (app router, static export) + TypeScript(strict) + Tailwind + MapLibre GL JS | 13.5 / 6.6+ | Type safety; GPU vector map; framework-optimized build |
 | Backend | FastAPI + Python + Pydantic v2 + SQLAlchemy 2.0 async (asyncpg) | 0.111+ / 3.11 | Async I/O; typed boundaries; OpenAPI |
 | Solver | Google OR-Tools CP-SAT | 9.9+ (built/tested on 9.15) | Interval constraints at ADR-005 semantics |
 | ML (advisory) | PyTorch + XGBoost | 2.3+ / 2.0+ | Tabular urgency + freight forecasting |
@@ -250,9 +250,9 @@ Reading, honestly: passenger delay is provably zero wherever hard NoOverlap hold
 | 2 | Optima + Sentinel (reformulated, 10 checks, warm-start) | ✅ done, verified |
 | 3 | Plan Lifecycle + Approval services | ✅ done, verified |
 | 4 | Emergency + COA outbox | ✅ done, verified (API-level) |
-| 5 | Atlas frontend | ✅ code + strict build; runtime smoke/FPS open |
+| 5 | Atlas frontend | ✅ Next.js migration done; typecheck + vitest + prod build green; runtime browser smoke/FPS open |
 | 6 | ML + benchmark/calibration | ✅ harness + measured cell; ablations open |
-| 7 | Verification (fault injection, perf) | 🟠 partial — clean rerun + FPS pending |
+| 7 | Verification (fault injection, perf) | ✅ fault suite clean rerun passed (68/68, 2026-09-05); FPS pending |
 | 8 | Demo prep | 🟠 playbook written (MANUAL_STEPS.md); full-container dress rehearsal pending |
 
 ## 19. Current Implementation Status & Verification Ledger (condensed)

@@ -3,7 +3,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..core.database import get_session
-from ..core.security import Actor, create_token, get_actor, hash_pw, limiter
+from ..core.security import Actor, create_token, get_actor, hash_pw, legacy_hash_pw, limiter
 from ..schemas.models import LoginIn, TokenOut
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
@@ -20,9 +20,9 @@ async def login(request: Request, body: LoginIn, session: AsyncSession = Depends
         
     pw_hash = hash_pw(body.password, row["salt"])
     if pw_hash != row["password_hash"]:
-        # Fallback for existing hashes before per-user salt was added
-        legacy_hash = hash_pw(body.password, b"railbloc-salt")
-        if legacy_hash == row["password_hash"]:
+        # Fallback for pre-v1.1 rows: fixed salt + 60k iterations (see legacy_hash_pw).
+        # A match triggers the transparent re-salt to the hardened scheme below.
+        if legacy_hash_pw(body.password) == row["password_hash"]:
             import secrets
             new_salt = secrets.token_hex(32)
             pw_hash = hash_pw(body.password, new_salt)

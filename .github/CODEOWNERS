@@ -1,0 +1,21 @@
+# Default owner — every PR needs at least one review from the maintainer.
+* @abhinav-phi
+
+# Core solver / sentinel packages — safety-critical, dual review.
+/packages/ @abhinav-phi @Priyam-code
+
+# Backend API & workers.
+/apps/api/ @abhinav-phi @kakashi1509b
+/apps/workers/ @abhinav-phi @kakashi1509b
+
+# Test suite.
+/tests/ @abhinav-phi @kakashi1509b
+
+# Atlas frontend.
+/apps/web/ @abhinav-phi @tijilgupta09
+
+# Seed data & SQL schema.
+/data/ @abhinav-phi @kakashi1509b
+
+# Canonical docs.
+/docs/ @abhinav-phi

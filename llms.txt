@@ -1,0 +1,55 @@
+# RAIL-BLOC
+
+> RAIL-BLOC (SIH26027) is an AI-powered automatic block-planning system for Indian Railways: departmental maintenance demands are ingested fail-closed (Nexus), scheduled by an interval CP-SAT solver with VRP machine rostering (Optima), independently verified by 10 deterministic G&SR/MILP checks (Sentinel), approved through a hash-bound Sr.DOM → DRM → COA lifecycle, and recorded in a SHA-256 hash-chained tamper-evident ledger (Chronicle). Post-audit hardened v1.1: 54 tracked audit issues filed, 49 closed with code-verified fixes (security, observability, CI, Alembic migrations). All data is simulated; seeds are fixed and reproducible.
+
+Current release: **v1.1.0 (post-audit hardened)**. Status of every claim: `docs/7__Tracker.md` (honest statuses enforced by Rules.md R6.6).
+
+## Docs
+
+- [README](README.md): product overview, features, stack, quickstart, demo users.
+- [CHANGELOG](CHANGELOG.md): v1.0 → v1.1 story — full audit, 54 issues, 49 fixed, security hardening.
+- [AGENTS.md](AGENTS.md): operating manual for AI coding agents — commands, invariants, gotchas.
+- [docs/Summary](docs/Summary.md): one-page system summary with measured evidence for every claim.
+- [docs/1__PRD](docs/1__PRD.md): product requirements, goals G1–G7, personas.
+- [docs/2__TechSpec](docs/2__TechSpec.md): architecture (ADR-001 modular monolith), full API route table, tech choices.
+- [docs/3__AppFlow](docs/3__AppFlow.md): end-to-end user flows — demand to archived plan.
+- [docs/4__Design](docs/4__Design.md): Atlas console UX, dark operations-room design language.
+- [docs/5__Schema](docs/5__Schema.md): PostgreSQL 16 + PostGIS schema, 18 tables, 3 schemas (auth/infrastructure/operations + optimization/audit), change log.
+- [docs/6__ImplementationPlan](docs/6__ImplementationPlan.md): task breakdown (TASK-001…064).
+- [docs/7__Tracker](docs/7__Tracker.md): live status matrix — what is verified, what is pending, with evidence.
+- [docs/8__Rules](docs/8__Rules.md): project rules (including R6.6 honest-status law).
+- [MANUAL_STEPS](MANUAL_STEPS.md): full manual runbook (compose up, seeding, demo walkthrough, troubleshooting).
+- [RAIL_BLOC_Manual_Prerequisites](RAIL_BLOC_Manual_Prerequisites.md): gated install checklist (incl. air-gapped wheels path).
+- [.github/SECURITY](.github/SECURITY.md): private vulnerability disclosure policy and security architecture map.
+
+## Architecture
+
+- **Nexus ingestion** (`apps/api/routers/ingest*`, fail-closed): per-source machine credentials (TMS/TDMS/SMMS/FOIS) with timing-safe comparison, staleness TTLs, plausibility-contradiction rejection, weather → defer-not-assume.
+- **Optima** (`packages/optima/`): headway-expanded exogenous train paths, one `OptionalIntervalVar` per demand, `NoOverlap` per section, shadow-block bundling, greedy B1 warm start (never worse than baseline), VRP machine rostering; retry ladder with relaxed weights; fixed-seed benchmark harness.
+- **Sentinel** (`packages/sentinel/`): G&SR-1..5 + MILP-C1..C5, deterministic, no network/ML/side effects; seals `content_hash`; G&SR-2 gates S&T plans on dual SM+Controller acknowledgment.
+- **Plan Lifecycle** (`apps/api/services/plan_lifecycle.py`): revision-number + hash binding; supersede clears sentinel verdict; T-2h structural re-check vs latest train paths; COA outbox (`TRANSMITTED_COA` only on acknowledgment).
+- **Chronicle** (`packages/chronicle/`, `data/sql/03_ledger_triggers.sql`): hash chain verified inside PostgreSQL under REPEATABLE READ; advisory-lock serialization; INSERT-only role; 8-process stress → `chain_ok=true`.
+- **Security posture**: JWT with `jti` + Redis revocation, per-user PBKDF2 (600k) salts with transparent legacy re-salting, login rate limit (5/min), one-time SSE stream tickets, Redis `--requirepass`, restart policies on all services.
+- **Observability**: request-ID middleware, structured JSON logging, Prometheus counters (`REQUESTS_TOTAL`, `OUTBOX_PENDING`).
+
+## API surface (summary)
+
+Base path `/api/v1`. Auth: `POST /auth/login`, `GET /auth/me`. Ingest: demand/traffic/weather ingestion (machine keys). Demands/plans/approvals/emergency/weather/operations: role- and division-scoped routers. `GET /plans/{id}/sentinel-report` (10 checks), `POST /plans/{id}/acknowledge-signal`, `POST /plans/{id}/approve|authorize|transmit`, `GET /ledger/events|verify`, `GET /stream/issue-ticket` + SSE. `GET /health` (DB ping, version). Full table: docs/2__TechSpec.md §4.
+
+## Run & verify
+
+```bash
+docker compose up --build          # full stack; migrate + seed run automatically
+python -m pytest tests -q          # unit always; integration auto-skip without PG/Redis
+cd apps/web && npm run typecheck && npm run test && npm run build
+```
+
+Prereqs: Docker Compose v2, Python 3.11+, Node 20. First build ~10–25 min. Demo users + walkthrough: MANUAL_STEPS.md.
+
+## Conventions for agents
+
+- Never weaken Sentinel checks or bypass the approval chain; Optima proposes, Sentinel disposes.
+- Schema changes → Alembic (`migrations/`); keep `data/sql/02_schema_ddl.sql` fresh-install parity.
+- Ledger append-only via `audit.append_event()`; no UPDATE/DELETE paths.
+- Status claims require cited evidence (Rules.md R6.6).
+- Frontend is Next.js 13 app-router static export (`output: 'export'`), strict TS, vitest + RTL; npm needs `--legacy-peer-deps`.

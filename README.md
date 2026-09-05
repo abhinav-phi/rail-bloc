@@ -65,7 +65,7 @@ flowchart TD
 
 | Layer | Technology | Version |
 |---|---|---|
-| Frontend | React 18 + TypeScript(strict) + Vite + Tailwind + MapLibre GL JS + HTML5 Canvas | 18.3+ / MapLibre 4.1+ |
+| Frontend | Next.js 13 (app router, static export) + TypeScript(strict) + Tailwind + Radix UI + MapLibre GL JS | 13.5 / React 18.2 / MapLibre 6.6+ |
 | Backend | FastAPI + Pydantic v2 + SQLAlchemy 2.0 async (asyncpg) | 0.111+ on Python 3.11 |
 | Solver | Google OR-Tools CP-SAT (OptionalIntervalVar, NoOverlap) | 9.9+ |
 | ML (advisory-only) | PyTorch (Π_k) + XGBoost (ρ_f) | 2.3+ / 2.0+ |
@@ -80,7 +80,7 @@ rail-bloc/
 ├── .env.example                # every knob documented; 2 secrets you generate
 ├── apps/
 │   ├── api/                    # FastAPI gateway: routers, services, schemas, core
-│   ├── web/                    # Atlas console (React 18 + TS strict + Vite + nginx)
+│   ├── web/                    # Atlas console (Next.js 13 app-router + TS strict + static export)
 │   ├── workers/                # Celery solve pipeline + beat cadences + feed sims
 │   └── eval/                   # fixed-seed benchmark harness + ML calibration
 ├── packages/
@@ -244,9 +244,9 @@ docker compose exec postgres psql -U rail_admin -d railbloc_db \
 * Authoritative text: [`docs/Rules.md`](docs/Rules.md).
 
 ## Current Roadmap & Implementation Status
-Implemented and **unit/integration-verified** (evidence: `Tracker.md §4`); **full-stack Docker Compose boot and broker-driven solve are pending** (see `[ ]` items below): DDL+triggers (incl. post-build ledger concurrency fix DB-001b) · generators/seeder · interval CP-SAT solver · Sentinel 10-check module · Plan Lifecycle · Approval Service · Emergency Service · COA outbox bridge · Atlas console (strict build passing) · fixed-seed benchmark harness (measured cell recorded) · ML calibration (ECE 0.0331) · **40 automated tests green against host-started PostgreSQL 16 + Redis 7.2 containers (not the full Docker Compose stack — see `Tracker.md §4.2` TASK-001 `[/]`)**.
+Implemented and **verified** (evidence: `Tracker.md §4`): DDL+triggers (incl. post-build ledger concurrency fix DB-001b) · generators/seeder · interval CP-SAT solver · Sentinel 10-check module · Plan Lifecycle · Approval Service · Emergency Service · COA outbox bridge · Atlas console (Next.js, typecheck + vitest green) · fixed-seed benchmark harness (measured cell recorded) · ML calibration (ECE 0.0331) · **full Docker Compose stack booted end-to-end (all services healthy, migrate+seed+API+worker+beat+web) · broker-driven solve completed (CP-SAT OPTIMAL, plan + rosters + ledger event persisted, 8.2 s wall) · 72 automated tests green against live PostgreSQL 16 + PostGIS + Redis 7.2 (also enforced in CI on every PR)**.
 
-Open verifications (honest [/] in Tracker): final `api`/`worker` image rebuild after the or-tools local-wheel fix · first full multi-service `docker compose up --build` boot · broker-driven solve drill · fault-suite clean rerun · browser FPS profiling.
+Open verifications (honest `[ ]`/`[/]` in Tracker): browser FPS profiling · frontend runtime smoke is covered by the vitest suite, deeper interaction coverage lands with the Atlas redesign in progress.
 
 Representative checklist:
 - [x] DDL + triggers (pgcrypto-first, 12+PROVISIONAL states, advisory-locked ledger, guards)
