@@ -86,7 +86,7 @@
 | TASK-061 | Frontend | Eng C/F | [ ] | Runtime browser smoke: MapLibre render, login flow, Preview Card, SSE connect, STALE overlay on Redis stop, zero console errors; screenshot evidence. (Deferred until the Atlas redesign lands — vitest suite covers token parsing, approvals, sidebar, live hook in the meantime.) |
 | TASK-062 | Verification | Eng F | [x] | FLT* test-data cleanup fixture (conftest teardown); post-suite FLT_% count must be 0. **Verified 2026-09-05: post-suite `demands.block_demands` FLT_* count = 0.** |
 | TASK-063 | Frontend | Eng C | [x] | *Superseded by the Next.js 13 migration:* bundle budget met by the framework's build — production export shows **79.4 kB shared First Load JS, no >500 kB warning** (build log 2026-09-05). |
-| TASK-064 | Security | Eng B | [ ] | Run npm audit --audit-level=moderate; fix or explicitly waive findings. |
+| TASK-064 | Security | Eng B | [/] | `npm audit` **run and findings recorded 2026-09-05** (CONTRIBUTING.md): 21 findings (2 critical / 12 high / 6 moderate / 1 low) inherited from pinned `next@13.5.1` + transitives. Per-advisory dev-vs-runtime triage and the framework upgrade remain deliberately deferred past the demo — status moves to `[x]` only when findings are fixed or explicitly waived. |
 
 ## 3. Pre-Demo Sanity Verification Checklist — RESET
 
