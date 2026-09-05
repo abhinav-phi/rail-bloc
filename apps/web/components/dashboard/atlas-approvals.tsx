@@ -60,7 +60,9 @@ function fmtPlanTime(iso: string): string {
 
 function fmtMinutes(m: number): string {
   if (!m) return '0 min';
-  return m >= 60 ? `${Math.floor(m / 60)}h ${Math.round(m % 60)}m` : `${Math.round(m)} min`;
+  return m >= 60
+    ? `${Math.floor(m / 60)}h ${Math.round(m % 60)}m`
+    : `${Math.round(m)} min`;
 }
 
 /* ── Sentinel 10-check card (their design idiom, our live report) ───── */
@@ -79,45 +81,71 @@ function SentinelChecklist({ report }: { report: SentinelReport | null }) {
 
   return (
     <div>
-      <p className={cn('atlas-section-label flex items-center justify-between', headerTone)}>
+      <p
+        className={cn(
+          'atlas-section-label flex items-center justify-between',
+          headerTone,
+        )}
+      >
         <span>Safety verification — Sentinel</span>
-        <span className="font-mono normal-case tracking-normal" data-testid="sentinel-count">
+        <span
+          className="font-mono normal-case tracking-normal"
+          data-testid="sentinel-count"
+        >
           {checks.length ? `${passed}/${checks.length} checks` : 'loading…'}
           {failed > 0 ? ` · ${failed} failed` : ''}
           {pending > 0 ? ` · ${pending} pending` : ''}
         </span>
       </p>
       <ol className="mt-2 divide-y divide-border rounded-lg border border-border">
-        {(checks.length ? checks : Array.from({ length: 10 }, () => null)).map((c, i) => {
-          const verdict = !c ? 'PENDING' : c.passed ? 'PASS' : c.pending ? 'PENDING' : 'FAIL';
-          const icon = verdict === 'PASS' ? '✓' : verdict === 'FAIL' ? '✗' : '○';
-          const tone =
-            verdict === 'PASS'
-              ? 'text-[#1b7f4b] dark:text-[#4ade80]'
-              : verdict === 'FAIL'
-                ? 'font-bold text-[#d6293e] dark:text-[#f87171]'
-                : 'text-muted-foreground';
-          return (
-            <li
-              key={c?.id ?? `slot-${i}`}
-              className="flex items-start gap-3 px-3 py-1.5 text-sm"
-              data-verdict={verdict}
-            >
-              <span aria-hidden="true" className={cn('w-4 shrink-0 text-center', tone)}>
-                {icon}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-foreground">
-                  <span className="font-semibold">{c ? (THE_TEN[c.id] ?? c.id.split(' ')[0]) : `Check ${i + 1}`}</span>
-                  <span className="ml-2 text-muted-foreground">
-                    {c?.id ?? 'awaiting report'}
-                  </span>
-                </p>
-                {c ? <p className="text-xs text-muted-foreground">{c.detail}</p> : null}
-              </div>
-            </li>
-          );
-        })}
+        {(checks.length ? checks : Array.from({ length: 10 }, () => null)).map(
+          (c, i) => {
+            const verdict = !c
+              ? 'PENDING'
+              : c.passed
+                ? 'PASS'
+                : c.pending
+                  ? 'PENDING'
+                  : 'FAIL';
+            const icon =
+              verdict === 'PASS' ? '✓' : verdict === 'FAIL' ? '✗' : '○';
+            const tone =
+              verdict === 'PASS'
+                ? 'text-[#1b7f4b] dark:text-[#4ade80]'
+                : verdict === 'FAIL'
+                  ? 'font-bold text-[#d6293e] dark:text-[#f87171]'
+                  : 'text-muted-foreground';
+            return (
+              <li
+                key={c?.id ?? `slot-${i}`}
+                className="flex items-start gap-3 px-3 py-1.5 text-sm"
+                data-verdict={verdict}
+              >
+                <span
+                  aria-hidden="true"
+                  className={cn('w-4 shrink-0 text-center', tone)}
+                >
+                  {icon}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-foreground">
+                    <span className="font-semibold">
+                      {c
+                        ? (THE_TEN[c.id] ?? c.id.split(' ')[0])
+                        : `Check ${i + 1}`}
+                    </span>
+                    <span className="ml-2 text-muted-foreground">
+                      {c?.id ?? 'awaiting report'}
+                    </span>
+                  </p>
+                  {c ? (
+                    <p className="text-xs text-muted-foreground">{c.detail}</p>
+                  ) : null}
+                </div>
+              </li>
+            );
+          },
+        )}
       </ol>
     </div>
   );
@@ -174,7 +202,12 @@ function SignDialog(props: {
                 : 'Sr. DOM approval — distinct-approver chain (APP-001) enforced at the DB layer.'}
             </p>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close" className="text-muted-foreground hover:text-foreground">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="text-muted-foreground hover:text-foreground"
+          >
             <X size={18} />
           </button>
         </div>
@@ -182,11 +215,15 @@ function SignDialog(props: {
         <div className="mb-4 grid gap-2 rounded-lg border border-border bg-muted/40 p-3 text-xs">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Plan</span>
-            <span className="font-mono text-foreground">{plan.id.slice(0, 8)}…</span>
+            <span className="font-mono text-foreground">
+              {plan.id.slice(0, 8)}…
+            </span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Section</span>
-            <span className="font-mono text-foreground">{plan.section_code}</span>
+            <span className="font-mono text-foreground">
+              {plan.section_code}
+            </span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Window</span>
@@ -196,11 +233,16 @@ function SignDialog(props: {
           </div>
           <div className="flex items-center justify-between gap-2">
             <span className="shrink-0 text-muted-foreground">content_hash</span>
-            <span className="atlas-hash truncate">{plan.content_hash.slice(0, 18)}…</span>
+            <span className="atlas-hash truncate">
+              {plan.content_hash.slice(0, 18)}…
+            </span>
           </div>
         </div>
 
-        <label className="mb-1 block text-xs font-medium text-foreground" htmlFor="sig">
+        <label
+          className="mb-1 block text-xs font-medium text-foreground"
+          htmlFor="sig"
+        >
           Digital signature (min 8 chars)
         </label>
         <input
@@ -222,7 +264,11 @@ function SignDialog(props: {
         ) : null}
 
         <div className="mt-4 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="atlas-btn-secondary atlas-btn text-sm">
+          <button
+            type="button"
+            onClick={onClose}
+            className="atlas-btn-secondary atlas-btn text-sm"
+          >
             Cancel
           </button>
           <button
@@ -246,7 +292,9 @@ export function AtlasApprovals() {
   const [plans, setPlans] = useState<PlanRow[] | null>(null);
   const [selected, setSelected] = useState<PlanRow | null>(null);
   const [report, setReport] = useState<SentinelReport | null>(null);
-  const [signAction, setSignAction] = useState<'APPROVE' | 'AUTHORIZE' | null>(null);
+  const [signAction, setSignAction] = useState<'APPROVE' | 'AUTHORIZE' | null>(
+    null,
+  );
   const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -263,7 +311,9 @@ export function AtlasApprovals() {
     setSelected(plan);
     setReport(null);
     try {
-      const r = await api.get<SentinelReport>(`/api/v1/plans/${plan.id}/sentinel-report`);
+      const r = await api.get<SentinelReport>(
+        `/api/v1/plans/${plan.id}/sentinel-report`,
+      );
       setReport(r);
     } catch {
       setReport(null);
@@ -288,10 +338,8 @@ export function AtlasApprovals() {
     if (next) await openPlan(next);
   }, [load, openPlan, selected, signAction]);
 
-  const canApprove =
-    persona?.role === 'SR_DOM' || persona?.role === 'ADMIN';
-  const canAuthorize =
-    persona?.role === 'DRM' || persona?.role === 'ADMIN';
+  const canApprove = persona?.role === 'SR_DOM' || persona?.role === 'ADMIN';
+  const canAuthorize = persona?.role === 'DRM' || persona?.role === 'ADMIN';
 
   return (
     <div className="mx-auto w-full max-w-[1600px] px-6 py-6 lg:px-8">
@@ -315,7 +363,11 @@ export function AtlasApprovals() {
         >
           <ShieldCheck size={16} className="mt-0.5 shrink-0" />
           <p>{notice}</p>
-          <button type="button" onClick={() => setNotice(null)} className="ml-auto text-xs underline">
+          <button
+            type="button"
+            onClick={() => setNotice(null)}
+            className="ml-auto text-xs underline"
+          >
             dismiss
           </button>
         </div>
@@ -361,15 +413,24 @@ export function AtlasApprovals() {
                             : 'border-[#c3d6f5] bg-[#eaf1fc] text-[#2d63c8] dark:border-[#1e3a8a] dark:bg-[#172554]/60 dark:text-[#93c5fd]',
                         )}
                       >
-                        {p.approval_status === 'SENTINEL_PASSED' ? 'Awaiting Sr. DOM' : 'Awaiting DRM'}
+                        {p.approval_status === 'SENTINEL_PASSED'
+                          ? 'Awaiting Sr. DOM'
+                          : 'Awaiting DRM'}
                       </span>
                     </div>
                     <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
-                      <span className="font-mono">{fmtPlanTime(p.start_time)}</span>
+                      <span className="font-mono">
+                        {fmtPlanTime(p.start_time)}
+                      </span>
                       <span>→</span>
-                      <span className="font-mono">{fmtPlanTime(p.end_time)}</span>
+                      <span className="font-mono">
+                        {fmtPlanTime(p.end_time)}
+                      </span>
                       {p.is_shadow_block ? (
-                        <span className="atlas-stripes-shadow inline-block h-3 w-8 rounded" title="shadow bundle" />
+                        <span
+                          className="atlas-stripes-shadow inline-block h-3 w-8 rounded"
+                          title="shadow bundle"
+                        />
                       ) : null}
                       <span>rev {p.revision_no}</span>
                       <span>· {p.plan_horizon}</span>
@@ -398,8 +459,9 @@ export function AtlasApprovals() {
                     </span>
                   </h2>
                   <p className="mt-0.5 text-xs text-muted-foreground">
-                    {fmtPlanTime(selected.start_time)} → {fmtPlanTime(selected.end_time)} ·
-                    {' '}pax {fmtMinutes(selected.loss_pax_minutes)} · frt{' '}
+                    {fmtPlanTime(selected.start_time)} →{' '}
+                    {fmtPlanTime(selected.end_time)} · pax{' '}
+                    {fmtMinutes(selected.loss_pax_minutes)} · frt{' '}
                     {fmtMinutes(selected.loss_frt_minutes)}{' '}
                     <span className="atlas-model-estimate inline">
                       (model estimate, B1-relative, simulated)
@@ -407,7 +469,8 @@ export function AtlasApprovals() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  {canApprove && selected.approval_status === 'SENTINEL_PASSED' ? (
+                  {canApprove &&
+                  selected.approval_status === 'SENTINEL_PASSED' ? (
                     <button
                       type="button"
                       data-action="true"
@@ -417,7 +480,8 @@ export function AtlasApprovals() {
                       Approve (Sr. DOM)
                     </button>
                   ) : null}
-                  {canAuthorize && selected.approval_status === 'APPROVED_SR_DOM' ? (
+                  {canAuthorize &&
+                  selected.approval_status === 'APPROVED_SR_DOM' ? (
                     <button
                       type="button"
                       data-action="true"
@@ -438,8 +502,9 @@ export function AtlasApprovals() {
                 >
                   <p className="font-semibold">Hash mismatch</p>
                   <p className="text-xs">
-                    The plan content changed after Sentinel verification — approval
-                    is disabled (SAFE-002). Create a new revision instead.
+                    The plan content changed after Sentinel verification —
+                    approval is disabled (SAFE-002). Create a new revision
+                    instead.
                   </p>
                 </div>
               ) : null}
@@ -448,8 +513,12 @@ export function AtlasApprovals() {
 
               <div className="mt-4 grid gap-2 rounded-lg border border-border bg-muted/40 p-3 text-xs">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-muted-foreground">sealed content_hash</span>
-                  <span className="atlas-hash truncate">{selected.content_hash}</span>
+                  <span className="text-muted-foreground">
+                    sealed content_hash
+                  </span>
+                  <span className="atlas-hash truncate">
+                    {selected.content_hash}
+                  </span>
                 </div>
                 <p className="text-muted-foreground">
                   Tenants of the seal: decided_by ≠ authorized_by (APP-001),

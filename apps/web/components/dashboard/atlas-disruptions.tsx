@@ -45,7 +45,8 @@ export function AtlasDisruptions() {
   const [sections, setSections] = useState<SectionRow[] | null>(null);
   const [incidents, setIncidents] = useState<Incident[] | null>(null);
   const [sectionId, setSectionId] = useState<string>('');
-  const [type, setType] = useState<(typeof BREAKDOWN_TYPES)[number]>('TRACK_FRACTURE');
+  const [type, setType] =
+    useState<(typeof BREAKDOWN_TYPES)[number]>('TRACK_FRACTURE');
   const [duration, setDuration] = useState(90);
   const [blast, setBlast] = useState<BlastRadius | null>(null);
   const [acknowledged, setAcknowledged] = useState(false);
@@ -53,7 +54,8 @@ export function AtlasDisruptions() {
   const [result, setResult] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const isController = persona?.role === 'CHIEF_CONTROLLER' || persona?.role === 'ADMIN';
+  const isController =
+    persona?.role === 'CHIEF_CONTROLLER' || persona?.role === 'ADMIN';
 
   const load = useCallback(async () => {
     try {
@@ -96,7 +98,10 @@ export function AtlasDisruptions() {
     setBusy(true);
     setError(null);
     try {
-      const r = await api.post<{ incident_id?: string; coalesced_into?: string }>('/api/v1/emergency/breakdown', {
+      const r = await api.post<{
+        incident_id?: string;
+        coalesced_into?: string;
+      }>('/api/v1/emergency/breakdown', {
         section_id: sectionId,
         breakdown_type: type,
         estimated_duration_mins: duration,
@@ -128,7 +133,12 @@ export function AtlasDisruptions() {
           </p>
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Radio size={14} className={cn(persona?.role === 'CHIEF_CONTROLLER' ? 'text-[#d6293e]' : '')} />
+          <Radio
+            size={14}
+            className={cn(
+              persona?.role === 'CHIEF_CONTROLLER' ? 'text-[#d6293e]' : '',
+            )}
+          />
           {isController
             ? 'Controller role — drill unlocked'
             : 'CONTROLLER role required to fire (demo persona: A. P. Singh)'}
@@ -140,7 +150,10 @@ export function AtlasDisruptions() {
         <div className="atlas-card p-5">
           <h2 className="atlas-card-title mb-4">Report a P0 breakdown</h2>
 
-          <label className="mb-1 block text-xs font-medium text-foreground" htmlFor="sec">
+          <label
+            className="mb-1 block text-xs font-medium text-foreground"
+            htmlFor="sec"
+          >
             Section ID (from Block Planning hash row / corridor)
           </label>
           <input
@@ -153,7 +166,10 @@ export function AtlasDisruptions() {
 
           <div className="mt-3 grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-xs font-medium text-foreground" htmlFor="type">
+              <label
+                className="mb-1 block text-xs font-medium text-foreground"
+                htmlFor="type"
+              >
                 Type
               </label>
               <select
@@ -170,7 +186,10 @@ export function AtlasDisruptions() {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-foreground" htmlFor="dur">
+              <label
+                className="mb-1 block text-xs font-medium text-foreground"
+                htmlFor="dur"
+              >
                 Duration (mins)
               </label>
               <input
@@ -223,10 +242,10 @@ export function AtlasDisruptions() {
                   className="mt-0.5"
                 />
                 <span>
-                  I acknowledge the affected corridor preview above — firing will
-                  supersede affected plans and generate a PROVISIONAL diversion
-                  plan (never treated as authoritative until the Controller
-                  acknowledges).
+                  I acknowledge the affected corridor preview above — firing
+                  will supersede affected plans and generate a PROVISIONAL
+                  diversion plan (never treated as authoritative until the
+                  Controller acknowledges).
                 </span>
               </label>
             </div>
@@ -283,12 +302,15 @@ export function AtlasDisruptions() {
                           : 'border-[#f3dfb1] bg-[#fff7e6] text-[#b7791f] dark:border-[#78350f] dark:bg-[#451a03]/60 dark:text-[#fbbf24]',
                       )}
                     >
-                      {i.controller_acknowledged ? 'acknowledged' : 'awaiting Controller ack'}
+                      {i.controller_acknowledged
+                        ? 'acknowledged'
+                        : 'awaiting Controller ack'}
                     </span>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    section {i.section_id.slice(0, 8)}… · {i.estimated_duration_mins} min ·
-                    {' '}reported by {i.reported_by}
+                    section {i.section_id.slice(0, 8)}… ·{' '}
+                    {i.estimated_duration_mins} min · reported by{' '}
+                    {i.reported_by}
                     {i.coalesced_into_incident_id ? ' · coalesced' : ''}
                   </p>
                 </li>

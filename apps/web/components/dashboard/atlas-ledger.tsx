@@ -41,7 +41,9 @@ export function AtlasLedger() {
       const v = await api.get<VerifyResult>('/api/v1/ledger/verify');
       setVerify(v);
       try {
-        const rows = await api.get<LedgerEntry[]>('/api/v1/ledger/entries?limit=50');
+        const rows = await api.get<LedgerEntry[]>(
+          '/api/v1/ledger/entries?limit=50',
+        );
         setEntries(rows);
         setRoleGate(null);
       } catch (e) {
@@ -98,7 +100,9 @@ export function AtlasLedger() {
       <div
         className={cn(
           'atlas-card mb-6 border p-5',
-          ok ? 'border-[#bfe6d0] bg-[#e9f7ef]/40 dark:border-[#14532d] dark:bg-[#052e16]/20' : 'border-[#f5c2ca] bg-[#fdecef]/40 dark:border-[#7f1d1d] dark:bg-[#450a0a]/20',
+          ok
+            ? 'border-[#bfe6d0] bg-[#e9f7ef]/40 dark:border-[#14532d] dark:bg-[#052e16]/20'
+            : 'border-[#f5c2ca] bg-[#fdecef]/40 dark:border-[#7f1d1d] dark:bg-[#450a0a]/20',
         )}
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -185,11 +189,17 @@ export function AtlasLedger() {
                       </span>
                     </td>
                     <td className="font-mono text-xs">{e.actor_id}</td>
-                    <td className="max-w-[420px] truncate font-mono text-xs text-muted-foreground" title={JSON.stringify(e.payload)}>
+                    <td
+                      className="max-w-[420px] truncate font-mono text-xs text-muted-foreground"
+                      title={JSON.stringify(e.payload)}
+                    >
                       {JSON.stringify(e.payload)}
                     </td>
                     <td className="text-right">
-                      <span className="atlas-hash" title={`prev: ${e.prev_hash ?? 'genesis'}`}>
+                      <span
+                        className="atlas-hash"
+                        title={`prev: ${e.prev_hash ?? 'genesis'}`}
+                      >
                         {e.hash.slice(0, 10)}…
                       </span>
                     </td>

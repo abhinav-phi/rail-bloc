@@ -73,7 +73,9 @@ function KpiCard(props: {
   return (
     <div className="atlas-card flex flex-col gap-4 p-5">
       <div className="flex items-start justify-between gap-3">
-        <p className="text-sm font-medium text-muted-foreground">{props.label}</p>
+        <p className="text-sm font-medium text-muted-foreground">
+          {props.label}
+        </p>
         <span
           aria-hidden="true"
           className={cn(
@@ -200,12 +202,18 @@ export function AtlasDashboard() {
           role="alert"
           className="atlas-btn-danger mb-5 flex items-start gap-2 rounded-lg border border-[#f5c2ca] bg-[#fdecef] px-3.5 py-3 text-sm text-[#d6293e] dark:border-[#7f1d1d] dark:bg-[#450a0a]/40"
         >
-          <span aria-hidden="true" className="font-bold">✗</span>
+          <span aria-hidden="true" className="font-bold">
+            ✗
+          </span>
           <div className="flex-1">
             <p className="font-semibold">Dashboard refresh failed</p>
             <p className="text-xs">{error}</p>
           </div>
-          <button type="button" onClick={() => void refresh()} className="atlas-btn-secondary atlas-btn text-xs">
+          <button
+            type="button"
+            onClick={() => void refresh()}
+            className="atlas-btn-secondary atlas-btn text-xs"
+          >
             Retry
           </button>
         </div>
@@ -228,7 +236,11 @@ export function AtlasDashboard() {
           label="Passenger delay (authorized window)"
           tone="blue"
           icon={<Clock size={18} />}
-          value={loading ? '…' : fmtMinutes(data?.model_estimates.predicted_pax_delay_minutes)}
+          value={
+            loading
+              ? '…'
+              : fmtMinutes(data?.model_estimates.predicted_pax_delay_minutes)
+          }
           footnote="authorized+active plans"
           estimate
         />
@@ -236,7 +248,11 @@ export function AtlasDashboard() {
           label="Freight delay (authorized window)"
           tone="purple"
           icon={<Gauge size={18} />}
-          value={loading ? '…' : fmtMinutes(data?.model_estimates.predicted_frt_delay_minutes)}
+          value={
+            loading
+              ? '…'
+              : fmtMinutes(data?.model_estimates.predicted_frt_delay_minutes)
+          }
           footnote="fail-closed forecast policy"
           estimate
         />
@@ -271,7 +287,17 @@ export function AtlasDashboard() {
                     <div
                       className="h-full rounded-full bg-[#935073]"
                       style={{
-                        width: `${(count / Math.max(1, Object.values(planCounts).reduce((s, n) => s + n, 0))) * 100}%`,
+                        width: `${
+                          (count /
+                            Math.max(
+                              1,
+                              Object.values(planCounts).reduce(
+                                (s, n) => s + n,
+                                0,
+                              ),
+                            )) *
+                          100
+                        }%`,
                       }}
                     />
                   </div>
@@ -305,9 +331,16 @@ export function AtlasDashboard() {
               </thead>
               <tbody>
                 {machines.map((m) => (
-                  <tr key={m.machine} className="border-b border-border/60 last:border-0">
-                    <td className="py-2 font-mono text-xs text-foreground">{m.machine}</td>
-                    <td className="py-2 text-right tabular-nums text-foreground">{m.jobs}</td>
+                  <tr
+                    key={m.machine}
+                    className="border-b border-border/60 last:border-0"
+                  >
+                    <td className="py-2 font-mono text-xs text-foreground">
+                      {m.machine}
+                    </td>
+                    <td className="py-2 text-right tabular-nums text-foreground">
+                      {m.jobs}
+                    </td>
                     <td className="py-2 text-right tabular-nums text-foreground">
                       {fmtMinutes(m.work_minutes)}
                     </td>
@@ -352,7 +385,10 @@ export function AtlasDashboard() {
             </thead>
             <tbody>
               {escalated.slice(0, 10).map((d) => (
-                <tr key={d.external_ref_id} className="border-b border-border/60 last:border-0">
+                <tr
+                  key={d.external_ref_id}
+                  className="border-b border-border/60 last:border-0"
+                >
                   <td className="py-2 font-mono text-xs text-foreground">
                     {d.external_ref_id}
                   </td>

@@ -40,7 +40,10 @@ export function Header() {
         >
           Ledger
         </Link>
-        <Link href="/disruptions" className="atlas-btn-danger atlas-btn text-xs">
+        <Link
+          href="/disruptions"
+          className="atlas-btn-danger atlas-btn text-xs"
+        >
           Emergency
         </Link>
         <div className="flex items-center gap-2 border-l pl-3">
