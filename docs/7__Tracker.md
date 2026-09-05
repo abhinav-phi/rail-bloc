@@ -87,6 +87,7 @@
 | TASK-062 | Verification | Eng F | [x] | FLT* test-data cleanup fixture (conftest teardown); post-suite FLT_% count must be 0. **Verified 2026-09-05: post-suite `demands.block_demands` FLT_* count = 0.** |
 | TASK-063 | Frontend | Eng C | [x] | *Superseded by the Next.js 13 migration:* bundle budget met by the framework's build — production export shows **79.4 kB shared First Load JS, no >500 kB warning** (build log 2026-09-05). |
 | TASK-064 | Security | Eng B | [x] | `next` bumped 13.5.1 → **13.5.11** (zod critical eliminated) + non-breaking `npm audit fix`; findings **21 → 10 (1C/6H/3M)**, 2026-09-05. The sole critical is **dev-only vitest UI-server (GHSA-5xrq-8626-4rwp)** — never ships in the static export. Per-advisory waiver table with surface mapping: CONTRIBUTING.md. Framework majors (vitest 5, next 14/15) explicitly deferred post-SIH and tracked. |
+| TASK-060 | Final E2E | All | [x] | **Dress rehearsal 2026-09-05** (same-day, timed against the live stack): compose boot (7 services) → persona login → Dashboard (live KPIs) → Monthly solve tab (7 MONTHLY plans) → Approvals 10-check card → Audit Ledger `chain_ok=true` + tamper-guard → Redis stop/start STALE cycle → String Chart FPS. Full playbook: `docs/DEMO_SCRIPT.md` (5-min timed script + fallbacks); judge prep: `docs/JUDGE_QA.md`. PS keyword→artifact map: `docs/PS027_Mapping.md`. |
 
 ## 3. Pre-Demo Sanity Verification Checklist — RESET
 
