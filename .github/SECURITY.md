@@ -26,6 +26,17 @@ Include: affected component, reproduction steps, and impact assessment. You will
 - **Fail-closed ingestion** — stale or self-contradicted departmental feeds are rejected with diagnostics; weather defaults to *defer*, never *assume*.
 - **Transport** — tokens reach the browser over the API origin only; SSE uses short-lived one-time tickets instead of URL-borne JWTs.
 
+## Dependency audit triage (2026-09-06)
+
+`npm audit` (apps/web): **10 findings — 1 critical / 6 high / 3 moderate** (down from 21 / 2-critical after `next@13.5.11` + non-breaking fixes). Full per-advisory waiver table lives in `CONTRIBUTING.md`; summary:
+
+| Group | Severity | Surface | Disposition |
+|---|---|---|---|
+| vitest UI server (GHSA-5xrq-8626-4rwp) | critical | dev-only test runner | never ships in the static export; vitest 5 upgrade post-SIH |
+| `next` remainder | high | server-runtime paths (`next dev`/`start`) | production artifact is a static export served by nginx — next server never runs; client-side items accepted until the v14/15 upgrade |
+| `yaml` (build config parser) | moderate | build tooling | never ships |
+| remainder | low–moderate | dev tooling | same class |
+
 ## Scope notes
 
 - **In scope:** auth/session handling, plan-lifecycle state machine bypasses, ledger tampering paths, ingestion spoofing, SSRF/injection in any router, secret handling in Compose/CI.
