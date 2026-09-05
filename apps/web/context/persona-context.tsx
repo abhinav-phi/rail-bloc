@@ -29,6 +29,7 @@ function toPersonaRole(role: string): PersonaRole {
   const map: Record<string, PersonaRole> = {
     SR_DOM: 'SR_DOM',
     'Sr. DOM': 'SR_DOM',
+    ADMIN: 'ADMIN',
     DRM: 'DRM',
     CHIEF_CONTROLLER: 'CHIEF_CONTROLLER',
     'Chief Controller': 'CHIEF_CONTROLLER',

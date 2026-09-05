@@ -1,4 +1,5 @@
 import './globals.css';
+import './atlas.css';
 import type { Metadata } from 'next';
 import { Inter, JetBrains_Mono } from 'next/font/google';
 import { AppErrorBoundary } from '../components/error-boundary';
@@ -32,10 +33,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
+    <html lang="en" className="atlas-light">
       <body
-        className={`${inter.variable} ${jetbrainsMono.variable} font-sans`}
-        suppressHydrationWarning
+        className={`${inter.variable} ${jetbrainsMono.variable} atlas-light font-sans`}
       >
         <AppErrorBoundary>{children}</AppErrorBoundary>
       </body>

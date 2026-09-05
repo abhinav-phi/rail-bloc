@@ -35,6 +35,7 @@ export type Department = 'CIVIL' | 'TRD' | 'SNT';
 export type PersonaRole =
   | 'SR_DOM'
   | 'DRM'
+  | 'ADMIN'
   | 'CHIEF_CONTROLLER'
   | 'SR_DEN'
   | 'SSE';

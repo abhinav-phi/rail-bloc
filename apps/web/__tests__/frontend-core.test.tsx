@@ -2,6 +2,7 @@ import React from 'react';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { parseJwt, setToken } from '@/lib/api';
+import { PersonaProvider } from '@/context/persona-context';
 import { ApprovalActionRow } from '@/components/approvals/approval-action-row';
 import { Sidebar } from '@/components/shell/sidebar';
 import { useLive } from '@/lib/live';
@@ -37,7 +38,11 @@ describe('frontend core behaviors', () => {
   });
 
   it('shows sidebar navigation entries for standard operations pages', () => {
-    render(<Sidebar />);
+    render(
+      <PersonaProvider>
+        <Sidebar />
+      </PersonaProvider>,
+    );
 
     expect(screen.getByText('Operations Overview')).toBeInTheDocument();
     expect(screen.getByText('Approval Workflow')).toBeInTheDocument();
