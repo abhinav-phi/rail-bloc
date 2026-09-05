@@ -52,13 +52,19 @@ const HORIZONS: {
 ];
 
 const STATUS_TONE: Record<string, string> = {
-  SENTINEL_PASSED: 'border-[#bfe6d0] bg-[#e9f7ef] text-[#1b7f4b] dark:border-[#14532d] dark:bg-[#052e16]/60 dark:text-[#4ade80]',
-  APPROVED_SR_DOM: 'border-[#c3d6f5] bg-[#eaf1fc] text-[#2d63c8] dark:border-[#1e3a8a] dark:bg-[#172554]/60 dark:text-[#93c5fd]',
-  AUTHORIZED_DRM: 'border-[#d9c9ec] bg-[#f1eaf8] text-[#6d4a96] dark:border-[#4c1d95] dark:bg-[#2e1065]/60 dark:text-[#c4b5fd]',
-  TRANSMITTED_COA: 'border-[#d9afc1] bg-[#f8eaf0] text-[#935073] dark:border-[#502d55] dark:bg-[#3a1f33]/60 dark:text-[#d58ba9]',
-  ACTIVE_GRANTED: 'border-[#bfe6d0] bg-[#e9f7ef] text-[#1b7f4b] dark:border-[#14532d] dark:bg-[#052e16]/60 dark:text-[#4ade80]',
+  SENTINEL_PASSED:
+    'border-[#bfe6d0] bg-[#e9f7ef] text-[#1b7f4b] dark:border-[#14532d] dark:bg-[#052e16]/60 dark:text-[#4ade80]',
+  APPROVED_SR_DOM:
+    'border-[#c3d6f5] bg-[#eaf1fc] text-[#2d63c8] dark:border-[#1e3a8a] dark:bg-[#172554]/60 dark:text-[#93c5fd]',
+  AUTHORIZED_DRM:
+    'border-[#d9c9ec] bg-[#f1eaf8] text-[#6d4a96] dark:border-[#4c1d95] dark:bg-[#2e1065]/60 dark:text-[#c4b5fd]',
+  TRANSMITTED_COA:
+    'border-[#d9afc1] bg-[#f8eaf0] text-[#935073] dark:border-[#502d55] dark:bg-[#3a1f33]/60 dark:text-[#d58ba9]',
+  ACTIVE_GRANTED:
+    'border-[#bfe6d0] bg-[#e9f7ef] text-[#1b7f4b] dark:border-[#14532d] dark:bg-[#052e16]/60 dark:text-[#4ade80]',
   DRAFT: 'border-border bg-muted text-muted-foreground',
-  PROVISIONAL: 'border-[#f3dfb1] bg-[#fff7e6] text-[#b7791f] dark:border-[#78350f] dark:bg-[#451a03]/60 dark:text-[#fbbf24]',
+  PROVISIONAL:
+    'border-[#f3dfb1] bg-[#fff7e6] text-[#b7791f] dark:border-[#78350f] dark:bg-[#451a03]/60 dark:text-[#fbbf24]',
 };
 
 function fmt(iso: string): string {
@@ -72,7 +78,9 @@ function fmt(iso: string): string {
 }
 
 function dur(start: string, end: string): string {
-  const m = Math.round((new Date(end).getTime() - new Date(start).getTime()) / 60000);
+  const m = Math.round(
+    (new Date(end).getTime() - new Date(start).getTime()) / 60000,
+  );
   return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`;
 }
 
@@ -109,7 +117,9 @@ function SolveCard(props: {
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <h2 className="atlas-card-title">{h.label} solve</h2>
-            <span className="atlas-badge border-border text-muted-foreground">{h.psTag}</span>
+            <span className="atlas-badge border-border text-muted-foreground">
+              {h.psTag}
+            </span>
           </div>
           <p className="mt-0.5 text-xs text-muted-foreground">{h.blurb}</p>
         </div>
@@ -194,7 +204,11 @@ export function AtlasPlanner() {
       </header>
 
       {/* Horizon tabs */}
-      <div className="mb-4 flex flex-wrap gap-2" role="tablist" aria-label="Planning horizon">
+      <div
+        className="mb-4 flex flex-wrap gap-2"
+        role="tablist"
+        aria-label="Planning horizon"
+      >
         {HORIZONS.map((h) => (
           <button
             key={h.key}
@@ -269,7 +283,9 @@ export function AtlasPlanner() {
                     <td className="whitespace-nowrap text-xs">
                       {fmt(p.start_time)} → {fmt(p.end_time)}
                     </td>
-                    <td className="tabular-nums">{dur(p.start_time, p.end_time)}</td>
+                    <td className="tabular-nums">
+                      {dur(p.start_time, p.end_time)}
+                    </td>
                     <td>
                       <span className="atlas-badge border-border text-muted-foreground">
                         {p.plan_horizon}
@@ -277,9 +293,14 @@ export function AtlasPlanner() {
                     </td>
                     <td>
                       {p.is_shadow_block ? (
-                        <span className="atlas-stripes-shadow inline-block h-4 w-10 rounded border border-border" title="shadow bundle" />
+                        <span
+                          className="atlas-stripes-shadow inline-block h-4 w-10 rounded border border-border"
+                          title="shadow bundle"
+                        />
                       ) : (
-                        <span className="text-xs text-muted-foreground">single</span>
+                        <span className="text-xs text-muted-foreground">
+                          single
+                        </span>
                       )}
                     </td>
                     <td>
