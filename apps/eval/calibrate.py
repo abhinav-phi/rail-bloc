@@ -11,8 +11,8 @@ from __future__ import annotations
 
 import numpy as np
 import torch
-from sklearn.metrics import brier_score_loss
 from sklearn.calibration import calibration_curve
+from sklearn.metrics import brier_score_loss
 
 from packages.ml.degradation_model import UrgencyNet, make_dataset, physical_urgency, train
 

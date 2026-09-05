@@ -123,7 +123,7 @@ export function AtlasDisruptions() {
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Blast-radius preview → explicit confirmation → PROVISIONAL plan with
-            Sentinel's synchronous structural re-check (≤45 s, SAFE-003) →
+            Sentinel&apos;s synchronous structural re-check (≤45 s, SAFE-003) →
             Controller acknowledgment gate.
           </p>
         </div>
