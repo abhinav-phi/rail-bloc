@@ -1,0 +1,371 @@
+/* ════════════════════════════════════════════════════════════════════════
+   RAIL-BLOC Atlas design system — ported from the team design share
+   into the Next.js app. Plain CSS (no @apply) so it loads as a standalone
+   stylesheet next to globals.css. Data wiring stays ours (live API/SSE).
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* ── Palette variables ──────────────────────────────────────────────── */
+html.atlas-light {
+  /* Their palette verbatim (RGB triplets) */
+  --atlas-canvas: rgb(248, 244, 233);
+  --atlas-surface: rgb(255, 253, 248);
+  --atlas-line: rgb(229, 214, 214);
+  --atlas-brand: #935073;
+  --atlas-brand-deep: #502d55;
+  --atlas-brand-soft: #f8eaf0;
+  --atlas-brand-ring: #d9afc1;
+  --atlas-heading: rgb(42, 26, 47);
+  --atlas-body: rgb(102, 86, 103);
+  --atlas-navy: rgb(35, 24, 39);
+  --atlas-success: #1b7f4b;
+  --atlas-success-bg: #e9f7ef;
+  --atlas-success-ring: #bfe6d0;
+  --atlas-info: #2d63c8;
+  --atlas-info-bg: #eaf1fc;
+  --atlas-info-ring: #c3d6f5;
+  --atlas-danger: #d6293e;
+  --atlas-danger-bg: #fdecef;
+  --atlas-danger-ring: #f5c2ca;
+  --atlas-warning: #b7791f;
+  --atlas-warning-bg: #fff7e6;
+  --atlas-warning-ring: #f3dfb1;
+  --atlas-purple: #6d4a96;
+  --atlas-purple-bg: #f1eaf8;
+  --atlas-orange: #c66b3c;
+  --atlas-orange-bg: #fff3ea;
+}
+
+html.atlas-dark {
+  --atlas-canvas: rgb(35, 24, 39);
+  --atlas-surface: rgb(48, 33, 51);
+  --atlas-line: rgb(78, 58, 78);
+  --atlas-brand: rgb(213, 139, 169);
+  --atlas-brand-deep: rgb(147, 80, 115);
+  --atlas-brand-soft: rgb(58, 31, 51);
+  --atlas-brand-ring: rgb(80, 45, 85);
+  --atlas-heading: rgb(248, 244, 233);
+  --atlas-body: rgb(215, 199, 212);
+  --atlas-navy: rgb(24, 16, 28);
+  --atlas-success: #4ade80;
+  --atlas-success-bg: rgba(5, 46, 22, 0.55);
+  --atlas-success-ring: #14532d;
+  --atlas-info: #93c5fd;
+  --atlas-info-bg: rgba(23, 37, 84, 0.55);
+  --atlas-info-ring: #1e3a8a;
+  --atlas-danger: #f87171;
+  --atlas-danger-bg: rgba(69, 10, 10, 0.45);
+  --atlas-danger-ring: #7f1d1d;
+  --atlas-warning: #fbbf24;
+  --atlas-warning-bg: rgba(69, 26, 3, 0.45);
+  --atlas-warning-ring: #78350f;
+  --atlas-purple: #c4b5fd;
+  --atlas-purple-bg: rgba(46, 16, 101, 0.45);
+  --atlas-orange: #fdba74;
+  --atlas-orange-bg: rgba(69, 26, 3, 0.45);
+}
+
+/* Map onto this app's existing HSL contract so every current page adopts
+   the Atlas look without rewrites. */
+html.atlas-light {
+  --background: 42 33% 94%;            /* canvas #F8F4E9 */
+  --foreground: 288 29% 14%;           /* heading #2A1A2F */
+  --card: 60 100% 99%;                 /* surface #FFFDF8 */
+  --card-foreground: 288 29% 14%;
+  --popover: 60 100% 99%;
+  --popover-foreground: 288 29% 14%;
+  --primary: 320 32% 45%;              /* brand #935073 */
+  --primary-foreground: 0 0% 100%;
+  --secondary: 320 14% 92%;
+  --secondary-foreground: 288 14% 27%;
+  --muted: 320 10% 92%;
+  --muted-foreground: 320 10% 52%;     /* body #665667 */
+  --accent: 320 32% 93%;
+  --accent-foreground: 320 32% 35%;
+  --destructive: 352 67% 50%;          /* #D6293E */
+  --destructive-foreground: 0 0% 100%;
+  --success: 152 46% 30%;
+  --success-foreground: 0 0% 100%;
+  --warning: 39 61% 42%;
+  --warning-foreground: 0 0% 100%;
+  --border: 0 23% 87%;                 /* line #E5D6D6 */
+  --input: 0 23% 87%;
+  --ring: 320 32% 45%;
+}
+
+html.atlas-dark {
+  --background: 285 24% 12%;           /* canvas #231827 */
+  --foreground: 60 33% 94%;
+  --card: 288 22% 18%;                 /* surface #302133 */
+  --card-foreground: 60 33% 94%;
+  --popover: 288 22% 18%;
+  --popover-foreground: 60 33% 94%;
+  --primary: 340 49% 69%;              /* #D58BA9 */
+  --primary-foreground: 288 29% 12%;
+  --secondary: 288 18% 24%;
+  --secondary-foreground: 315 20% 84%;
+  --muted: 288 14% 22%;
+  --muted-foreground: 315 12% 70%;
+  --accent: 288 18% 26%;
+  --accent-foreground: 340 49% 85%;
+  --destructive: 352 67% 55%;
+  --destructive-foreground: 0 0% 100%;
+  --success: 152 46% 38%;
+  --success-foreground: 0 0% 100%;
+  --warning: 39 61% 50%;
+  --warning-foreground: 0 0% 10%;
+  --border: 288 14% 27%;
+  --input: 288 14% 27%;
+  --ring: 340 49% 69%;
+}
+
+/* ── Component primitives ───────────────────────────────────────────── */
+.atlas-card {
+  border-radius: 0.75rem;
+  border: 1px solid hsl(var(--border));
+  background-color: hsl(var(--card));
+  box-shadow: 0 1px 2px rgba(21, 16, 39, 0.04), 0 1px 3px rgba(21, 16, 39, 0.06);
+}
+.atlas-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-bottom: 1px solid hsl(var(--border));
+  padding: 1rem 1.25rem;
+}
+.atlas-card-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+.atlas-icon-chip {
+  display: inline-flex;
+  height: 2.5rem;
+  width: 2.5rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  font-size: 1.125rem;
+}
+.atlas-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: hsl(var(--muted-foreground));
+}
+.atlas-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.875rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: background-color 150ms ease, color 150ms ease;
+  user-select: none;
+  cursor: pointer;
+}
+.atlas-btn:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+.atlas-btn-primary {
+  background-color: #935073;
+  color: #ffffff;
+  box-shadow: 0 1px 2px rgba(21, 16, 39, 0.06);
+}
+.atlas-btn-primary:hover {
+  background-color: #502d55;
+}
+html.atlas-dark .atlas-btn-primary {
+  background-color: rgb(213, 139, 169);
+  color: rgb(35, 24, 39);
+}
+html.atlas-dark .atlas-btn-primary:hover {
+  background-color: rgb(147, 80, 115);
+}
+.atlas-btn-secondary {
+  border: 1px solid hsl(var(--border));
+  background-color: hsl(var(--card));
+  color: hsl(var(--foreground));
+}
+.atlas-btn-secondary:hover {
+  background-color: hsl(var(--accent));
+}
+.atlas-btn-danger {
+  background-color: #d6293e;
+  color: #ffffff;
+  box-shadow: 0 1px 2px rgba(21, 16, 39, 0.06);
+}
+.atlas-btn-danger:hover {
+  background-color: #b91c32;
+}
+.atlas-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  white-space: nowrap;
+  border-radius: 9999px;
+  border: 1px solid hsl(var(--border));
+  padding: 0.125rem 0.5rem;
+  font-family: var(--font-jetbrains), ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.atlas-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+.atlas-table th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  padding: 0.625rem 1rem;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: hsl(var(--muted-foreground));
+  background-color: hsl(var(--background));
+  border-bottom: 1px solid hsl(var(--border));
+}
+.atlas-table td {
+  padding: 0.625rem 1rem;
+  border-bottom: 1px solid hsl(var(--border));
+  color: hsl(var(--foreground));
+  vertical-align: top;
+}
+.atlas-kpi-value {
+  font-size: 2.25rem;
+  line-height: 2.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.atlas-model-estimate {
+  display: block;
+  font-size: 11px;
+  font-style: italic;
+  line-height: 1.35;
+  color: hsl(var(--muted-foreground));
+}
+.atlas-hash {
+  border-radius: 0.25rem;
+  border: 1px solid hsl(var(--border));
+  padding: 0.125rem 0.375rem;
+  font-family: var(--font-jetbrains), ui-monospace, monospace;
+  font-size: 0.75rem;
+  background-color: hsl(var(--muted));
+}
+.atlas-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: hsl(var(--foreground));
+  transition: background-color 150ms ease;
+}
+.atlas-nav-item:hover {
+  background-color: rgba(147, 80, 115, 0.12);
+}
+.atlas-nav-item-active {
+  background-color: rgba(147, 80, 115, 0.18);
+  color: #935073;
+}
+html.atlas-dark .atlas-nav-item-active {
+  color: rgb(213, 139, 169);
+}
+.atlas-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.5rem;
+  border: 1px dashed hsl(var(--border));
+  padding: 3rem 1.5rem;
+  text-align: center;
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+}
+.atlas-alert-danger {
+  border-radius: 0.5rem;
+  border: 1px solid var(--atlas-danger-ring);
+  background-color: var(--atlas-danger-bg);
+  color: var(--atlas-danger);
+}
+.atlas-alert-success {
+  border-radius: 0.5rem;
+  border: 1px solid var(--atlas-success-ring);
+  background-color: var(--atlas-success-bg);
+  color: var(--atlas-success);
+}
+.atlas-alert-warning {
+  border-radius: 0.5rem;
+  border: 1px solid var(--atlas-warning-ring);
+  background-color: var(--atlas-warning-bg);
+  color: var(--atlas-warning);
+}
+
+/* ── Safety states ──────────────────────────────────────────────────── */
+.atlas-watermark {
+  position: fixed;
+  bottom: 0.75rem;
+  right: 0.75rem;
+  z-index: 70;
+  pointer-events: none;
+  user-select: none;
+  border-radius: 0.375rem;
+  border: 1px solid var(--atlas-brand-ring);
+  padding: 0.25rem 0.625rem;
+  font-family: var(--font-jetbrains), ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  backdrop-filter: blur(4px);
+  background-color: rgba(255, 253, 248, 0.85);
+  color: #502d55;
+}
+html.atlas-dark .atlas-watermark {
+  background-color: rgba(24, 16, 28, 0.8);
+  border-color: rgba(147, 80, 115, 0.4);
+  color: #d9afc1;
+}
+.atlas-stale-banner {
+  position: fixed;
+  inset-inline: 0;
+  top: 0;
+  z-index: 60;
+  display: flex;
+  height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding-inline: 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #ffffff;
+  background-color: #d6293e;
+}
+.atlas-stripes-shadow {
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(140, 63, 131, 0.35) 0 4px,
+    rgba(140, 63, 131, 0.08) 4px 8px
+  );
+}
+body.is-stale [data-action='true'] {
+  opacity: 0.45 !important;
+  pointer-events: none !important;
+  filter: grayscale(0.4);
+}

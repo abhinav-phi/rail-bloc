@@ -54,6 +54,12 @@ Full word-by-word code audit (38 findings) plus a second security/observability/
 - **S4 — token exposure reduced**: `jti`-based revocation, no more JWT-in-URL for SSE (one-time tickets), Redis-backed deny list surviving restarts. (#48)
 - **S5 — Redis authenticated** and every long-running service restarts on crash. (#49)
 
+### Added (Atlas redesign port — 2026-09-05, late)
+
+- **Team design share ported as the Atlas design system** into the Next.js app: palette/tokens + component primitives (`apps/web/app/atlas.css`), restyled shell (sidebar with LIVE/STALE stream pill, header status chips), 6 login personas.
+- **Real-data page rewrites**: Dashboard (live `/plans/summary` KPIs), Approvals (live queue, **10-check Sentinel report from the API**, SignDialog with idempotency keys, hash-mismatch gate), Block Planning (**Weekly/Monthly/26-Week horizon tabs — the PS Monthly requirement, now in the UI**), Audit Ledger (live `chain_ok` verdict + entries), Disruptions (blast-radius preview → acknowledgment gate → Controller-gated fire).
+- Deliberately **not** adopted from the share: mock data, simulated JWTs, `?token=` SSE (our one-time-ticket flow is the verified path).
+
 ### Verified (evidence, not claims)
 
 - Tracker §2.2 and §4.2 statuses synced with reality (TASK-020 broker-solve evidence recorded; TASK-048 self-contradiction resolved). (#30, #31)

@@ -39,6 +39,22 @@ const DEMO_PERSONAS = [
     badge: 'SSE/S&T',
     username: 'engineer_dli',
   },
+  {
+    id: 'auditor',
+    name: 'V. Krishnan',
+    role: 'Vigilance Auditor',
+    division: 'DLI Division',
+    badge: 'AUD/DLI',
+    username: 'auditor',
+  },
+  {
+    id: 'admin',
+    name: 'System Administrator',
+    role: 'ADMIN',
+    division: 'DLI Division',
+    badge: 'SYS/DLI',
+    username: 'admin',
+  },
 ];
 
 /** Demo-console password for the seeded persona users (SEED_PASSWORD in .env).
