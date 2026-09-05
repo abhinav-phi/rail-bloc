@@ -14,7 +14,7 @@ Current release: **v1.1.0 (post-audit hardened)**. Status of every claim: `docs/
 - [docs/2__TechSpec](docs/2__TechSpec.md): architecture (ADR-001 modular monolith), full API route table, tech choices.
 - [docs/3__AppFlow](docs/3__AppFlow.md): end-to-end user flows — demand to archived plan.
 - [docs/4__Design](docs/4__Design.md): Atlas console UX, dark operations-room design language.
-- [docs/5__Schema](docs/5__Schema.md): PostgreSQL 16 + PostGIS schema, 18 tables, 3 schemas (auth/infrastructure/operations + optimization/audit), change log.
+- [docs/5__Schema](docs/5__Schema.md): PostgreSQL 16 + PostGIS schema, 18 tables, 6 schemas (auth, demands, infrastructure, operations, optimization, audit), change log.
 - [docs/6__ImplementationPlan](docs/6__ImplementationPlan.md): task breakdown (TASK-001…064).
 - [docs/7__Tracker](docs/7__Tracker.md): live status matrix — what is verified, what is pending, with evidence.
 - [docs/8__Rules](docs/8__Rules.md): project rules (including R6.6 honest-status law).

@@ -13,6 +13,7 @@ const DEMO_PERSONAS = [
     role: 'Sr. DOM',
     division: 'DLI Division',
     badge: 'Sr.DOM/DLI',
+    username: 'srdom_dli',
   },
   {
     id: 'drm',
@@ -20,6 +21,7 @@ const DEMO_PERSONAS = [
     role: 'DRM',
     division: 'DLI Division',
     badge: 'DRM/DLI',
+    username: 'drm_dli',
   },
   {
     id: 'chief-controller',
@@ -27,6 +29,7 @@ const DEMO_PERSONAS = [
     role: 'Chief Controller',
     division: 'DLI Division',
     badge: 'CHC/DLI',
+    username: 'controller_dli',
   },
   {
     id: 'sse-engineer',
@@ -34,17 +37,29 @@ const DEMO_PERSONAS = [
     role: 'SSE Engineer',
     division: 'DLI Division',
     badge: 'SSE/S&T',
+    username: 'engineer_dli',
   },
 ];
 
+/** Demo-console password for the seeded persona users (SEED_PASSWORD in .env).
+ * Frontend demo convenience only — the API stays rate-limited and fail-closed. */
+const DEMO_PASSWORD = 'railbloc';
+
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
-  const { loginAsDemo } = usePersona();
+  const { login, loginAsDemo } = usePersona();
   const router = useRouter();
 
   const handleLogin = async (persona: (typeof DEMO_PERSONAS)[0]) => {
     setIsLoading(true);
-    loginAsDemo(persona);
+    try {
+      // Real API login first: mints a JWT so SSE stream tickets and every
+      // authorized call work. Visual-only personas left the live hook permanently
+      // STALE (found in the TASK-061 runtime smoke, 2026-09-05).
+      await login({ username: persona.username, password: DEMO_PASSWORD });
+    } catch {
+      loginAsDemo(persona);
+    }
     router.push('/dashboard');
   };
 

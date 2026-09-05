@@ -13,6 +13,7 @@ class Department(str, Enum):
 
 class PlanHorizon(str, Enum):
     STRATEGIC_26W = "STRATEGIC_26W"
+    MONTHLY = "MONTHLY"
     WEEKLY = "WEEKLY"
     REALTIME = "REALTIME"
 

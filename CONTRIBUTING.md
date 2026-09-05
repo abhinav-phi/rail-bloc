@@ -164,7 +164,16 @@ npm run build            # next build — static export to out/ (served by nginx
 
 > **Bundle budget (TASK-063, superseded by the Next.js migration):** the original Vite SPA produced a ~1.02 MB single-chunk warning; under Next.js 13 static export the build is clean — **79.4 kB shared First Load JS** (measured 2026-09-05), well under the 500 kB budget. No manual chunk-splitting is needed while the framework handles it.
 
-> **Known skip (TASK-064 measured 2026-09-05):** `npm audit` on the current Next.js frontend reports **21 findings (2 critical, 12 high, 6 moderate, 1 low)**, largely inherited from the pinned `next@13.5.1` and its transitive dependencies (e.g. the zod DoS advisory inside next's vendored copy). Remediation requires framework major-upgrades (`npm audit fix --force` wants `next@13.5.11`+, beyond the pinned range) which are deliberately deferred past the hackathon demo. Note this is broader than the old Vite-era audit (4 dev-server advisories) — a per-advisory triage (dev-only vs runtime path) is still pending, so treat all findings as open until the upgrade lands. Re-run and resolve before any production deployment.
+> **Security triage (TASK-064, measured 2026-09-05 after `next@13.5.11` bump + non-breaking `npm audit fix`):** `npm audit` now reports **10 findings (1 critical / 6 high / 3 moderate)**, down from 21 (2 critical). Per-advisory triage — this is the explicit waiver record:
+
+| Advisory group | Severity | Surface | Rationale / action |
+|---|---|---|---|
+| `vitest` (via `@vitest/mocker`, `vite-node` — GHSA-5xrq-8626-4rwp) | **critical** | **Dev-only** test runner | Exploit requires the Vitest UI server listening (developer machine, `vitest --ui`). Never present in the shipped artifact (static export). Fix = vitest 5 (major) — deferred post-SIH, tracked. |
+| `next` remainder (subset of the high findings) | high | Server-runtime paths (`next dev` / `next start`) | The production artifact is `output: 'export'` static HTML/JS **served by nginx** — the next server never runs in production, eliminating its entire server-side attack surface. Residual client-side items accepted until the next 14/15 upgrade post-SIH (tracked). |
+| `yaml` (via `tailwindcss` → `postcss-load-config`) | moderate | Build-time config parser | Build tooling only; never ships. |
+| Remaining moderate/low | low–moderate | Dev tooling | Same class as above. |
+
+Re-run and resolve (framework majors) before any production deployment.
 
 > **Known noise:** pytest-asyncio deprecation warnings and redis asyncio `Event loop is closed` `__del__` shutdown noise are present and harmless. Do not chase these during the hackathon.
 

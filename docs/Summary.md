@@ -2,7 +2,7 @@
 
 > **Single source of truth** quick reference distilled from the 8 canonical specification files (`PRD.md` · `TechSpec.md` · `AppFlow.md` · `Design.md` · `Schema.md` · `ImplementationPlan.md` · `Tracker.md` · `Rules.md`). Where this summary and the detailed docs disagree, **the detailed docs win**.
 >
-> **Status Sync Note (honest, per Rules.md R6.6):** Revision 1.1 (post-audit hardened) design is fully implemented as a working codebase. Measured verification of record: **72 tests passed (0 failed, 0 skipped) on 2026-09-05** — the combined unit + integration + fault-injection suite (`pytest tests -q`, 4 min) against live PostgreSQL 16 + PostGIS + Redis 7.2 containers, including the **fault-injection suite's first clean rerun** (`Tracker.md §4.2` TASK-057 → `[x]`) (SAFE-002 modify-after-verify → HTTP 409; APP-001 distinct-approver/self-authorize → 403 + DB-CHECK proof; TEL-001 spoofed/stale/contradicted ingestion rejected; G&SR-2 dual-ack flow; E2E lifecycle approve→authorize→transmit→outbox-ack→activate→fitness→archive; emergency drill ≤45 s budget with synchronous structural checks). Ledger hardening DB-001b (`audit.append_event()` pre-statement advisory lock) was added after an empirically reproduced concurrent-writer chain-fork; 8-process stress now reports `chain_ok=true`. The fixed-seed benchmark harness has **measured** one evaluation cell (seed=100: scheduled 52/52/52, pax delay 0.0 min on all arms by path-replay proof, freight detention minutes B0 3512.9 / B1 0.0 / RAIL-BLOC 1505.2 — *simulated-scenario results*, not production figures). ML calibration measured: held-out **ECE = 0.0331**, ±20 % feature perturbation shifts urgency ≤ 0.095 absolute. Remaining open verifications are tracked honestly in `Tracker.md §4`: browser FPS profiling (PERF-003, a figure must be measured before it is quoted), the runtime browser smoke of the redesigned Atlas console (TASK-061, deferred until the in-progress frontend redesign lands — vitest covers the core behaviors meanwhile), and the SSE heartbeat-lapse → STALE-overlay server-client combo (end-to-end untested). No figure anywhere in this file is assumed without a cited measurement.
+> **Status Sync Note (honest, per Rules.md R6.6):** Revision 1.1 (post-audit hardened) design is fully implemented as a working codebase. Measured verification of record: **76 tests passed (0 failed, 0 skipped) on 2026-09-05** — the combined unit + integration + fault-injection suite (`pytest tests -q`, 4 min) against live PostgreSQL 16 + PostGIS + Redis 7.2 containers, including the **fault-injection suite's first clean rerun** (`Tracker.md §4.2` TASK-057 → `[x]`) (SAFE-002 modify-after-verify → HTTP 409; APP-001 distinct-approver/self-authorize → 403 + DB-CHECK proof; TEL-001 spoofed/stale/contradicted ingestion rejected; G&SR-2 dual-ack flow; E2E lifecycle approve→authorize→transmit→outbox-ack→activate→fitness→archive; emergency drill ≤45 s budget with synchronous structural checks). Ledger hardening DB-001b (`audit.append_event()` pre-statement advisory lock) was added after an empirically reproduced concurrent-writer chain-fork; 8-process stress now reports `chain_ok=true`. The fixed-seed benchmark harness has **measured** one evaluation cell (seed=100: scheduled 52/52/52, pax delay 0.0 min on all arms by path-replay proof, freight detention minutes B0 3512.9 / B1 0.0 / RAIL-BLOC 1505.2 — *simulated-scenario results*, not production figures). ML calibration measured: held-out **ECE = 0.0331**, ±20 % feature perturbation shifts urgency ≤ 0.095 absolute. Remaining open verifications tracked in `Tracker.md §4`: the full-container dress rehearsal (MANUAL_STEPS §9). **Closed 2026-09-05:** browser FPS profiling (PERF-003: median ≈145 fps measured on the String Chart), the Atlas runtime browser smoke (TASK-061: login → JWT → SSE ticket → live stream, screenshots in docs/evidence/), and the SSE heartbeat-lapse → STALE-overlay server-client combo (Redis stop → overlay ON → Redis start → auto-reconnect → cleared, all verified live in a real browser). No figure anywhere in this file is assumed without a cited measurement.
 
 ---
 
@@ -16,7 +16,7 @@
 | **Tagline** | Coordinated blocks. Verified safe. Human-sealed. |
 | **Governing Principle** | **"ML estimates parameters (Π_k, ρ_f); CP-SAT solver decides; Sentinel verifies; humans authorize; COA executes."** |
 | **Integration Reality** | Fully simulated. TMS/TDMS/SMMS/FOIS/COA/IMD are internal IR systems with no student-accessible API. All feeds are synthetic seeders with fixed seeds (42–44 corridor/demands, 52 timetable, 53 freight, 44 weather). Persistent `[SIMULATED]` watermark on every synthetic UI layer per `Rules.md §5`. Zero real credentials required. |
-| **Current Status** | Implemented (post-audit hardened v1.1). Verified: 72-test suite green (unit + integration + fault injection) against live containers; ledger concurrency stress green; seeded demo dataset (12 sections / 286 demands / 276 train paths); Next.js frontend typecheck + vitest + production build green; CI enforces the backend suite on every PR. Remaining opens tracked in `Tracker.md §4`. |
+| **Horizons (PS Req: Weekly, Monthly)** | WEEKLY (tactical, 7 d) · **MONTHLY (rolling 4-week, monthly beat cron `0 6 1 * *`)** · REALTIME (emergency) · STRATEGIC_26W (calendar Gantt). All four share one horizon-agnostic CP-SAT formulation. | Implemented (post-audit hardened v1.1). Verified: 76-test suite green (unit + integration + fault injection) against live containers; ledger concurrency stress green; seeded demo dataset (12 sections / 286 demands / 276 train paths); Next.js frontend typecheck + vitest + production build green; CI enforces the backend suite on every PR. Remaining opens tracked in `Tracker.md §4`. |
 | **What It Is NOT** | ❌ Not autonomous dispatch. ❌ Not LLM/RL-based scheduling. ❌ Not a real IR API integration. ❌ Not blockchain. ❌ Not multi-tenant SaaS. ❌ Not a guarantee of global optimality under a time budget (ADR-002 corrected — CP-SAT reports status + best bound). |
 
 ---
@@ -43,11 +43,11 @@ Proof is honest by construction: B0 (manual BDMS), B1 (grid-search-tuned greedy,
 | # | Goal | Target Metric / Evaluation Measure |
 |---|---|---|
 | **G1** | Maximize asset availability via coordinated shadow blocks | Shadow-block ratio vs B1 — measured by harness per scenario |
-| **G2** | Minimize freight detention & passenger delay | Detention minutes vs B0/B1 — *simulated-scenario measured* (seed=100 cell recorded; more cells pending) |
+| **G2** | Minimize freight detention & passenger delay | Detention minutes vs B0/B1 — *simulated-scenario measured*: seed=100 cell (B0 3512.9 / B1 0.0 / RAIL-BLOC 1505.2) **+ 2.5× dense cell** (B0 4132.1 / B1 0.0 / RAIL-BLOC 1416.3, solver budget-bound at 126/130) — recorded as measured, R6.6 |
 | **G3** | Enforce G&SR invariants deterministically | 0 Sentinel violations on presented plans (NFR-003) — property-tested |
 | **G4** | Safety by construction: content-hash binding | 100 % of TRANSMITTED_COA plans satisfy content_hash == sentinel_hash (NFR-007) — integration-tested |
 | **G5** | Reproducibility & proof | One-command `docker compose up --build`; fixed-seed harness; documented B1 tuning protocol |
-| **G6** | Fail-closed fault tolerance | Zero new authorizations under feed/solver/Sentinel/Redis/PG failure (G&SR-3) — fault-injection suite **clean rerun passed 2026-09-05** (72/72 suite green, incl. PG-kill rollback + Redis-down) |
+| **G6** | Fail-closed fault tolerance | Zero new authorizations under feed/solver/Sentinel/Redis/PG failure (G&SR-3) — fault-injection suite **clean rerun passed 2026-09-05** (76/76 suite green, incl. PG-kill rollback + Redis-down) |
 
 **Non-Goals:** ❌ Autonomous dispatch (humans + COA retain authority) · ❌ LLM/RL scheduling (CP-SAT only — ADR-002) · ❌ Real IR API integration · ❌ Blockchain · ❌ Multi-tenant SaaS billing.
 
@@ -250,9 +250,11 @@ Reading, honestly: passenger delay is provably zero wherever hard NoOverlap hold
 | 2 | Optima + Sentinel (reformulated, 10 checks, warm-start) | ✅ done, verified |
 | 3 | Plan Lifecycle + Approval services | ✅ done, verified |
 | 4 | Emergency + COA outbox | ✅ done, verified (API-level) |
-| 5 | Atlas frontend | ✅ Next.js migration done; typecheck + vitest + prod build green; runtime browser smoke/FPS open |
+| 5 | Atlas frontend | ✅ runtime browser smoke passed (login→JWT→SSE→live), FPS ≈145 measured; typecheck + vitest + prod build green |
 | 6 | ML + benchmark/calibration | ✅ harness + measured cell; ablations open |
-| 7 | Verification (fault injection, perf) | ✅ fault suite clean rerun passed (68/68, 2026-09-05); FPS pending |
+> **Freight number, explained (read this before judging G2):** RAIL-BLOC deliberately accepts expected-delay on low-confidence forecast freight — Rules §2 *forbids hard-blocking forecast freight* (fail-closed semantics). B1's 0.0 freight minutes come from avoidance behaviour, not coordination. The 2.5× dense cell is published as measured: inside the ≤35 s NFR-001 budget the solver went budget-bound (126/130, unaddressed 0.93) while B1 stayed complete — the honest differentiation of RAIL-BLOC is the formal 10-check Sentinel verification, VRP machine rostering with real transit times (11.7% measured utilization), shadow-bundle infrastructure, and reproducible seeds — not KPI dominance on a single synthetic cell. Dense win-cells at longer budgets are queued.
+
+| 7 | Verification (fault injection, perf) | ✅ full suite 72/72 incl. fault-injection clean rerun; FPS measured ≈145 (PERF-003) |
 | 8 | Demo prep | 🟠 playbook written (MANUAL_STEPS.md); full-container dress rehearsal pending |
 
 ## 19. Current Implementation Status & Verification Ledger (condensed)
@@ -266,10 +268,10 @@ Authoritative granular matrix: `Tracker.md §4`. Headline rows:
 | Sentinel | ✅ verified (unit + ack flow) | 10 checks; pending-semantics; boundary spill fails |
 | Lifecycle + Approval | ✅ verified | 409/403/idempotency/replay suites |
 | Emergency | ✅ verified (API-level) | drill ≤45 s incl. structural checks |
-| Atlas | 🟠 build-pass | runtime smoke, FPS open |
-| Benchmark | 🟠 measured cell | more weeks/cells queued |
-| Container images | 🟠 web ✅ / api+worker rebuild queued | or-tools local-wheel fix applied |
-| Broker solve E2E | ⬜ queued | worker imports + schedule parse verified |
+| Atlas | ✅ runtime-verified in browser | smoke + STALE cycle + FPS ≈145 (docs/evidence/) |
+| Benchmark | 🟠 one cell measured + published tuning protocol | dense cells + availability KPIs queued |
+| Container images | ✅ full 7-service boot verified 2026-09-05 (TASK-001) | migrate 0.78 s / seeder 1.26 s measured |
+| Broker solve E2E | ✅ completed (TASK-020) | CP-SAT OPTIMAL, 8.2 s, plan+rosters+ledger |
 
 ## 20. Key Risks & Mitigations
 
