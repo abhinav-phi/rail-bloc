@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://github.com/abhinav-phi/rail-bloc/tree/main/docs
+    about: PRD, TechSpec, Schema, Rules, Tracker — read before filing.
+  - name: Security disclosure
+    url: https://github.com/abhinav-phi/rail-bloc/security/advisories/new
+    about: Report vulnerabilities privately via GitHub Security Advisories (see .github/SECURITY.md). Do not open a public issue.

@@ -124,7 +124,10 @@ class RosterEntry:
     plan_start: datetime
     plan_end: datetime
     travel_start: datetime
-    # Machine arrival timestamp: travel ends when scheduled work begins.
+    # travel_end is the machine ARRIVAL timestamp: it equals plan_start, because
+    # machine travel is modelled as ending exactly when scheduled work begins
+    # (zero headroom policy). Travel DURATION = travel_end - travel_start.
+    # (PR #95: "Machine arrival timestamp: travel ends when scheduled work begins.")
     travel_end: datetime
     origin: str
 

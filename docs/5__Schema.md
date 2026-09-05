@@ -264,6 +264,10 @@ CREATE TABLE optimization.plan_sections (
 -- DB-005 fix: FR-009's Track Machine Route Optimizer (VRP sub-model) output
 -- was never persisted anywhere. This table stores the machine roster the
 -- solver's machine-routing stage produces.
+-- NOTE (travel_end semantics): travel_end is the machine ARRIVAL timestamp and
+-- equals the scheduled work start (zero-headroom policy); travel DURATION is
+-- travel_end - travel_start. Column name intentionally unchanged — behaviour
+-- is correct, only the meaning needed documenting (issue #95).
 CREATE TABLE optimization.machine_rosters (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     machine_id VARCHAR(32) NOT NULL,

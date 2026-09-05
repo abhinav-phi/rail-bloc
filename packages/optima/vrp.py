@@ -32,7 +32,10 @@ def build_roster(works: list[ScheduledWork], machines: list[MachineInfo]) -> tup
                 violations.append(f"{mach}: travel {travel_start.isoformat()} overlaps prior assignment ending {prev_end.isoformat()}")
             if prev_end is not None and travel_start > prev_end:
                 idle_total += (travel_start - prev_end).total_seconds() / 60
-            # `w.start` is both the machine arrival time and the start of scheduled work.
+            # travel_end is the machine ARRIVAL timestamp (== work start, zero-headroom
+            # policy). Travel DURATION is therefore travel_end - travel_start; the
+            # machine arrives exactly when the scheduled work begins.
+            # (PR #95: "w.start is both the machine arrival time and the start of work.")
             entries.append(RosterEntry(mach, w.start, w.end, travel_start, w.start,
                                        origin=f"KM {prev_km:.1f}" if prev_end else f"DEPOT KM {depot_km:.1f}"))
             prev_end = w.end

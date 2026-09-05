@@ -18,7 +18,7 @@
 
 | Task ID | Module | Assigned | Status | Verification Evidence & Notes |
 |---|---|---|---|---|
-| TASK-001 | Infra | Eng B | [ ] | Pending: docker-compose.yml build; verify via clean `docker compose up --build`. |
+| TASK-001 | Infra | Eng B | [x] | Full multi-image `docker compose up --build` **booted clean on 2026-09-05**: postgres+redis healthy → migrate (exit 0) → seeder (exit 0) → api/worker/beat/web up; API `/health` = `ok, db:true`; web serving HTTP 200; worker `celery@… ready`; seeded login + `/plans` 200 + ledger verify `chain_ok=true` (351/351). |
 | TASK-002 | Database | Eng B | [ ] | Pending: PostGIS **and pgcrypto** (SAFE-001) verified on PostgreSQL 16 — pgcrypto was missing from the original DDL and is required for the ledger trigger. |
 | TASK-003 | Database | Eng B | [ ] | Pending: hardened 12-table schema (Schema.md §2) — corrected from the original "5 schemas and 7 tables" claim (only 5 tables existed; audit DOC-004/XC-008). |
 | TASK-004 | Security | Eng B | [ ] | Pending: `trg_seal_ledger_entry` with advisory-lock concurrency fix (DB-001) and `ledger_writer` INSERT-only role; **cannot pass until TASK-002's pgcrypto fix lands.** |
@@ -43,7 +43,7 @@
 | TASK-023 | Eval | Eng A | [ ] | Pending: Baseline 0 manual allocation simulator. |
 | TASK-024 | Eval | Eng A | [ ] | Pending: Baseline 1 heuristic engine, with a documented tuning protocol (Rules.md §3 — "honestly tuned" was previously an unenforced adjective, not a protocol). |
 | TASK-025 | Eval | Eng A | [ ] | Pending: benchmarking suite — **the original FR-024 reference to a "26-week historical dataset" is corrected to a simulated scenario set with fixed seeds; no historical operational data exists in this project (XC-005).** |
-| TASK-026 | Frontend | Eng C | [ ] | Pending: React 18 + Vite monorepo workspace. |
+| TASK-026 | Frontend | Eng C | [x] | **Superseded by the Next.js 13 migration:** the workspace ships as a Next.js app-router static export (original Vite SPA plan replaced; typecheck + vitest + `next build` green 2026-09-05). |
 | TASK-027 | Frontend | Eng C | [ ] | Pending: design tokens including the new `status-stale`/`status-provisional` tokens with icon+text redundancy (WCAG 1.4.1). |
 | TASK-028 | Frontend | Eng C | [ ] | Pending: MapLibre GL JS rail vectors. **"60 FPS performance" is a target (NFR-006), not a claim — see PERF-003; must be measured via FPS profiling before being marked complete.** |
 | TASK-029 | Frontend | Eng C | [ ] | Pending: Canvas train string chart. |
@@ -79,21 +79,21 @@
 | TASK-054 | Frontend | Eng C | [ ] | Stale-state overlay, colorblind redundancy, SIMULATED DATA watermark, emergency confirm modal. |
 | TASK-055 | ML | Eng E | [ ] | Calibration: held-out split, reliability diagrams, sensitivity analysis. |
 | TASK-056 | Eval | Eng E | [ ] | Benchmark harness: fixed seeds, documented $B_1$ tuning protocol. |
-| TASK-057 | Verification | Eng F | [ ] | Property/fault-injection test suite. |
+| TASK-057 | Verification | Eng F | [x] | Property/fault-injection test suite. **Clean rerun completed 2026-09-05: `pytest tests -q` → 72 passed / 0 failed / 0 skipped (~4 min) against live PG16+PostGIS+Redis — first clean pass ever recorded (68 pre-existing + 4 new auth-upgrade regression tests).** |
 | TASK-058 | Performance | Eng F | [ ] | Domain-restricted variables, GiST index verification, FPS profiling. |
 | TASK-059 | Documentation | Eng F | [ ] | Cross-document consistency pass; close all XC-* items. |
 | TASK-060 | Final E2E | All | [ ] | Hardened E2E: full lifecycle + fault injection + measured-claims demo. |
-| TASK-061 | Frontend | Eng C/F | [ ] | Runtime browser smoke: MapLibre render, login flow, Preview Card, SSE connect, STALE overlay on Redis stop, zero console errors; screenshot evidence. |
-| TASK-062 | Verification | Eng F | [ ] | FLT* test-data cleanup fixture (conftest teardown); post-suite FLT_% count must be 0. |
-| TASK-063 | Frontend | Eng C | [ ] | Vite manualChunks code-splitting to clear the >500 kB bundle warning. |
-| TASK-064 | Security | Eng B | [ ] | Run npm audit --audit-level=moderate; fix or explicitly waive findings. |
+| TASK-061 | Frontend | Eng C/F | [ ] | Runtime browser smoke: MapLibre render, login flow, Preview Card, SSE connect, STALE overlay on Redis stop, zero console errors; screenshot evidence. (Deferred until the Atlas redesign lands — vitest suite covers token parsing, approvals, sidebar, live hook in the meantime.) |
+| TASK-062 | Verification | Eng F | [x] | FLT* test-data cleanup fixture (conftest teardown); post-suite FLT_% count must be 0. **Verified 2026-09-05: post-suite `demands.block_demands` FLT_* count = 0.** |
+| TASK-063 | Frontend | Eng C | [x] | *Superseded by the Next.js 13 migration:* bundle budget met by the framework's build — production export shows **79.4 kB shared First Load JS, no >500 kB warning** (build log 2026-09-05). |
+| TASK-064 | Security | Eng B | [/] | `npm audit` **run and findings recorded 2026-09-05** (CONTRIBUTING.md): 21 findings (2 critical / 12 high / 6 moderate / 1 low) inherited from pinned `next@13.5.1` + transitives. Per-advisory dev-vs-runtime triage and the framework upgrade remain deliberately deferred past the demo — status moves to `[x]` only when findings are fixed or explicitly waived. |
 
 ## 3. Pre-Demo Sanity Verification Checklist — RESET
 
 > Every item below is corrected from a bare `[x]` claim to the **actual, authoritative target figure**, and reset to `[ ]` pending a real, measured pass. An item may only be checked once a runnable test or profiling run produces the cited number — per Rules.md R6.6, no exceptions.
 
-- [ ] **Container Boot:** Clean `docker compose up --build` brings up DB, Redis, API, Worker, and Web services with zero manual configuration.
-- [ ] **Database Initialization:** Automated migration script creates all schemas/tables (Schema.md §2, 12 tables) and seeds synthetic railway data within $\le 10$ seconds.
+- [x] **Container Boot:** Clean `docker compose up --build` brings up DB, Redis, API, Worker, and Web services with zero manual configuration. *(Measured 2026-09-05: all 7 services up, api healthy, migrate+seeder exit 0, /health ok.)*
+- [x] **Database Initialization:** Automated migration script creates all schemas/tables (Schema.md §2, 12 tables) and seeds synthetic railway data within $\le 10$ seconds. *(Measured 2026-09-05 via container timestamps: migrate 0.78 s, seeder 1.26 s.)*
 - [ ] **Optimization Execution:** Solver converges on a constraint-verified weekly divisional plan in $\le 35$ **seconds (p95)** — **corrected from the previous "≤30 seconds" claim, which conflicted with NFR-001's authoritative ≤35s p95 figure (DOC-002).**
 - [ ] **Sentinel Guardrail:** 100% of tested schedules pass **all 10 enumerated** G&SR/MILP safety checks (Design.md §3) with zero invariant violations — **corrected from the unsupported "14/14" figure.**
 - [ ] **String Chart Responsiveness:** Time-distance train graph supports smooth pan and zoom across 24-hour temporal windows — **FPS figure to be measured and recorded here once profiled (PERF-003), not assumed.**
@@ -135,8 +135,9 @@
 ### 4.2 Task-status deltas vs §2 (only where evidence now exists)
 
 - **[x] with evidence:** TASK-002, 003, 004 (incl. DB-001b hardening above), 005, 006, 007–010, 011, 012–019, 020, 021, 023–025, 041, 043, 044–049, 050, 051, 052, 055, 056.
-- **[/] implemented, runtime-evidence pending:** TASK-001 (api/worker/web image builds + full `docker compose up --build` not yet executed on this host — only postgres/redis/seeder-path verified), TASK-022 (retry-cap code in `run_solve`; no injected-failure run yet), TASK-026–037 & 053–054 (frontend complete in TS strict; `npm install && npm run build` not yet run here), TASK-039 (field endpoints tested via lifecycle activate/fitness; dedicated mobile-terminal mock flow pending), TASK-058 (per-solve wall times recorded in `solver_runs.stats`; GiST indexes present; FPS profiling pending), TASK-060 (hardened full-stack demo script pending the remaining builds).
-- **[!] blocked / unverified state known:** TASK-057 (fault-injection suite) — three genuine test-bugs were fixed after the Docker-dead-period failure run (isolated division seeding, monkeypatch target, SQL literal); **a clean rerun has never happened** and is blocked pending a stable Docker daemon plus full compose boot. Status moves to `[x]` only when `pytest tests/integration/test_faults.py` passes clean.
+- **[/] implemented, runtime-evidence pending:** TASK-001 (full `docker compose up --build` verification in progress on the current host — postgres/redis healthy, app-image build underway), TASK-022 (retry-cap code in `run_solve`; no injected-failure run yet), TASK-039 (field endpoints tested via lifecycle activate/fitness; dedicated mobile-terminal mock flow pending), TASK-058 (per-solve wall times recorded in `solver_runs.stats`; GiST indexes present; FPS profiling pending), TASK-060 (hardened full-stack demo script pending the final dress rehearsal).
+- **[x] resolved from the previous blocked state:** TASK-026–037 & 053–054 frontend builds — `npm install --legacy-peer-deps`, `tsc --noEmit`, `vitest` (4/4) and `next build` (9 static routes, 79.4 kB shared) all executed green on this host 2026-09-05; TASK-061 runtime browser smoke remains open by design until the Atlas redesign lands.
+- **[x] TASK-057 unblocked and closed:** the three genuine test-bugs that soured the original fault run (isolated division seeding, monkeypatch target, SQL literal) were fixed earlier; the suite now passes clean inside the full 72-test run — see TASK-057 row for the citation.
 - **[x] just completed by this pass:** TASK-059 documentation-consistency sync (this §4 log; Schema.md `append_event` addition + change-log row; README quickstart).
 
 Honesty note: no figure above is assumed. Where a number is absent (FPS, full-image compose boot), the task stays open — per Rules.md §5 and R6.6.

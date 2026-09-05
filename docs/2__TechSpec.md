@@ -165,8 +165,8 @@ CP-SAT is warm-started using Baseline 1's ($B_1$) greedy heuristic solution as a
 
 | Layer | Selected Technology | Version | Rationale & Trade-off Justification |
 |---|---|---|---|
-| Frontend Core | React + TypeScript (Vite) | React 18.3+ | Type safety, high rendering speed, component modularity. |
-| Geospatial Map | MapLibre GL JS | v4.1+ | Open-source, GPU-accelerated vector rendering of large track graphs. |
+| Frontend Core | Next.js 13 (app router, static export) + TypeScript | Next 13.5 / React 18.2 | Type safety, file-based routing, framework build optimizations (replaced the original Vite SPA — see Tracker TASK-026 supersession). |
+| Geospatial Map | MapLibre GL JS | v6.6+ | Open-source, GPU-accelerated vector rendering of large track graphs. |
 | Backend Framework | FastAPI (Python) | v0.111+ | Asynchronous I/O, native Pydantic validation, OpenAPI compliance. |
 | Optimization Core | Google OR-Tools (CP-SAT) | v9.9+ | High-performance interval/constraint scheduling — see §2 reformulation. |
 | Predictive ML | PyTorch + XGBoost | PyTorch 2.3+ | Tabular defect growth modeling and time-series freight forecasting; advisory-only (Rules.md §2), feeds objective parameters ($\Pi_k$, $\rho_f$), never a feasibility constraint. |

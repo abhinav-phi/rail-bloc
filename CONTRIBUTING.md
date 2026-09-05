@@ -154,15 +154,17 @@ mypy packages/ apps/api/
 pytest -q
 
 # Frontend gates (TypeScript strict noImplicitAny is MANDATORY — Rules.md §4)
-cd apps/web && npm install
-npm run build            # tsc --noEmit + vite production build
+cd apps/web && npm install --legacy-peer-deps
+npm run typecheck        # tsc --noEmit
+npm run test             # vitest + React Testing Library
+npm run build            # next build — static export to out/ (served by nginx in the image)
 ```
 
 > **Tooling adoption note (honesty):** ruff/mypy configs and frontend ESLint/Prettier/vitest wiring are the declared standard but CI enforcement is still landing (Tracker TASK-057/059). Until then these gates are reviewer-enforced: expect review comments if skipped. Pydantic v2 schemas are mandatory at every API boundary. Zero-hardcoding policy (`Rules.md §4`): operational parameters, penalty coefficients and scheduling cadences come from env/config — never literals.
 
-> **Known build warning:** Vite produces a bundle-size warning (single JS chunk ~1.02 MB > 500 kB limit). This is acceptable for the hackathon demo. Before production deployment, add `build.rollupOptions.output.manualChunks` to `vite.config.ts` to split vendor/application chunks.
+> **Bundle budget (TASK-063, superseded by the Next.js migration):** the original Vite SPA produced a ~1.02 MB single-chunk warning; under Next.js 13 static export the build is clean — **79.4 kB shared First Load JS** (measured 2026-09-05), well under the 500 kB budget. No manual chunk-splitting is needed while the framework handles it.
 
-> **Known skip (TASK-064 measured):** `npm audit` reports 4 findings — vite HIGH (path traversal in optimized-deps `.map` handling), esbuild MODERATE (dev-server request exposure) and react-router/react-router-dom MODERATE (open redirect via backslash links). All four are **dev-server advisories**: the shipped production artifact is static files served by nginx and is unaffected. Fixes require major upgrades (`npm audit fix --force` pulls Vite 7 / router v7) which are deliberately deferred past the hackathon demo; re-run and resolve before any production deployment.
+> **Known skip (TASK-064 measured 2026-09-05):** `npm audit` on the current Next.js frontend reports **21 findings (2 critical, 12 high, 6 moderate, 1 low)**, largely inherited from the pinned `next@13.5.1` and its transitive dependencies (e.g. the zod DoS advisory inside next's vendored copy). Remediation requires framework major-upgrades (`npm audit fix --force` wants `next@13.5.11`+, beyond the pinned range) which are deliberately deferred past the hackathon demo. Note this is broader than the old Vite-era audit (4 dev-server advisories) — a per-advisory triage (dev-only vs runtime path) is still pending, so treat all findings as open until the upgrade lands. Re-run and resolve before any production deployment.
 
 > **Known noise:** pytest-asyncio deprecation warnings and redis asyncio `Event loop is closed` `__del__` shutdown noise are present and harmless. Do not chase these during the hackathon.
 

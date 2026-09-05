@@ -214,6 +214,11 @@ CREATE TABLE optimization.plan_sections (
 );
 
 -- DB-005: VRP output persistence
+-- NOTE (travel_end semantics): travel_end is the machine ARRIVAL timestamp and
+-- equals the scheduled work start (zero-headroom policy). The machine departs at
+-- travel_start and arrives exactly when work begins; travel DURATION is
+-- travel_end - travel_start. Column name kept unchanged — behaviour is correct,
+-- semantics now clarified (issue #95).
 CREATE TABLE optimization.machine_rosters (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     machine_id VARCHAR(32) NOT NULL,
