@@ -28,7 +28,8 @@ from data.generators.corridor_gen import FEEDING_GROUPS
 from packages.core.models import DemandInput, MachineInfo, TrainPathInput
 from packages.optima.formulations import add_hint, build_model
 from packages.optima.heuristic import greedy_schedule
-from packages.optima.solver import cluster, solve as optima_solve
+from packages.optima.solver import cluster
+from packages.optima.solver import solve as optima_solve
 from packages.sentinel.validator import (
     FeedingMapEntry,
     SentinelContext,
