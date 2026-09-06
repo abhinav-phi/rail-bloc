@@ -24,3 +24,6 @@ data/uploads/*.geojson
 /build
 # Teammate design share — reference only, port happens into apps/web
 frontend(share by teammates for design purpose)/
+
+# Strix security scan outputs (local pentest runs)
+strix_runs/

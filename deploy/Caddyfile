@@ -1,0 +1,5 @@
+# Automatic HTTPS via Let's Encrypt for the DuckDNS subdomain.
+# Domain comes from CADDY_ACME_DOMAIN in .env (e.g. railbloc-api.duckdns.org).
+{$ACME_DOMAIN} {
+	reverse_proxy api:8000
+}
