@@ -159,7 +159,7 @@ $$\sum_{e \in E} U_{m,e}(t) \le 1, \quad \forall m \in M, \forall t \in T$$
 
 ### §2.5 Solver Warm-Start and Status Reporting
 
-CP-SAT is warm-started using Baseline 1's ($B_1$) greedy heuristic solution as a search hint (`AddHint`) — this both improves solve latency toward the ≤35s p95 target (NFR-001, PERF-001) and guarantees RAIL-BLOC's solution is never worse than the honest baseline it is benchmarked against. **Every solve reports its CP-SAT status (`OPTIMAL`/`FEASIBLE`/`INFEASIBLE`/`UNKNOWN`) and best bound alongside the schedule** — see ADR-002 correction below; the system does not claim guaranteed optimality under a hard time budget.
+CP-SAT is warm-started using Baseline 1's ($B_1$) greedy heuristic solution as a search hint (`AddHint`) — this improves solve latency toward the ≤35s p95 target (NFR-001, PERF-001). **Measured caveat (2026-09-06):** in dense scenarios the $B_1$ schedule is itself infeasible under the full constraint model (it does not model machine travel — MILP-C5 — or OHE isolation), so the hint is dropped and the never-worse property does NOT hold against scheduled-count; it holds only against **Sentinel-verified count**, where $B_1$ certifies 0 plans and RAIL-BLOC certifies its committed set (see `apps/eval/b1_audit.py`). The system does not claim guaranteed optimality under a hard time budget (ADR-002). **Every solve reports its CP-SAT status (`OPTIMAL`/`FEASIBLE`/`INFEASIBLE`/`UNKNOWN`) and best bound alongside the schedule** — see ADR-002 correction below; the system does not claim guaranteed optimality under a hard time budget.
 
 ## 3. Technology Stack & Component Justification
 

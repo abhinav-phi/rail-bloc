@@ -58,14 +58,23 @@ def cluster(schedule: dict[str, int], demands: dict[str, DemandInput], params: S
 
 def solve(demands: list[DemandInput], trains: list[TrainPathInput], machines: list[MachineInfo],
           weights: SolveWeights, params: SolverParams, horizon: str = "WEEKLY",
-          incident_id: str | None = None) -> SolveResult:
+          incident_id: str | None = None,
+          warm_start: dict[str, int] | None = None) -> SolveResult:
     active = [d for d in demands]
     if not active:
         return SolveResult("OPTIMAL", 0.0, 0.0, 0.0, [], [], 0.0, [], 0, 0, 0.0)
     base = min(d.earliest_start for d in active)
     demand_map = {d.id: d for d in active}
 
-    hint_schedule = greedy_schedule(active, trains, params, base)
+    # Warm-start: callers that benchmark against a TUNED B1 must pass that exact
+    # schedule here — the default greedy runs urgency_weight=1.0, which is a
+    # DIFFERENT baseline than the tuned B1 (0.5/15) the harness reports against.
+    # Passing an untuned hint while claiming "never worse than B1" was the
+    # Catch-#1 discrepancy in the dense-cell audit.
+    hint_schedule = (
+        warm_start if warm_start is not None
+        else greedy_schedule(active, trains, params, base)
+    )
     built = build_model(
     active, trains, machines, weights, params, base
     )

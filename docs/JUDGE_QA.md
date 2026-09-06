@@ -3,8 +3,9 @@
 ## Q1. "PS bola Monthly. Dikhao?"
 **A:** `/planner/weekly` → Monthly tab. 7 MONTHLY plans live, har ek content_hash-sealed. Beat cron `0 6 1 * *` hai; solver horizon-agnostic hai — weekly/monthly/26W ek hi CP-SAT formulation share karte hain. Migration `20260905_plan_horizon_monthly` dikha sakta hoon. *(PS Req 4 ✓)*
 
-## Q2. "Tumhara freight number greedy se worse hai. Kyun?"
-**A:** "By design — Rules §2 **hard-blocking of forecast freight forbid karta hai**; hum low-confidence freight pe expected-delay accept karte hain (fail-closed forecast policy). Dense-cell numbers published hain, measured: B0 4132.1 / B1 0.0 / RAIL-BLOC 1416.3, solver 35s NFR-001 budget me budget-bound. Honest differentiation: formal 10-check verification + VRP machine rosters + reproducibility — not KPI dominance on a synthetic cell." *(Summary freight callout dikhao.)*
+## Q2. "Tumhara freight number greedy se worse hai. Kyun? Aur seedha poochta hoon — greedy 130/130 schedule karta hai, tumhara solver 126. Why CP-SAT?"
+
+**A:** "Kyunki **scheduled-count aur certifiable-count alag cheez hai.** Humne B1 ke schedule ko hamare hi 10-check Sentinel rule set se audit kiya (`apps/eval/b1_audit.py`, measured): **B0 aur B1 dono 0/130 plans certify karte hain** — B1 ke 106/106 candidates MILP-C5 machine-travel violation karte hain, plus OHE isolation aur headway spills. Wo schedule machine fleet ke liye physically unflyable hai. RAIL-BLOC 129 schedule karta hai, **100 outright certifiable** (sirf by-design G&SR-2 dual-ack pending) aur 29 auto-retry. Freight trade-off Rules §2 ka design hai — forecast freight kabhi hard-block nahi hota. Warm-start hint bhi dense scenarios me INFEASIBLE nikla (fix-to-hint probe) — isliye solver ko feasible solution khud derive karna padta hai. Aur haan — **B0 ke against hum har cell me 3x better hain (4132 → 1416), kyunki manual process hi asli current-state competitor hai.**"
 
 ## Q3. "Kya tumhara frontend kabhi browser me khula hai?"
 **A:** "Haan — aaj hi, runtime smoke pass: login → JWT → SSE one-time-ticket → live stream, STALE-overlay cycle (Redis stop → overlay ON → start → clear), String Chart median ≈145 fps (PERF-003, 1075 rAF samples). Screenshots `docs/evidence/atlas-*.png`." *(2 runtime bugs bhi isi smoke me mile the — persona auth + reload token wipe — dono fixed.)*

@@ -220,8 +220,8 @@ def main() -> None:
         dem, tr, mach = build_scenario(seed)
         p = params()
         _, k0 = run_b0(dem, tr, p)
-        _, k1 = run_b1(dem, tr, p, best[0]["urgency_weight"], best[0]["step_mins"])
-        _, kr = run_railbloc(dem, tr, mach, p)
+        s1, k1 = run_b1(dem, tr, p, best[0]["urgency_weight"], best[0]["step_mins"])
+        _, kr = run_railbloc(dem, tr, mach, p, warm_start=s1)
         rows["B0"].append(k0); rows["B1"].append(k1); rows["RAIL-BLOC"].append(kr)
         print(f"\n[scenario seed={seed}]")
         cols = ("scheduled", "pax_delay_minutes", "frt_delay_minutes",
@@ -258,7 +258,7 @@ def main() -> None:
         _, kr = run_railbloc(dem, tr, mach, p)
         print(f"\n== DENSE CELL (seed={seed}, density={args.density}x — the win-cell) ==")
         dcols = ("scheduled", "total", "unaddressed_urgency", "asset_availability_pct",
-                 "shadow_ratio_pct", "frt_delay_minutes")
+                 "shadow_ratio_pct", "frt_delay_minutes", "cp_sat_status")
         for name, k in (("B0", k0), ("B1", k1), ("RAIL-BLOC", kr)):
             print(f"  {name:10s} {json.dumps({x: k.get(x) for x in dcols})}")
         if args.ablations:
