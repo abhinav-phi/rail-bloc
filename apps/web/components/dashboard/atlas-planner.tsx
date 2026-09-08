@@ -53,18 +53,18 @@ const HORIZONS: {
 
 const STATUS_TONE: Record<string, string> = {
   SENTINEL_PASSED:
-    'border-[#bfe6d0] bg-[#e9f7ef] text-[#1b7f4b] dark:border-[#14532d] dark:bg-[#052e16]/60 dark:text-[#4ade80]',
+    'border-[color:var(--atlas-success-ring)] bg-[color:var(--atlas-success-bg)] text-[color:var(--atlas-success)]/60',
   APPROVED_SR_DOM:
-    'border-[#c3d6f5] bg-[#eaf1fc] text-[#2d63c8] dark:border-[#1e3a8a] dark:bg-[#172554]/60 dark:text-[#93c5fd]',
+    'border-[color:var(--atlas-info-ring)] bg-[color:var(--atlas-info-bg)] text-[color:var(--atlas-info)]/60',
   AUTHORIZED_DRM:
-    'border-[#d9c9ec] bg-[#f1eaf8] text-[#6d4a96] dark:border-[#4c1d95] dark:bg-[#2e1065]/60 dark:text-[#c4b5fd]',
+    'border-[color:var(--atlas-purple-bg)] bg-[color:var(--atlas-purple-bg)] text-[color:var(--atlas-purple)]/60',
   TRANSMITTED_COA:
-    'border-[#d9afc1] bg-[#f8eaf0] text-[#935073] dark:border-[#502d55] dark:bg-[#3a1f33]/60 dark:text-[#d58ba9]',
+    'border-[color:var(--atlas-brand-ring)] bg-[color:var(--atlas-brand-soft)] text-[color:var(--atlas-brand)]/60',
   ACTIVE_GRANTED:
-    'border-[#bfe6d0] bg-[#e9f7ef] text-[#1b7f4b] dark:border-[#14532d] dark:bg-[#052e16]/60 dark:text-[#4ade80]',
+    'border-[color:var(--atlas-success-ring)] bg-[color:var(--atlas-success-bg)] text-[color:var(--atlas-success)]/60',
   DRAFT: 'border-border bg-muted text-muted-foreground',
   PROVISIONAL:
-    'border-[#f3dfb1] bg-[#fff7e6] text-[#b7791f] dark:border-[#78350f] dark:bg-[#451a03]/60 dark:text-[#fbbf24]',
+    'border-[color:var(--atlas-warning-ring)] bg-[color:var(--atlas-warning-bg)] text-[color:var(--atlas-warning)]/60',
 };
 
 function fmt(iso: string): string {
@@ -141,7 +141,7 @@ function SolveCard(props: {
       {error ? (
         <p
           role="alert"
-          className="mt-3 rounded-lg border border-[#f5c2ca] bg-[#fdecef] px-3 py-2 text-xs text-[#d6293e] dark:border-[#7f1d1d] dark:bg-[#450a0a]/40 dark:text-[#f87171]"
+          className="mt-3 rounded-lg border border-[color:var(--atlas-danger-ring)] bg-[color:var(--atlas-danger-bg)] px-3 py-2 text-xs text-[color:var(--atlas-danger)]/40"
         >
           {error}
         </p>
@@ -157,6 +157,12 @@ export function AtlasPlanner() {
   const [horizon, setHorizon] = useState<Horizon>('WEEKLY');
   const [plans, setPlans] = useState<PlanRow[] | null>(null);
   const [queuedTask, setQueuedTask] = useState<string | null>(null);
+  const [baseline, setBaseline] = useState<number | null>(null);
+  const committed =
+    queuedTask !== null &&
+    baseline !== null &&
+    plans !== null &&
+    plans.length > baseline;
   const division = persona?.division ?? 'DLI';
 
   const load = useCallback(async () => {
@@ -190,8 +196,9 @@ export function AtlasPlanner() {
     <div className="mx-auto w-full max-w-[1600px] px-6 py-6 lg:px-8">
       <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
+          <p className="atlas-section-label mb-2">02 / BLOCK PLANNING</p>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            Block Planning
+            Work queue
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Multi-horizon solver (PS Req 4): Weekly · Monthly · 26-Week — one
@@ -232,16 +239,48 @@ export function AtlasPlanner() {
         division={division}
         onQueued={(taskId) => {
           setQueuedTask(taskId);
+          setBaseline((plans ?? []).length);
           setPlans(null);
         }}
       />
 
       {queuedTask ? (
-        <p className="mb-4 flex items-center gap-2 text-xs text-muted-foreground">
-          <RefreshCw size={12} className="animate-spin" />
-          Solver run {queuedTask.slice(0, 8)}… queued — plan rows appear here
-          when the worker commits them.
-        </p>
+        <div className="atlas-card mb-4 p-4" aria-live="polite">
+          <p className="atlas-section-label mb-3">
+            SOLVE IN PROGRESS · {queuedTask.slice(0, 8)}…
+          </p>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {[
+              'NEXUS · ingesting demands',
+              'OPTIMA · solving network',
+              'SENTINEL · validating',
+            ].map((stage, i) => (
+              <div
+                key={stage}
+                className={cn(
+                  'flex items-center gap-2 rounded-sm border px-3 py-2 font-mono text-[10px] uppercase tracking-[0.12em]',
+                  i === 0
+                    ? 'border-[color:var(--atlas-success-ring)] bg-[color:var(--atlas-success-bg)] text-[color:var(--atlas-success)]'
+                    : 'border-border text-muted-foreground',
+                )}
+              >
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    'inline-block h-1.5 w-1.5 rounded-full',
+                    i === 0
+                      ? 'animate-pulse bg-[color:var(--atlas-success)]'
+                      : 'bg-muted-foreground/40',
+                  )}
+                />
+                {stage}
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            Plan rows appear here when the worker commits them.
+          </p>
+        </div>
       ) : null}
 
       {/* Plans table for the selected horizon */}

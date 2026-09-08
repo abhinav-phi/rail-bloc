@@ -64,12 +64,25 @@ export function AtlasCorridorMap() {
 
     (async () => {
       const maplibregl = await import('maplibre-gl');
+      await import('maplibre-gl/dist/maplibre-gl.css' as string);
 
       if (cancelled || !containerRef.current) return;
       if (!mapRef.current) {
         map = new maplibregl.Map({
           container: containerRef.current,
-          style: 'https://demotiles.maplibre.org/style.json',
+          // Local minimal dark style: no basemap tiles, no network — the
+          // corridor GeoJSON layers ARE the map (control-room idiom).
+          style: {
+            version: 8,
+            sources: {},
+            layers: [
+              {
+                id: 'bg',
+                type: 'background',
+                paint: { 'background-color': '#0B111E' },
+              },
+            ],
+          },
           center: [77.9, 28.75],
           zoom: 8.2,
         }) as unknown as Record<string, unknown>;
@@ -112,8 +125,8 @@ export function AtlasCorridorMap() {
                   'line-color': [
                     'case',
                     ['get', 'blocked'],
-                    '#ef4444',
-                    '#3b82f6',
+                    '#F06B72',
+                    '#4A5C72',
                   ],
                   'line-width': ['case', ['get', 'blocked'], 6, 3.5],
                 },
@@ -124,7 +137,7 @@ export function AtlasCorridorMap() {
                 type: 'line',
                 source: 'blocks',
                 paint: {
-                  'line-color': '#ef4444',
+                  'line-color': '#F06B72',
                   'line-width': 8,
                   'line-offset': 3,
                 },
@@ -135,7 +148,7 @@ export function AtlasCorridorMap() {
                 type: 'line',
                 source: 'ohe',
                 paint: {
-                  'line-color': '#22d3ee',
+                  'line-color': '#C17F3E',
                   'line-width': 2,
                   'line-dasharray': [2, 2],
                 },
@@ -220,6 +233,7 @@ export function AtlasCorridorMap() {
     <div className="flex h-full flex-col">
       {/* Toolbar — layer toggles + live counts */}
       <div className="flex flex-wrap items-center gap-3 border-b bg-card px-4 py-2.5">
+        <p className="atlas-section-label mr-2">05 / CORRIDOR MAP</p>
         {LAYER_META.map((l) => (
           <label
             key={l.key}
@@ -229,7 +243,7 @@ export function AtlasCorridorMap() {
               type="checkbox"
               checked={visible[l.key]}
               onChange={() => toggle(l.key)}
-              className="accent-[#935073]"
+              className="accent-brass"
             />
             <span
               aria-hidden="true"

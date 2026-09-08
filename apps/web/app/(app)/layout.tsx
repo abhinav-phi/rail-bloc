@@ -25,23 +25,30 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function ConsoleShell({ children }: { children: React.ReactNode }) {
+  const [navOpen, setNavOpen] = useState(false);
+  return (
+    <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
+      <Header onMenu={() => setNavOpen(true)} />
+      <div className="flex flex-1 overflow-hidden">
+        <Sidebar open={navOpen} onClose={() => setNavOpen(false)} />
+        <main className="relative flex-1 overflow-y-auto">
+          <StaleStateOverlay />
+          {children}
+          <AtlasWatermark detail="seed 42 · demo scope" />
+        </main>
+      </div>
+    </div>
+  );
+}
+
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <PersonaProvider>
       <AuthGate>
         <SSEProvider>
           <SolverProvider>
-            <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
-              <Header />
-              <div className="flex flex-1 overflow-hidden">
-                <Sidebar />
-                <main className="flex-1 overflow-y-auto relative">
-                  <StaleStateOverlay />
-                  {children}
-                  <AtlasWatermark detail="seed 42 · demo scope" />
-                </main>
-              </div>
-            </div>
+            <ConsoleShell>{children}</ConsoleShell>
           </SolverProvider>
         </SSEProvider>
       </AuthGate>

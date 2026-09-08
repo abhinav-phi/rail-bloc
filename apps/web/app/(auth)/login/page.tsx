@@ -3,8 +3,9 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { usePersona } from '@/context/persona-context';
-import { Button } from '@/components/ui/button';
-import { Train, Shield } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
+import { ThemeToggle } from '@/components/shell/theme-toggle';
+import { DotField } from '@/components/showcase/dot-field';
 
 const DEMO_PERSONAS = [
   {
@@ -69,6 +70,9 @@ const DEMO_PERSONAS = [
  * Frontend demo convenience only — the API stays rate-limited and fail-closed. */
 const DEMO_PASSWORD = 'railbloc';
 
+/** Railway SSO-style instrument login: clean centered card, monospace
+ * identity chips, brass accents. Login itself is the real API flow —
+ * a JWT is minted, no fake state (Rules §5). */
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const { login } = usePersona();
@@ -94,50 +98,93 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="w-full max-w-md p-8 border rounded-lg bg-card text-card-foreground shadow-lg">
-      <div className="flex items-center justify-center gap-3 mb-2">
-        <Train className="h-8 w-8 text-primary" />
-        <h1 className="text-2xl font-bold">RAIL-BLOC</h1>
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-4 py-10 text-foreground">
+      <DotField
+        className="pointer-events-none absolute inset-0 h-full w-full"
+        aria-hidden="true"
+      />
+      <div className="grain-overlay" aria-hidden="true" />
+      <div className="absolute right-4 top-4 z-20">
+        <ThemeToggle />
       </div>
-      <p className="text-muted-foreground text-center mb-8 text-sm">
-        AI-Powered Block Planning System — Select a persona to begin.
-      </p>
 
-      {error ? (
-        <div
-          role="alert"
-          className="mb-4 rounded-lg border border-[#f5c2ca] bg-[#fdecef] px-3 py-2 text-xs text-[#d6293e] dark:border-[#7f1d1d] dark:bg-[#450a0a]/40 dark:text-[#f87171]"
-        >
-          {error}
-        </div>
-      ) : null}
-
-      <div className="flex flex-col gap-3">
-        {DEMO_PERSONAS.map((persona) => (
-          <Button
-            key={persona.id}
-            variant="outline"
-            className="w-full h-auto py-3 px-4 justify-start gap-3 hover:bg-accent/50 transition-colors"
-            onClick={() => handleLogin(persona)}
-            disabled={isLoading}
-          >
-            <Shield className="h-5 w-5 text-primary shrink-0" />
-            <div className="text-left">
-              <div className="font-semibold">{persona.name}</div>
-              <div className="text-xs text-muted-foreground">
-                {persona.role} • {persona.division}
-              </div>
-            </div>
-            <span className="ml-auto font-mono text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
-              {persona.badge}
+      <div className="w-full max-w-md">
+        <div className="mb-6 text-center">
+          <div className="flex items-baseline justify-center gap-3">
+            <span className="text-xl font-semibold tracking-[0.16em]">
+              RAIL-BLOC
             </span>
-          </Button>
-        ))}
-      </div>
+            <span className="font-mono text-[10px] tracking-[0.22em] text-muted-foreground">
+              CONTROL / 01
+            </span>
+          </div>
+          <p className="mt-3 font-mono text-[10px] tracking-[0.26em] text-muted-foreground">
+            INDIAN RAILWAYS · BLOCK PLANNING SYSTEM
+          </p>
+        </div>
 
-      <p className="text-xs text-muted-foreground text-center mt-6">
-        Demo mode — all data is simulated (B1-relative).
-      </p>
+        <div className="rounded-sm border border-border bg-card">
+          <div className="border-b border-border px-6 py-3">
+            <span className="atlas-section-label">IDENTIFY OPERATOR</span>
+          </div>
+
+          <div className="px-6 py-6">
+            {error ? (
+              <div
+                role="alert"
+                className="atlas-alert-danger mb-4 px-3 py-2 text-xs"
+              >
+                {error}
+              </div>
+            ) : null}
+
+            <div className="flex flex-col gap-2">
+              {DEMO_PERSONAS.map((persona) => (
+                <button
+                  key={persona.id}
+                  type="button"
+                  onClick={() => handleLogin(persona)}
+                  disabled={isLoading}
+                  className="group flex w-full items-center gap-3 rounded-sm border border-border bg-background/40 px-4 py-2.5 text-left transition-colors hover:border-brass/50 hover:bg-brass/5 disabled:opacity-45"
+                >
+                  <ShieldCheck
+                    className="h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover:text-brass"
+                    aria-hidden="true"
+                  />
+                  <span className="flex-1">
+                    <span className="block text-sm font-medium">
+                      {persona.name}
+                    </span>
+                    <span className="block font-mono text-[10px] tracking-wide text-muted-foreground">
+                      {persona.role} · {persona.division}
+                    </span>
+                  </span>
+                  <span className="rounded-sm border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] tabular-nums text-muted-foreground">
+                    {persona.badge}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {isLoading ? (
+              <p className="mt-4 text-center font-mono text-[11px] tracking-wide text-brass">
+                AUTHENTICATING…
+              </p>
+            ) : null}
+          </div>
+
+          <div className="border-t border-border px-6 py-3">
+            <p className="text-center font-mono text-[10px] tracking-[0.14em] text-muted-foreground">
+              SIMULATED DATA — DEMO SCOPE
+            </p>
+          </div>
+        </div>
+
+        <p className="mt-4 text-center text-[11px] leading-relaxed text-muted-foreground">
+          Access is role-scoped. Sr. DOM and DRM approvals are bound to distinct
+          operators — the chain of custody starts here.
+        </p>
+      </div>
     </div>
   );
 }

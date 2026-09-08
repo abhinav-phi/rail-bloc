@@ -35,15 +35,15 @@ interface PlanRow {
 }
 
 const TYPE_COLOR: Record<string, string> = {
-  PREMIUM: '#8b5cf6', // Vande Bharat / Rajdhani
-  EXPRESS: '#3b82f6', // Mail / Express
-  PASSENGER: '#f59e0b', // Passenger
+  PREMIUM: '#A78BFA', // Vande Bharat / Rajdhani
+  EXPRESS: '#5B9DFF', // Mail / Express
+  PASSENGER: '#F0B13E', // Passenger
   FREIGHT: '#f59e0b',
 };
 
 function colorFor(train: TrainPath): string {
-  if (train.source === 'FOIS_FORECAST') return 'rgba(245, 158, 11, 0.55)';
-  return TYPE_COLOR[train.train_type] ?? '#3b82f6';
+  if (train.source === 'FOIS_FORECAST') return 'rgba(240, 177, 62, 0.6)';
+  return TYPE_COLOR[train.train_type] ?? '#5B9DFF';
 }
 
 /** String Chart — REAL timetable paths (/plans/timetable, 276 paths) +
@@ -142,12 +142,12 @@ export function AtlasStringChart() {
     const y = (km: number) => 14 + (1 - (km - minKm) / kmSpan) * plotH;
 
     // Background
-    ctx.fillStyle =
-      getComputedStyle(canvas).colorScheme === 'dark' ? '#181020' : '#faf7f2';
+    // Control-room canvas: dark instrument surface (matches atlas tokens)
+    ctx.fillStyle = '#0B111E';
     ctx.fillRect(0, 0, width, height);
 
     // Grid: hours on X, km on Y
-    ctx.strokeStyle = 'rgba(120, 110, 125, 0.25)';
+    ctx.strokeStyle = 'rgba(45, 55, 72, 0.9)';
     ctx.lineWidth = 1;
     ctx.font = '10px ui-monospace, monospace';
     const hours = new Date(min);
@@ -158,7 +158,7 @@ export function AtlasStringChart() {
       ctx.moveTo(xx, 14);
       ctx.lineTo(xx, 14 + plotH);
       ctx.stroke();
-      ctx.fillStyle = 'rgba(120, 110, 125, 0.9)';
+      ctx.fillStyle = 'rgba(148, 163, 184, 0.85)';
       const hh = new Date(t).getHours();
       ctx.fillText(`${String(hh).padStart(2, '0')}:00`, xx - 12, height - 8);
     }
@@ -179,8 +179,8 @@ export function AtlasStringChart() {
       const yTop = y(maxKm);
       const yBot = y(minKm);
       ctx.fillStyle = p.is_shadow_block
-        ? 'rgba(140, 63, 131, 0.25)'
-        : 'rgba(21, 16, 39, 0.14)';
+        ? 'rgba(193, 127, 62, 0.3)'
+        : 'rgba(193, 127, 62, 0.13)';
       ctx.fillRect(sx, yTop, Math.max(2, ex - sx), yBot - yTop);
       if (p.is_shadow_block) {
         // diagonal stripes overlay
@@ -188,7 +188,7 @@ export function AtlasStringChart() {
         ctx.beginPath();
         ctx.rect(sx, yTop, Math.max(2, ex - sx), yBot - yTop);
         ctx.clip();
-        ctx.strokeStyle = 'rgba(140, 63, 131, 0.5)';
+        ctx.strokeStyle = 'rgba(193, 127, 62, 0.55)';
         ctx.lineWidth = 1;
         for (let s = sx - (yBot - yTop); s < ex; s += 7) {
           ctx.beginPath();
@@ -198,7 +198,7 @@ export function AtlasStringChart() {
         }
         ctx.restore();
       }
-      ctx.strokeStyle = 'rgba(140, 63, 131, 0.9)';
+      ctx.strokeStyle = 'rgba(193, 127, 62, 0.95)';
       ctx.lineWidth = 1.5;
       ctx.strokeRect(sx, yTop, Math.max(2, ex - sx), yBot - yTop);
     }

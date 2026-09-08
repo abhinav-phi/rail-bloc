@@ -97,10 +97,10 @@ function SentinelChecklist({ report }: { report: SentinelReport | null }) {
   const pending = checks.filter((c) => c.pending).length;
   const allPassed = report ? report.passed && !report.has_pending : false;
   const headerTone = allPassed
-    ? 'text-[#1b7f4b] dark:text-[#4ade80]'
+    ? 'text-[color:var(--atlas-success)]'
     : failed > 0
-      ? 'text-[#d6293e] dark:text-[#f87171]'
-      : 'text-[#b7791f] dark:text-[#fbbf24]';
+      ? 'text-[color:var(--atlas-danger)]'
+      : 'text-[color:var(--atlas-warning)]';
 
   return (
     <div>
@@ -134,9 +134,9 @@ function SentinelChecklist({ report }: { report: SentinelReport | null }) {
               verdict === 'PASS' ? '✓' : verdict === 'FAIL' ? '✗' : '○';
             const tone =
               verdict === 'PASS'
-                ? 'text-[#1b7f4b] dark:text-[#4ade80]'
+                ? 'text-[color:var(--atlas-success)]'
                 : verdict === 'FAIL'
-                  ? 'font-bold text-[#d6293e] dark:text-[#f87171]'
+                  ? 'font-bold text-[color:var(--atlas-danger)]'
                   : 'text-muted-foreground';
             return (
               <li
@@ -464,6 +464,7 @@ export function AtlasApprovals() {
     <div className="mx-auto w-full max-w-[1600px] px-6 py-6 lg:px-8">
       <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
+          <p className="atlas-section-label mb-2">03 / APPROVAL WORKFLOW</p>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">
             Approval Workflow
           </h1>
@@ -475,10 +476,88 @@ export function AtlasApprovals() {
         </div>
       </header>
 
+      {/* Lifecycle stepper — real counts per gate (Emergent concept) */}
+      <div className="atlas-card mb-5 p-4">
+        <p className="atlas-section-label mb-3">LIFECYCLE PIPELINE</p>
+        <div className="grid gap-2 sm:grid-cols-5">
+          {(
+            [
+              [
+                'DRAFT',
+                'S&T acks',
+                (plans ?? []).filter((p2) => p2.approval_status === 'DRAFT')
+                  .length,
+              ],
+              [
+                'SR DOM',
+                'certified',
+                (plans ?? []).filter(
+                  (p2) => p2.approval_status === 'SENTINEL_PASSED',
+                ).length,
+              ],
+              [
+                'DRM',
+                'approved',
+                (plans ?? []).filter(
+                  (p2) => p2.approval_status === 'APPROVED_SR_DOM',
+                ).length,
+              ],
+              [
+                'COA',
+                'authorized',
+                (plans ?? []).filter(
+                  (p2) => p2.approval_status === 'AUTHORIZED_DRM',
+                ).length,
+              ],
+              [
+                'SEALED',
+                'transmitted+',
+                (plans ?? []).filter((p2) =>
+                  [
+                    'TRANSMITTED_COA',
+                    'ACTIVE_GRANTED',
+                    'COMPLETED_FITNESS',
+                    'ARCHIVED_SEALED',
+                  ].includes(p2.approval_status),
+                ).length,
+              ],
+            ] as const
+          ).map(([gate, sub, n], i) => (
+            <div
+              key={gate}
+              className={cn(
+                'relative border-t pt-3',
+                i > 0 ? 'border-dashed' : '',
+              )}
+            >
+              <span
+                aria-hidden="true"
+                className={cn(
+                  'absolute left-0 top-[-3.5px] h-[7px] w-[7px] rounded-[1px]',
+                  n > 0 ? 'bg-brass' : 'bg-muted-foreground/30',
+                )}
+              />
+              <span className="font-mono text-[9px] text-muted-foreground">
+                {String(i + 1).padStart(2, '0')}
+              </span>
+              <b className="block text-xs font-semibold tracking-[0.1em] text-foreground">
+                {gate}
+              </b>
+              <span className="font-mono text-[9px] text-muted-foreground">
+                {sub}
+              </span>
+              <span className="mt-1 block font-mono text-sm tabular-nums text-brass">
+                {n}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {notice ? (
         <div
           role="status"
-          className="mb-5 flex items-start gap-2 rounded-lg border border-[#bfe6d0] bg-[#e9f7ef] px-3.5 py-3 text-sm text-[#1b7f4b] dark:border-[#14532d] dark:bg-[#052e16]/40 dark:text-[#4ade80]"
+          className="mb-5 flex items-start gap-2 rounded-lg border border-[color:var(--atlas-success-ring)] bg-[color:var(--atlas-success-bg)] px-3.5 py-3 text-sm text-[color:var(--atlas-success)]/40"
         >
           <ShieldCheck size={16} className="mt-0.5 shrink-0" />
           <p>{notice}</p>
@@ -494,12 +573,12 @@ export function AtlasApprovals() {
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
         {/* Pending Signal Acknowledgment (G&SR-2) */}
-        <div className="atlas-card overflow-hidden border-[#f3dfb1] dark:border-[#78350f] lg:col-span-2">
-          <div className="atlas-card-header border-[#f3dfb1] dark:border-[#78350f]">
+        <div className="atlas-card overflow-hidden border-[color:var(--atlas-warning-ring)] lg:col-span-2">
+          <div className="atlas-card-header border-[color:var(--atlas-warning-ring)]">
             <h2 className="atlas-card-title">
               🔴 Pending Signal Acknowledgment (G&SR-2)
             </h2>
-            <span className="atlas-badge border-[#f3dfb1] bg-[#fff7e6] text-[#b7791f] dark:border-[#78350f] dark:bg-[#451a03]/60 dark:text-[#fbbf24]">
+            <span className="atlas-badge border-[color:var(--atlas-warning-ring)] bg-[color:var(--atlas-warning-bg)] text-[color:var(--atlas-warning)]/60">
               {pendingAcks.length}
             </span>
           </div>
@@ -603,8 +682,8 @@ export function AtlasApprovals() {
                         className={cn(
                           'atlas-badge',
                           p.approval_status === 'SENTINEL_PASSED'
-                            ? 'border-[#bfe6d0] bg-[#e9f7ef] text-[#1b7f4b] dark:border-[#14532d] dark:bg-[#052e16]/60 dark:text-[#4ade80]'
-                            : 'border-[#c3d6f5] bg-[#eaf1fc] text-[#2d63c8] dark:border-[#1e3a8a] dark:bg-[#172554]/60 dark:text-[#93c5fd]',
+                            ? 'border-[color:var(--atlas-success-ring)] bg-[color:var(--atlas-success-bg)] text-[color:var(--atlas-success)]/60'
+                            : 'border-[color:var(--atlas-info-ring)] bg-[color:var(--atlas-info-bg)] text-[color:var(--atlas-info)]/60',
                         )}
                       >
                         {p.approval_status === 'SENTINEL_PASSED'
@@ -692,7 +771,7 @@ export function AtlasApprovals() {
               {report && report.content_hash !== selected.content_hash ? (
                 <div
                   role="alert"
-                  className="mb-4 rounded-lg border border-[#f5c2ca] bg-[#fdecef] px-3.5 py-3 text-sm text-[#d6293e] dark:border-[#7f1d1d] dark:bg-[#450a0a]/40"
+                  className="mb-4 rounded-lg border border-[color:var(--atlas-danger-ring)] bg-[color:var(--atlas-danger-bg)] px-3.5 py-3 text-sm text-[color:var(--atlas-danger)]/40"
                 >
                   <p className="font-semibold">Hash mismatch</p>
                   <p className="text-xs">

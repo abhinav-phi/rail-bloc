@@ -68,15 +68,18 @@ export function AtlasWeather() {
     <div className="atlas-card overflow-hidden">
       <div className="atlas-card-header">
         <div className="flex items-center gap-2">
-          <CloudRain size={16} className="text-[#2d63c8]" />
-          <h2 className="atlas-card-title">Weather — IMD feed (fail-closed)</h2>
+          <CloudRain size={16} className="text-[color:var(--atlas-info)]" />
+          <div>
+            <p className="atlas-section-label mb-1">NEXUS / FAIL-CLOSED FEED</p>
+            <h2 className="atlas-card-title">Weather — IMD feed</h2>
+          </div>
         </div>
         <span
           className={cn(
             'atlas-badge',
             data?.stale_feed
-              ? 'border-[#f3dfb1] bg-[#fff7e6] text-[#b7791f] dark:border-[#78350f] dark:bg-[#451a03]/60 dark:text-[#fbbf24]'
-              : 'border-[#bfe6d0] bg-[#e9f7ef] text-[#1b7f4b] dark:border-[#14532d] dark:bg-[#052e16]/60 dark:text-[#4ade80]',
+              ? 'border-[color:var(--atlas-warning-ring)] bg-[color:var(--atlas-warning-bg)] text-[color:var(--atlas-warning)]/60'
+              : 'border-[color:var(--atlas-success-ring)] bg-[color:var(--atlas-success-bg)] text-[color:var(--atlas-success)]/60',
           )}
         >
           {data ? (data.stale_feed ? 'STALE' : 'FRESH') : '…'}
@@ -93,7 +96,7 @@ export function AtlasWeather() {
           {data.stale_feed ? (
             <div
               role="alert"
-              className="flex items-start gap-2 rounded-lg border border-[#f3dfb1] bg-[#fff7e6] px-3.5 py-3 text-sm text-[#b7791f] dark:border-[#78350f] dark:bg-[#451a03]/40 dark:text-[#fbbf24]"
+              className="flex items-start gap-2 rounded-lg border border-[color:var(--atlas-warning-ring)] bg-[color:var(--atlas-warning-bg)] px-3.5 py-3 text-sm text-[color:var(--atlas-warning)]/40"
             >
               <ShieldAlert size={16} className="mt-0.5 shrink-0" />
               <p>

@@ -147,3 +147,13 @@
 - **[x] just completed by this pass:** TASK-059 documentation-consistency sync (this §4 log; Schema.md `append_event` addition + change-log row; README quickstart).
 
 Honesty note: no figure above is assumed. Where a number is absent (FPS, full-image compose boot), the task stays open — per Rules.md §5 and R6.6.
+
+## TASK-070 — Atlas frontend redesign Rev 2.0 (brass control-room)
+
+- **Status: DONE (frontend visual system), 2026-09-08.**
+- Scope: whole-console reskin to the 'control room, not dashboard template' visual system — brass accent (#C17F3E), dark #0B111E primary + skyblue #E8F1F8 light mode, IBM Plex Sans / JetBrains Mono (tabular-nums) / Instrument Serif accent fonts (self-hosted woff2, Google CDN dependency removed), hairline borders + 4-6px radii, grain on showcase layer only.
+- Landing rebuilt: 'Block the line. Never the nation.' + Vande Bharat T-18 SVG replica (orange livery sampled from team reference renders), left-entry animation with wheel spin synced (reduced-motion respected), count-up stats, pipeline + hash-chain sections.
+- Console: shell rebuilt to numbered-rail sidebar (01–08) + control-bar header (⌘K page jump, ALL SYSTEMS NOMINAL, IST clock, EXIT); dashboard rebuilt to Emergent layout (4 KPI cards, BLOCK WINDOW / NEXT 7 DAYS grid from real /plans rows, PIPELINE HEALTH, DECISION TRACE / FLEET, LIVE INCIDENT FEED = escalated FSM-002 rows) — every figure from /plans/summary + /plans, none invented; planner gained SOLVE IN PROGRESS stage bar; 26-week page is now a real possession heatmap (26 weeks × CIVIL/TRD/SNT lanes from /plans rows); eyebrow labels on all pages.
+- Wiring zero-touch: same api.ts/live.ts/persona contexts; JWT flow, SSE, RBAC, idempotency keys, stale overlay, watermarks all carried forward unchanged.
+- Verified: typecheck clean, vitest 4/4, production static build 13/13, prettier clean, compose stack healthy, all 10 routes 200, real JWT login round-trip OK via nginx proxy (host API now on :8290 — Windows excluded-port range blocked :8000; container port unchanged).
+- Theme toggle persists (localStorage railbloc-theme) with no-flash bootstrap. Dark = primary; light = railway skyblue.

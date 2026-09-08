@@ -1,15 +1,67 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { cn } from '@/lib/utils';
 import { usePersona } from '@/context/persona-context';
+import { useLive } from '@/lib/live';
+import { ThemeToggle } from '@/components/shell/theme-toggle';
 
-/** Top status bar — Atlas design: solver/sentinel chips, IST clock, Ledger link,
- *  Emergency action. Emergency navigates to the Disruptions drill page (the real
- *  P0 breakdown flow) instead of being a dead button. */
-export function Header() {
+const SEARCHABLE = [
+  { href: '/dashboard', label: 'Operations Overview', num: '01' },
+  { href: '/planner/weekly', label: 'Block Planning', num: '02' },
+  { href: '/approvals', label: 'Approval Workflow', num: '03' },
+  { href: '/audit-ledger', label: 'Audit Ledger', num: '04' },
+  { href: '/corridor-map', label: 'Corridor Map', num: '05' },
+  { href: '/string-chart', label: 'String Chart', num: '06' },
+  { href: '/planner/26-week', label: '26-Week Calendar', num: '07' },
+  { href: '/disruptions', label: 'Disruptions', num: '08' },
+];
+
+/** Top status bar — Emergent control-bar concept, brass skin.
+ * Solver/Sentinel chips, ⌘K page-jump (real navigation), IST clock,
+ * Ledger + Emergency (the real P0 flow), theme toggle, operator chip. */
+export function Header({ onMenu }: { onMenu?: () => void }) {
   const [time, setTime] = useState('');
   const { persona } = usePersona();
+  const { connected, stale } = useLive();
+  const [isDesktop, setIsDesktop] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const update = () => setIsDesktop(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+  const streamState = stale
+    ? 'STREAM STALE'
+    : connected
+      ? 'STREAM LIVE'
+      : 'STREAM OFFLINE';
+  const pathname = usePathname();
+  const router = useRouter();
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  // Real Cmd/Ctrl+K binding — the label on the box is a promise, so wire it.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        searchRef.current?.focus();
+        setOpen(true);
+      }
+      if (e.key === 'Escape') {
+        setQuery('');
+        setOpen(false);
+        searchRef.current?.blur();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -21,19 +73,119 @@ export function Header() {
     return () => clearInterval(timer);
   }, []);
 
+  const matches = query.trim()
+    ? SEARCHABLE.filter((s) =>
+        s.label.toLowerCase().includes(query.trim().toLowerCase()),
+      )
+    : SEARCHABLE;
+
+  const pageLabel =
+    SEARCHABLE.find((s) => pathname === s.href)?.label ?? 'Control room';
+
   return (
-    <header className="flex h-14 shrink-0 items-center gap-4 border-b bg-card px-6">
-      <div className="flex items-center gap-2 text-sm">
-        <span className="atlas-badge border-[#bfe6d0] bg-[#e9f7ef] text-[#1b7f4b] dark:border-[#14532d] dark:bg-[#052e16]/60 dark:text-[#4ade80]">
-          Solver: OPTIMAL
-        </span>
-        <span className="atlas-badge border-[#c3d6f5] bg-[#eaf1fc] text-[#2d63c8] dark:border-[#1e3a8a] dark:bg-[#172554]/60 dark:text-[#93c5fd]">
-          Sentinel: PASS
-        </span>
+    <header className="flex h-12 shrink-0 items-center gap-4 border-b border-border bg-card px-5">
+      <button
+        type="button"
+        aria-label="Open menu"
+        onClick={onMenu}
+        className="rounded-sm border border-border p-1.5 text-muted-foreground hover:border-brass/50 hover:text-brass"
+        style={{ display: isDesktop ? 'none' : 'inline-flex' }}
+      >
+        <svg
+          className="h-4 w-4"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          aria-hidden="true"
+        >
+          <line x1="4" y1="7" x2="20" y2="7" />
+          <line x1="4" y1="12" x2="20" y2="12" />
+          <line x1="4" y1="17" x2="20" y2="17" />
+        </svg>
+      </button>
+      <Link
+        href="/dashboard"
+        className="flex items-baseline gap-2 text-sm font-semibold tracking-[0.14em] text-foreground"
+      >
+        RAIL-BLOC
+      </Link>
+      <span className="hidden font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground md:inline">
+        {pageLabel}
+      </span>
+
+      {/* ⌘K page jump — real navigation, no dead box */}
+      <div className="relative ml-4 hidden w-56 lg:block">
+        <input
+          ref={searchRef}
+          type="text"
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && matches[0]) {
+              router.push(matches[0].href);
+              setQuery('');
+              setOpen(false);
+            }
+          }}
+          placeholder="Search anything"
+          aria-label="Jump to console page"
+          className="h-7 w-full rounded-sm border border-border bg-background/60 px-3 pr-10 font-mono text-[11px] text-foreground placeholder:text-muted-foreground focus:border-brass/50 focus:outline-none"
+        />
+        <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 font-mono text-[9px] text-muted-foreground">
+          ⌘K
+        </kbd>
+        {open && query.trim() ? (
+          <div className="absolute left-0 top-8 z-30 w-full rounded-sm border border-border bg-card shadow-none">
+            {matches.length === 0 ? (
+              <p className="px-3 py-2 font-mono text-[10px] text-muted-foreground">
+                no match
+              </p>
+            ) : (
+              matches.map((s) => (
+                <button
+                  key={s.href}
+                  type="button"
+                  onMouseDown={() => {
+                    router.push(s.href);
+                    setQuery('');
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-foreground hover:bg-brass/10"
+                >
+                  <span className="font-mono text-[10px] text-muted-foreground">
+                    {s.num}
+                  </span>
+                  {s.label}
+                </button>
+              ))
+            )}
+          </div>
+        ) : null}
       </div>
 
       <div className="ml-auto flex items-center gap-3">
-        <div className="font-mono text-xs text-muted-foreground">{time}</div>
+        <span
+          className={cn(
+            'atlas-badge',
+            stale
+              ? 'border-[color:var(--atlas-danger-ring)] text-[color:var(--atlas-danger)]'
+              : connected
+                ? 'border-[color:var(--atlas-success-ring)] text-[color:var(--atlas-success)]'
+                : 'border-border text-muted-foreground',
+          )}
+          title="Live SSE stream health — the only health signal the frontend can honestly assert"
+        >
+          {streamState}
+        </span>
+        <div className="hidden font-mono text-xs tabular-nums text-muted-foreground sm:block">
+          {time}
+        </div>
         <Link
           href="/audit-ledger"
           className="atlas-btn-secondary atlas-btn text-xs"
@@ -46,18 +198,19 @@ export function Header() {
         >
           Emergency
         </Link>
-        <div className="flex items-center gap-2 border-l pl-3">
+        <ThemeToggle />
+        <div className="flex items-center gap-2 border-l border-border pl-3">
           <span
             aria-hidden="true"
-            className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#f8eaf0] text-xs font-bold text-[#935073] dark:bg-[#3a1f33] dark:text-[#d58ba9]"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-sm border border-brass/40 bg-brass/10 text-xs font-bold text-brass"
           >
             {(persona?.name ?? 'G').slice(0, 1)}
           </span>
-          <div className="text-xs leading-tight">
+          <div className="hidden text-xs leading-tight sm:block">
             <div className="font-semibold text-foreground">
               {persona ? persona.name : 'Guest'}
             </div>
-            <div className="text-muted-foreground">
+            <div className="font-mono text-[10px] text-muted-foreground">
               {persona ? persona.role : '—'}
             </div>
           </div>

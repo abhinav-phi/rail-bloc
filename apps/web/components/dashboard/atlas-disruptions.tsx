@@ -149,6 +149,7 @@ export function AtlasDisruptions() {
     <div className="mx-auto w-full max-w-[1600px] px-6 py-6 lg:px-8">
       <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
+          <p className="atlas-section-label mb-2">08 / DISRUPTIONS</p>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">
             Disruptions — P0 Emergency Drill
           </h1>
@@ -162,7 +163,9 @@ export function AtlasDisruptions() {
           <Radio
             size={14}
             className={cn(
-              persona?.role === 'CHIEF_CONTROLLER' ? 'text-[#d6293e]' : '',
+              persona?.role === 'CHIEF_CONTROLLER'
+                ? 'text-[color:var(--atlas-danger)]'
+                : '',
             )}
           />
           {isController
@@ -253,8 +256,8 @@ export function AtlasDisruptions() {
 
           {/* Blast-radius preview + acknowledgment gate (API-001) */}
           {blast ? (
-            <div className="mt-4 rounded-lg border border-[#f3dfb1] bg-[#fff7e6] p-3 text-xs dark:border-[#78350f] dark:bg-[#451a03]/40">
-              <p className="mb-1 font-semibold text-[#b7791f] dark:text-[#fbbf24]">
+            <div className="mt-4 rounded-lg border border-[color:var(--atlas-warning-ring)] bg-[color:var(--atlas-warning-bg)] p-3 text-xs/40">
+              <p className="mb-1 font-semibold text-[color:var(--atlas-warning)]">
                 Blast radius preview (synchronous, read-only)
               </p>
               <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-all text-[11px] text-muted-foreground">
@@ -280,7 +283,7 @@ export function AtlasDisruptions() {
           {error ? (
             <div
               role="alert"
-              className="mt-4 rounded-lg border border-[#f5c2ca] bg-[#fdecef] px-3 py-2 text-xs text-[#d6293e] dark:border-[#7f1d1d] dark:bg-[#450a0a]/40 dark:text-[#f87171]"
+              className="mt-4 rounded-lg border border-[color:var(--atlas-danger-ring)] bg-[color:var(--atlas-danger-bg)] px-3 py-2 text-xs text-[color:var(--atlas-danger)]/40"
             >
               {error}
             </div>
@@ -289,7 +292,7 @@ export function AtlasDisruptions() {
           {result ? (
             <div
               role="status"
-              className="mt-4 flex items-start gap-2 rounded-lg border border-[#bfe6d0] bg-[#e9f7ef] px-3 py-2 text-xs text-[#1b7f4b] dark:border-[#14532d] dark:bg-[#052e16]/40 dark:text-[#4ade80]"
+              className="mt-4 flex items-start gap-2 rounded-lg border border-[color:var(--atlas-success-ring)] bg-[color:var(--atlas-success-bg)] px-3 py-2 text-xs text-[color:var(--atlas-success)]/40"
             >
               <CheckCircle2 size={14} className="mt-0.5 shrink-0" />
               {result}
@@ -324,8 +327,8 @@ export function AtlasDisruptions() {
                       className={cn(
                         'atlas-badge',
                         i.controller_acknowledged
-                          ? 'border-[#bfe6d0] bg-[#e9f7ef] text-[#1b7f4b] dark:border-[#14532d] dark:bg-[#052e16]/60 dark:text-[#4ade80]'
-                          : 'border-[#f3dfb1] bg-[#fff7e6] text-[#b7791f] dark:border-[#78350f] dark:bg-[#451a03]/60 dark:text-[#fbbf24]',
+                          ? 'border-[color:var(--atlas-success-ring)] bg-[color:var(--atlas-success-bg)] text-[color:var(--atlas-success)]/60'
+                          : 'border-[color:var(--atlas-warning-ring)] bg-[color:var(--atlas-warning-bg)] text-[color:var(--atlas-warning)]/60',
                       )}
                     >
                       {i.controller_acknowledged

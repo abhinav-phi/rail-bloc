@@ -9,6 +9,7 @@ import { useLive } from '@/lib/live';
 
 vi.mock('next/navigation', () => ({
   usePathname: () => '/dashboard',
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }));
 
 function makeToken(role: string, division: string): string {
@@ -40,13 +41,14 @@ describe('frontend core behaviors', () => {
   it('shows sidebar navigation entries for standard operations pages', () => {
     render(
       <PersonaProvider>
-        <Sidebar />
+        <Sidebar open={false} onClose={() => {}} />
       </PersonaProvider>,
     );
 
-    expect(screen.getByText('Operations Overview')).toBeInTheDocument();
-    expect(screen.getByText('Approval Workflow')).toBeInTheDocument();
-    expect(screen.getByText('Audit Ledger')).toBeInTheDocument();
+    // Rev-2.0 sidebar uses the Emergent console labels (numbered rail)
+    expect(screen.getByText('Operations')).toBeInTheDocument();
+    expect(screen.getByText('Approvals')).toBeInTheDocument();
+    expect(screen.getByText('Audit ledger')).toBeInTheDocument();
   });
 
   it('marks live feed stale on reconnect failure', async () => {

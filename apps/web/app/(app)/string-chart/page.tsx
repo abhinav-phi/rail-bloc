@@ -9,6 +9,7 @@ export default function StringChartPage() {
     <div className="flex h-full flex-col relative overflow-hidden">
       <SimulatedDataWatermark position="center" />
       <div className="px-6 py-4 border-b shrink-0 bg-background/95 backdrop-blur z-20">
+        <p className="atlas-section-label mb-2">06 / STRING CHART</p>
         <h1 className="text-2xl font-bold">Master String Chart</h1>
         <p className="text-muted-foreground">
           Time-Distance graph for detailed conflict resolution.

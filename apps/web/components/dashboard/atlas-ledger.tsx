@@ -52,7 +52,15 @@ export function AtlasLedger() {
         setRoleGate(e instanceof Error ? e.message : String(e));
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      // verify itself is AUDITOR/ADMIN-scoped — show the inspector card, not an error
+      const msg = e instanceof Error ? e.message : String(e);
+      if (/requires role|AUDITOR|ADMIN/i.test(msg)) {
+        setRoleGate(msg);
+        setVerify(null);
+        setEntries(null);
+      } else {
+        setError(msg);
+      }
     } finally {
       setBusy(false);
     }
@@ -68,6 +76,7 @@ export function AtlasLedger() {
     <div className="mx-auto w-full max-w-[1600px] px-6 py-6 lg:px-8">
       <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
+          <p className="atlas-section-label mb-2">04 / AUDIT LEDGER</p>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">
             Audit Ledger
           </h1>
@@ -90,7 +99,7 @@ export function AtlasLedger() {
       {error ? (
         <div
           role="alert"
-          className="mb-5 rounded-lg border border-[#f5c2ca] bg-[#fdecef] px-3.5 py-3 text-sm text-[#d6293e] dark:border-[#7f1d1d] dark:bg-[#450a0a]/40 dark:text-[#f87171]"
+          className="mb-5 rounded-lg border border-[color:var(--atlas-danger-ring)] bg-[color:var(--atlas-danger-bg)] px-3.5 py-3 text-sm text-[color:var(--atlas-danger)]/40"
         >
           {error}
         </div>
@@ -101,8 +110,8 @@ export function AtlasLedger() {
         className={cn(
           'atlas-card mb-6 border p-5',
           ok
-            ? 'border-[#bfe6d0] bg-[#e9f7ef]/40 dark:border-[#14532d] dark:bg-[#052e16]/20'
-            : 'border-[#f5c2ca] bg-[#fdecef]/40 dark:border-[#7f1d1d] dark:bg-[#450a0a]/20',
+            ? 'border-[color:var(--atlas-success-ring)] bg-[color:var(--atlas-success-bg)]/40/20'
+            : 'border-[color:var(--atlas-danger-ring)] bg-[color:var(--atlas-danger-bg)]/40/20',
         )}
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -112,8 +121,8 @@ export function AtlasLedger() {
               className={cn(
                 'atlas-icon-chip',
                 ok
-                  ? 'bg-[#e9f7ef] text-[#1b7f4b] dark:bg-[#052e16] dark:text-[#4ade80]'
-                  : 'bg-[#fdecef] text-[#d6293e] dark:bg-[#450a0a] dark:text-[#f87171]',
+                  ? 'bg-[color:var(--atlas-success-bg)] text-[color:var(--atlas-success)]'
+                  : 'bg-[color:var(--atlas-danger-bg)] text-[color:var(--atlas-danger)]',
               )}
             >
               {ok ? <ShieldCheck size={20} /> : <Link2 size={20} />}
@@ -123,8 +132,8 @@ export function AtlasLedger() {
                 className={cn(
                   'text-lg font-bold',
                   ok
-                    ? 'text-[#1b7f4b] dark:text-[#4ade80]'
-                    : 'text-[#d6293e] dark:text-[#f87171]',
+                    ? 'text-[color:var(--atlas-success)]'
+                    : 'text-[color:var(--atlas-danger)]',
                 )}
                 aria-live="polite"
               >
@@ -139,6 +148,29 @@ export function AtlasLedger() {
                   ? `${verify.verified}/${verify.total} verified · isolation: ${verify.isolation}`
                   : 'REPEATABLE READ snapshot verification runs inside PostgreSQL.'}
               </p>
+              {/* Chain walkthrough — real seq/hash pairs from the live ledger */}
+              {entries && entries.length > 0 ? (
+                <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                  {entries.slice(0, 6).map((e2, i) => (
+                    <React.Fragment key={e2.seq ?? i}>
+                      <span className="rounded-sm border border-border bg-muted px-1.5 py-0.5 font-mono text-[9px] tabular-nums text-muted-foreground">
+                        #{e2.seq}
+                      </span>
+                      <span className="atlas-hash">
+                        {(e2.hash ?? '').slice(0, 8)}
+                      </span>
+                      {i < 5 ? (
+                        <span className="text-[10px] text-brass">→</span>
+                      ) : null}
+                    </React.Fragment>
+                  ))}
+                  {entries.length > 6 ? (
+                    <span className="font-mono text-[9px] text-muted-foreground">
+                      +{entries.length - 6} more
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           </div>
           <p className="font-mono text-[11px] uppercase tracking-wide text-muted-foreground">
@@ -147,19 +179,35 @@ export function AtlasLedger() {
         </div>
       </div>
 
-      {/* Entries table (AUDITOR/ADMIN) or the role-gate explanation */}
-      {entries === null ? (
-        roleGate ? (
-          <div className="atlas-card p-5">
-            <h2 className="atlas-card-title mb-2">Ledger rows (restricted)</h2>
-            <p className="text-sm text-muted-foreground">
-              Event rows are AUDITOR/ADMIN-scoped (API enforced). Sign in as the
-              Vigilance Auditor or admin persona to browse the chain; the
-              integrity verdict above is available to every signed-in role.
-            </p>
-          </div>
-        ) : null
-      ) : (
+      {/* Role-scoped: inspector persona required for verify + rows */}
+      {roleGate && !verify ? (
+        <div className="atlas-card p-5">
+          <p className="atlas-section-label mb-2">LEDGER INSPECTOR</p>
+          <h2 className="atlas-card-title mb-2">
+            Chain inspection requires the AUDITOR or ADMIN persona
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            The API enforces this scope (AUDITOR / ADMIN only) — by design, so
+            the inspector of record is always identified. Sign out and sign in
+            as{' '}
+            <span className="font-mono text-foreground">
+              V. Krishnan (Vigilance Auditor)
+            </span>{' '}
+            or{' '}
+            <span className="font-mono text-foreground">
+              System Administrator
+            </span>{' '}
+            to walk the chain, verify integrity, and browse all{' '}
+            {verify === null ? '' : ''}events.
+          </p>
+          <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+            api scope: requires role in (AUDITOR, ADMIN)
+          </p>
+        </div>
+      ) : null}
+
+      {/* Entries table (AUDITOR/ADMIN) — the inspector card above explains scoping */}
+      {entries !== null ? (
         <div className="atlas-card overflow-hidden">
           <div className="atlas-card-header">
             <h2 className="atlas-card-title">Recent events (newest first)</h2>
@@ -212,7 +260,7 @@ export function AtlasLedger() {
             </table>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
