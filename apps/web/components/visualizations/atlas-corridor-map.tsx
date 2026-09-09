@@ -93,7 +93,7 @@ export function AtlasCorridorMap() {
     blocks: true,
     ohe: true,
   });
-  const [basemap, setBasemap] = useState(false);
+  const [basemap, setBasemap] = useState<'off' | 'streets' | 'satellite'>('off');
   const [basemapError, setBasemapError] = useState(false);
   const [popup, setPopup] = useState<{
     title: string;
@@ -180,21 +180,39 @@ export function AtlasCorridorMap() {
           ],
           { padding: 48, duration: 0 },
         );
-        // Basemap (optional): carto dark_matter raster, toggle-gated. Added on
-        // load so the void style never flickers.
-        map.addSource('basemap-tiles', {
+        // Optional basemaps (Esri, key-free): Streets (Dark Gray Canvas) and
+        // Satellite (World Imagery). Both added on load with visibility none —
+        // default 'off' keeps the void style and the offline-hall promise.
+        map.addSource('basemap-streets', {
           type: 'raster',
           tiles: [
-            'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
-            'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
+            'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
           ],
           tileSize: 256,
-          attribution: '© OpenStreetMap contributors © CARTO',
+          maxzoom: 16,
+          attribution:
+            'Tiles © Esri — Esri, HERE, Garmin, FAO, NOAA, USGS · © OpenStreetMap contributors',
         });
         map.addLayer({
-          id: 'basemap-layer',
+          id: 'basemap-streets',
           type: 'raster',
-          source: 'basemap-tiles',
+          source: 'basemap-streets',
+          layout: { visibility: 'none' },
+        });
+        map.addSource('basemap-satellite', {
+          type: 'raster',
+          tiles: [
+            'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+          ],
+          tileSize: 256,
+          maxzoom: 17,
+          attribution:
+            'Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
+        });
+        map.addLayer({
+          id: 'basemap-satellite',
+          type: 'raster',
+          source: 'basemap-satellite',
           layout: { visibility: 'none' },
         });
         // retry /geo if it resolved before load (race guard)
@@ -349,9 +367,14 @@ export function AtlasCorridorMap() {
           );
         }
         setLayout.setLayoutProperty(
-          'basemap-layer',
+          'basemap-streets',
           'visibility',
-          basemapRef.current ? 'visible' : 'none',
+          basemapRef.current === 'streets' ? 'visible' : 'none',
+        );
+        setLayout.setLayoutProperty(
+          'basemap-satellite',
+          'visibility',
+          basemapRef.current === 'satellite' ? 'visible' : 'none',
         );
 
         // Click handlers — bound ONCE (guarded), never re-registered per refresh
@@ -603,22 +626,24 @@ export function AtlasCorridorMap() {
     );
   };
 
-  const toggleBasemap = () => {
-    setBasemap((v) => {
-      const next = !v;
-      setBasemapError(false);
-      const m = mapRef.current as unknown as {
-        setLayoutProperty?: (layer: string, prop: string, val: unknown) => void;
-      } | null;
-      if (m?.setLayoutProperty) {
-        m.setLayoutProperty(
-          'basemap-layer',
-          'visibility',
-          next ? 'visible' : 'none',
-        );
-      }
-      return next;
-    });
+  const setBasemapMode = (mode: 'off' | 'streets' | 'satellite') => {
+    setBasemap(mode);
+    setBasemapError(false);
+    const m = mapRef.current as unknown as {
+      setLayoutProperty?: (layer: string, prop: string, val: unknown) => void;
+    } | null;
+    if (m?.setLayoutProperty) {
+      m.setLayoutProperty(
+        'basemap-streets',
+        'visibility',
+        mode === 'streets' ? 'visible' : 'none',
+      );
+      m.setLayoutProperty(
+        'basemap-satellite',
+        'visibility',
+        mode === 'satellite' ? 'visible' : 'none',
+      );
+    }
   };
 
   const counts = bundle
@@ -675,15 +700,26 @@ export function AtlasCorridorMap() {
             {l.label}
           </label>
         ))}
-        <label className="flex cursor-pointer items-center gap-1.5 text-xs text-foreground">
-          <input
-            type="checkbox"
-            checked={basemap}
-            onChange={toggleBasemap}
-            className="accent-brass"
-          />
-          basemap tiles
-        </label>
+        <span className="flex items-center gap-2 text-xs text-foreground">
+          <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+            basemap
+          </span>
+          {(['off', 'streets', 'satellite'] as const).map((mode) => (
+            <label
+              key={mode}
+              className="flex cursor-pointer items-center gap-1"
+            >
+              <input
+                type="radio"
+                name="basemap-mode"
+                checked={basemap === mode}
+                onChange={() => setBasemapMode(mode)}
+                className="accent-brass"
+              />
+              {mode === 'off' ? 'Off' : mode === 'streets' ? 'Streets' : 'Satellite'}
+            </label>
+          ))}
+        </span>
         <button
           type="button"
           onClick={recenter}
