@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useLive } from '@/lib/live';
+import { useSSE } from '@/context/sse-context';
 import { AlertTriangle } from 'lucide-react';
 import { Spinner } from '@/components/shared/loading';
 
@@ -9,7 +9,7 @@ import { Spinner } from '@/components/shared/loading';
  * non-blocking look (actions stay enabled until a real failure). Only STALE
  * keeps the red actions-disabled card. */
 export function StaleStateOverlay() {
-  const { status, stale } = useLive();
+  const { status, stale } = useSSE();
 
   if (status === 'live' || (!stale && status !== 'stale')) return null;
 

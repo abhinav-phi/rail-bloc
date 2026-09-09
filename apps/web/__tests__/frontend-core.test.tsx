@@ -7,6 +7,7 @@ import { ApprovalActionRow } from '@/components/approvals/approval-action-row';
 import { Spinner, Skeleton } from '@/components/shared/loading';
 import { Sidebar } from '@/components/shell/sidebar';
 import { useLive } from '@/lib/live';
+import { SSEProvider } from '@/context/sse-context';
 
 vi.mock('next/navigation', () => ({
   usePathname: () => '/dashboard',
@@ -42,7 +43,9 @@ describe('frontend core behaviors', () => {
   it('shows sidebar navigation entries for standard operations pages', () => {
     render(
       <PersonaProvider>
-        <Sidebar open={false} onClose={() => {}} />
+        <SSEProvider>
+          <Sidebar open={false} onClose={() => {}} />
+        </SSEProvider>
       </PersonaProvider>,
     );
 

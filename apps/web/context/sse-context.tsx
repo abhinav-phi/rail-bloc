@@ -1,9 +1,12 @@
 'use client';
 
 import React, { createContext, useContext } from 'react';
-import { useLive, LiveState, LiveEvent } from '@/lib/live';
+import { useLive, LiveState, LiveEvent, LiveStatus } from '@/lib/live';
 
 interface SSEContextState {
+  status: LiveStatus;
+  /** alias of isConnected — kept for consumers using the old name */
+  connected: boolean;
   isConnected: boolean;
   stale: boolean;
   lastHeartbeatAt: Date | null;
@@ -29,6 +32,8 @@ export function SSEProvider({ children }: { children: React.ReactNode }) {
   return (
     <SSEContext.Provider
       value={{
+        status: live.status,
+        connected: live.connected,
         isConnected: live.connected,
         stale: live.stale,
         lastHeartbeatAt: live.connected ? new Date() : null,

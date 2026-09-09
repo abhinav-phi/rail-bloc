@@ -4,8 +4,8 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { useLive } from '@/lib/live';
 import { usePersona } from '@/context/persona-context';
+import { useSSE } from '@/context/sse-context';
 import {
   X,
   LayoutDashboard,
@@ -48,7 +48,7 @@ const navItems: {
 
 /** CONNECTING / LIVE / STALE pill — real SSE heartbeat (wiring unchanged). */
 function StreamPill() {
-  const { status, stale, connected, lastEvent } = useLive();
+  const { status, stale, connected, lastEvent } = useSSE();
   const label = stale
     ? 'STALE'
     : status === 'connecting'

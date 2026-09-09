@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/api';
-import { useLive } from '@/lib/live';
+import { useSSE } from '@/context/sse-context';
 import { usePersona } from '@/context/persona-context';
 import { Skeleton, SkeletonCard } from '@/components/shared/loading';
 import { AlertTriangle } from 'lucide-react';
@@ -257,7 +257,7 @@ export function AtlasDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const { connected } = useLive();
+  const { connected } = useSSE();
   const { persona } = usePersona();
 
   const refresh = useCallback(async () => {

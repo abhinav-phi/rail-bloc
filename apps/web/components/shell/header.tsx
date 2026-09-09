@@ -7,7 +7,7 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { Check, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePersona } from '@/context/persona-context';
-import { useLive } from '@/lib/live';
+import { useSSE } from '@/context/sse-context';
 import { ThemeToggle } from '@/components/shell/theme-toggle';
 import { Spinner } from '@/components/shared/loading';
 
@@ -70,7 +70,7 @@ const SEARCHABLE = [
 export function Header({ onMenu }: { onMenu?: () => void }) {
   const [time, setTime] = useState('');
   const { persona, login } = usePersona();
-  const { status, stale, connected } = useLive();
+  const { status, stale, connected } = useSSE();
   const [switching, setSwitching] = useState(false);
   const [switchError, setSwitchError] = useState(false);
 
