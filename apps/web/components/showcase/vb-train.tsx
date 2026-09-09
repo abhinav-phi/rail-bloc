@@ -10,7 +10,7 @@ export function VbTrain({ className }: { className?: string }) {
       viewBox="0 0 920 220"
       xmlns="http://www.w3.org/2000/svg"
       role="img"
-      aria-label="Vande Bharat T-18 trainset with RAIL-BLOC livery"
+      aria-label="T-18 trainset with RAIL-BLOC livery"
       className={className}
     >
       <defs>
@@ -40,8 +40,21 @@ export function VbTrain({ className }: { className?: string }) {
       />
       <g className="vb-speed-lines">
         <path
-          className="vb-speed-line"
-          d="M6,110 H150 M0,140 H110 M20,64 H120"
+          className="vb-speed-line vb-wind"
+          style={{ animationDelay: '0s' }}
+          d="M6,110 Q50,106 90,110 T150,110"
+          opacity="0.7"
+        />
+        <path
+          className="vb-speed-line vb-wind"
+          style={{ animationDelay: '0.25s' }}
+          d="M0,140 Q40,144 75,140 T110,140"
+          opacity="0.7"
+        />
+        <path
+          className="vb-speed-line vb-wind"
+          style={{ animationDelay: '0.5s' }}
+          d="M20,64 Q55,60 90,64 T120,64"
           opacity="0.7"
         />
       </g>
@@ -123,7 +136,7 @@ export function VbTrain({ className }: { className?: string }) {
         fill="#5A6B7F"
         fontFamily="var(--font-jetbrains), monospace"
       >
-        T-18 · VANDE BHARAT / CONTROLLED MOVEMENT
+        T-18 · CONTROLLED MOVEMENT
       </text>
 
       {(

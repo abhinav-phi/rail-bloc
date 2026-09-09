@@ -470,8 +470,12 @@ html.atlas-dark .font-serif-accent {
   .atlas-train-wrap,
   .atlas-wheel,
   .atlas-spinner,
-  .skeleton {
+  .skeleton,
+  .vb-wind {
     animation: none !important;
+  }
+  .vb-wind {
+    opacity: 0 !important;
   }
   .atlas-spinner {
     opacity: 0.5;
@@ -556,6 +560,22 @@ a[aria-disabled='true'] {
   stroke-width: 2;
   stroke-linecap: round;
 }
+.vb-wind {
+  animation: vb-wind 1.4s linear infinite;
+}
+@keyframes vb-wind {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  35% {
+    opacity: 0.7;
+  }
+  100% {
+    transform: translateX(-48px);
+    opacity: 0;
+  }
+}
 html.atlas-light .vb-speed-line {
   stroke: #a9bfd3;
 }
@@ -563,5 +583,7 @@ html.atlas-light .vb-speed-line {
   animation: atlas-train-entry 5s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 .vb-train-wrap .atlas-wheel {
-  animation: atlas-wheelspin 5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  /* 1.0 s/turn linear infinite — liveliness-at-rest tradeoff (locked);
+     entry/decel still belongs to .vb-train-wrap. */
+  animation: atlas-wheelspin 1s linear infinite;
 }
