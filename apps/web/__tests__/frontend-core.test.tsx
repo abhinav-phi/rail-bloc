@@ -4,6 +4,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { parseJwt, setToken } from '@/lib/api';
 import { PersonaProvider } from '@/context/persona-context';
 import { ApprovalActionRow } from '@/components/approvals/approval-action-row';
+import { Spinner, Skeleton } from '@/components/shared/loading';
 import { Sidebar } from '@/components/shell/sidebar';
 import { useLive } from '@/lib/live';
 
@@ -98,5 +99,41 @@ describe('frontend core behaviors', () => {
 
     fetchMock.mockRestore();
     globalThis.EventSource = originalEventSource;
+  });
+});
+
+describe('shared loading primitives', () => {
+  it('Spinner renders a decorative svg (aria-hidden) and Skeleton renders rows', () => {
+    render(
+      <div>
+        <Spinner size={16} />
+        <Skeleton rows={3} />
+      </div>,
+    );
+    expect(document.querySelector('svg.atlas-spinner')).toBeTruthy();
+    const skeletons = document.querySelectorAll('.skeleton');
+    expect(skeletons.length).toBe(3);
+  });
+
+  it('ApprovalActionRow shows busy label and blocks double-submit while busy', () => {
+    const onApprove = vi.fn();
+    render(
+      <ApprovalActionRow
+        isHashValid={true}
+        canApprove={true}
+        busy={true}
+        onApprove={onApprove}
+      />,
+    );
+    const btn = screen.getByRole('button', { name: /approving…/i });
+    expect(btn).toBeDisabled();
+  });
+
+  it('ApprovalActionRow without a wired handler keeps buttons inert (mock usage)', () => {
+    render(<ApprovalActionRow isHashValid={true} canApprove={true} />);
+    expect(
+      screen.getByRole('button', { name: /approve & sign/i }),
+    ).toBeDisabled();
+    expect(screen.getByRole('button', { name: /reject plan/i })).toBeDisabled();
   });
 });

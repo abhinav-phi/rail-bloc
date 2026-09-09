@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/api';
 import { useLive } from '@/lib/live';
 import { usePersona } from '@/context/persona-context';
+import { Skeleton, SkeletonCard } from '@/components/shared/loading';
 import { AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -398,25 +399,37 @@ export function AtlasDashboard() {
         {[
           {
             label: 'ACTIVE BLOCK PLANS',
-            value: loading ? '…' : <CountUp target={activeBlocks} />,
+            value: loading ? (
+              <Skeleton className="h-8 w-24" />
+            ) : (
+              <CountUp target={activeBlocks} />
+            ),
             note: 'TRANSMITTED_COA + ACTIVE_GRANTED',
             pulse: activeBlocks > 0,
           },
           {
             label: 'SENTINEL-CERTIFIED SHARE',
-            value: loading ? '…' : certifiedShare,
+            value: loading ? <Skeleton className="h-8 w-24" /> : certifiedShare,
             note: `${totalPlans} plans on ledger`,
             pulse: false,
           },
           {
             label: 'PENDING APPROVALS',
-            value: loading ? '…' : <CountUp target={pendingApprovals} />,
+            value: loading ? (
+              <Skeleton className="h-8 w-24" />
+            ) : (
+              <CountUp target={pendingApprovals} />
+            ),
             note: 'SENTINEL_PASSED + APPROVED_SR_DOM',
             pulse: pendingApprovals > 0,
           },
           {
             label: 'FLEET WORKLOAD',
-            value: loading ? '…' : fmtMinutes(totalWorkMinutes),
+            value: loading ? (
+              <Skeleton className="h-8 w-24" />
+            ) : (
+              fmtMinutes(totalWorkMinutes)
+            ),
             note: `${fleet.length} machines rostered`,
             pulse: false,
           },
@@ -460,7 +473,11 @@ export function AtlasDashboard() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         {/* 7-day capacity map */}
-        <WeekGrid plans={upcoming7} />
+        {loading ? (
+          <SkeletonCard rows={5} className="min-h-64" />
+        ) : (
+          <WeekGrid plans={upcoming7} />
+        )}
 
         {/* Right rail: pipeline health (lifecycle distribution) */}
         <div className="grid gap-4">

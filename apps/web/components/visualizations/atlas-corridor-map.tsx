@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '@/lib/api';
+import { Skeleton } from '@/components/shared/loading';
 
 /* ── /api/v1/plans/geo shapes (verified live 2026-09-06) ─────────────── */
 
@@ -254,9 +255,11 @@ export function AtlasCorridorMap() {
           </label>
         ))}
         <span className="ml-auto font-mono text-[11px] text-muted-foreground">
-          {counts
-            ? `${counts.sections} sections · ${counts.blocked} blocked · ${counts.blocks} block overlays · ${counts.ohe} OHE boundaries`
-            : 'loading…'}
+          {counts ? (
+            `${counts.sections} sections · ${counts.blocked} blocked · ${counts.blocks} block overlays · ${counts.ohe} OHE boundaries`
+          ) : (
+            <Skeleton className="h-3 w-64" />
+          )}
         </span>
       </div>
 

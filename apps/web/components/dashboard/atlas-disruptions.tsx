@@ -6,6 +6,7 @@ import { usePersona } from '@/context/persona-context';
 import { AtlasWeather } from '@/components/dashboard/atlas-weather';
 import { AlertTriangle, CheckCircle2, Radio } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/shared/loading';
 
 /* ── API shapes (verified against live backend 2026-09-05) ──────────── */
 
@@ -305,11 +306,19 @@ export function AtlasDisruptions() {
           <div className="atlas-card-header">
             <h2 className="atlas-card-title">Incidents</h2>
             <span className="atlas-badge border-border text-muted-foreground">
-              {incidents === null ? '…' : `${incidents.length} total`}
+              {incidents === null ? (
+                <Skeleton className="h-3 w-14" />
+              ) : (
+                `${incidents.length} total`
+              )}
             </span>
           </div>
           {incidents === null ? (
-            <p className="p-5 text-sm text-muted-foreground">Loading…</p>
+            <div className="grid gap-3 p-5">
+              <Skeleton rows={1} className="h-5" />
+              <Skeleton rows={1} className="h-5" />
+              <Skeleton rows={1} className="h-5" />
+            </div>
           ) : incidents.length === 0 ? (
             <div className="atlas-empty-state m-5">
               <AlertTriangle size={18} />

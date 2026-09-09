@@ -8,6 +8,7 @@ import React, {
   useState,
 } from 'react';
 import { api } from '@/lib/api';
+import { SkeletonCard } from '@/components/shared/loading';
 
 /* ── /api/v1/plans/timetable shape (verified live 2026-09-06) ───────── */
 
@@ -282,6 +283,13 @@ export function AtlasStringChart() {
       ) : null}
 
       <div className="relative flex-1 overflow-hidden">
+        {trains === null || plans === null ? (
+          <div className="absolute inset-0 z-10 grid place-items-center bg-background/70">
+            <div className="atlas-card w-72 p-4">
+              <SkeletonCard rows={5} />
+            </div>
+          </div>
+        ) : null}
         <canvas
           ref={canvasRef}
           className="absolute inset-0 h-full w-full"

@@ -19,10 +19,16 @@ const navItems = [
   { href: '/disruptions', num: '08', label: 'Disruptions' },
 ];
 
-/** LIVE / CONNECTING / STALE pill — real SSE heartbeat (wiring unchanged). */
+/** CONNECTING / LIVE / STALE pill — real SSE heartbeat (wiring unchanged). */
 function StreamPill() {
-  const { connected, stale, lastEvent } = useLive();
-  const label = connected ? 'LIVE' : stale ? 'STALE' : 'CONNECTING';
+  const { status, stale, connected, lastEvent } = useLive();
+  const label = stale
+    ? 'STALE'
+    : status === 'connecting'
+      ? 'CONNECTING…'
+      : connected
+        ? 'LIVE'
+        : 'STALE';
 
   return (
     <div
@@ -30,21 +36,27 @@ function StreamPill() {
         'flex items-center gap-2 rounded-sm border px-2 py-1 font-mono text-[10px] font-semibold tracking-[0.14em]',
         stale
           ? 'border-[color:var(--atlas-danger-ring)] bg-[color:var(--atlas-danger-bg)] text-[color:var(--atlas-danger)]'
-          : 'border-[color:var(--atlas-success-ring)] bg-[color:var(--atlas-success-bg)] text-[color:var(--atlas-success)]',
+          : status === 'connecting'
+            ? 'atlas-pill-connecting'
+            : 'border-[color:var(--atlas-success-ring)] bg-[color:var(--atlas-success-bg)] text-[color:var(--atlas-success)]',
       )}
       title={
         stale
           ? 'Live stream not available — actions disabled'
-          : 'Live SSE stream healthy (one-time ticket)'
+          : status === 'connecting'
+            ? 'Handing live feed… (one-time ticket handshake)'
+            : 'Live SSE stream healthy (one-time ticket)'
       }
     >
       <span
         aria-hidden="true"
         className={cn(
-          'inline-block h-1.5 w-1.5 rounded-full',
+          'atlas-pill-dot inline-block h-1.5 w-1.5 rounded-full',
           stale
             ? 'animate-pulse bg-[color:var(--atlas-danger)]'
-            : 'bg-[color:var(--atlas-success)]',
+            : status === 'connecting'
+              ? 'bg-[color:var(--atlas-warning)]'
+              : 'bg-[color:var(--atlas-success)]',
         )}
       />
       {label}

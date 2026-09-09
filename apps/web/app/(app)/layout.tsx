@@ -10,6 +10,7 @@ import { Header } from '@/components/shell/header';
 import { Sidebar } from '@/components/shell/sidebar';
 import { StaleStateOverlay } from '@/components/shell/stale-state-overlay';
 import { AtlasWatermark } from '@/components/shell/atlas-watermark';
+import { Spinner } from '@/components/shared/loading';
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -21,7 +22,18 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     else setChecked(true);
   }, [router]);
 
-  if (!checked) return null;
+  // Token check is a single synchronous read in useEffect — this spinner only
+  // covers the hydration frame, but a blank flash reads as "broken".
+  if (!checked)
+    return (
+      <div
+        className="flex h-screen items-center justify-center bg-background text-brass"
+        role="status"
+        aria-label="Checking session"
+      >
+        <Spinner size={24} />
+      </div>
+    );
   return <>{children}</>;
 }
 

@@ -5,6 +5,7 @@ import { api } from '@/lib/api';
 import { usePersona } from '@/context/persona-context';
 import { Play, RefreshCw, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Skeleton, SkeletonCard } from '@/components/shared/loading';
 
 /* ── Types (live /plans + /optimize contract) ───────────────────────── */
 
@@ -290,11 +291,19 @@ export function AtlasPlanner() {
             {HORIZONS.find((x) => x.key === horizon)?.label} plans
           </h2>
           <span className="atlas-badge border-border text-muted-foreground">
-            {plans === null ? 'loading…' : `${filtered.length} committed`}
+            {plans === null ? (
+              <Skeleton className="h-3 w-20" />
+            ) : (
+              `${filtered.length} committed`
+            )}
           </span>
         </div>
         {plans === null ? (
-          <p className="p-5 text-sm text-muted-foreground">Loading plans…</p>
+          <div className="grid gap-3 p-5">
+            <SkeletonCard rows={4} />
+            <SkeletonCard rows={4} />
+            <SkeletonCard rows={4} />
+          </div>
         ) : filtered.length === 0 ? (
           <div className="atlas-empty-state m-5">
             No {HORIZONS.find((x) => x.key === horizon)?.label.toLowerCase()}{' '}

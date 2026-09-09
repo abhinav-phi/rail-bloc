@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { ShieldCheck, Link2, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { SkeletonCard } from '@/components/shared/loading';
 
 interface VerifyResult {
   chain_ok: boolean;
@@ -30,6 +31,8 @@ interface LedgerEntry {
 export function AtlasLedger() {
   const [verify, setVerify] = useState<VerifyResult | null>(null);
   const [entries, setEntries] = useState<LedgerEntry[] | null>(null);
+  // null = fetch in flight (skeleton); [] = fetched-and-empty; role-gate handled separately.
+  const [entriesLoading, setEntriesLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [roleGate, setRoleGate] = useState<string | null>(null);
@@ -45,10 +48,12 @@ export function AtlasLedger() {
           '/api/v1/ledger/entries?limit=50',
         );
         setEntries(rows);
+        setEntriesLoading(false);
         setRoleGate(null);
       } catch (e) {
         // entries are AUDITOR/ADMIN-scoped; verify is open to every signed-in role
         setEntries(null);
+        setEntriesLoading(false);
         setRoleGate(e instanceof Error ? e.message : String(e));
       }
     } catch (e) {
@@ -58,6 +63,7 @@ export function AtlasLedger() {
         setRoleGate(msg);
         setVerify(null);
         setEntries(null);
+        setEntriesLoading(false);
       } else {
         setError(msg);
       }
@@ -259,6 +265,10 @@ export function AtlasLedger() {
               </tbody>
             </table>
           </div>
+        </div>
+      ) : entriesLoading ? (
+        <div className="atlas-card p-5">
+          <SkeletonCard rows={6} />
         </div>
       ) : null}
     </div>

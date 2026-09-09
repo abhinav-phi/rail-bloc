@@ -468,9 +468,74 @@ html.atlas-dark .font-serif-accent {
 @media (prefers-reduced-motion: reduce) {
   .atlas-marquee,
   .atlas-train-wrap,
-  .atlas-wheel {
+  .atlas-wheel,
+  .atlas-spinner,
+  .skeleton {
     animation: none !important;
   }
+  .atlas-spinner {
+    opacity: 0.5;
+  }
+}
+
+/* ===== Phase-1 loaders: skeleton shimmer + spinner + pointer honesty ===== */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted)) 0%,
+    hsl(var(--muted-foreground) / 0.12) 40%,
+    hsl(var(--muted)) 80%
+  );
+  background-size: 200% 100%;
+  animation: atlas-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes atlas-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+.atlas-spinner {
+  color: hsl(var(--brass));
+  animation: atlas-spin 0.9s linear infinite;
+}
+@keyframes atlas-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.atlas-pill-connecting {
+  border-color: var(--atlas-warning-ring);
+  background: var(--atlas-warning-bg);
+  color: var(--atlas-warning);
+}
+.atlas-badge-connecting {
+  border-color: var(--atlas-warning-ring);
+  color: var(--atlas-warning);
+  animation: atlas-pulse-amber 1.2s ease-in-out infinite;
+}
+.atlas-pill-connecting .atlas-pill-dot {
+  animation: atlas-pulse-amber 1.2s ease-in-out infinite;
+}
+@keyframes atlas-pulse-amber {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+button,
+a,
+[role='button'] {
+  cursor: pointer;
+}
+button:disabled,
+a[aria-disabled='true'] {
+  cursor: not-allowed;
 }
 
 /* VB train showcase classes (scoped to the landing hero) */

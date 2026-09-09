@@ -5,6 +5,7 @@ import { api } from '@/lib/api';
 import { usePersona } from '@/context/persona-context';
 import { PenLine, ShieldCheck, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { SkeletonCard, Spinner } from '@/components/shared/loading';
 
 /* ── API shapes (verified against live backend 2026-09-05) ──────────── */
 
@@ -163,7 +164,9 @@ function SentinelChecklist({ report }: { report: SentinelReport | null }) {
                   </p>
                   {c ? (
                     <p className="text-xs text-muted-foreground">{c.detail}</p>
-                  ) : null}
+                  ) : (
+                    <div className="skeleton mt-1 h-3 w-3/4 rounded-sm" />
+                  )}
                 </div>
               </li>
             );
@@ -305,6 +308,9 @@ function SignDialog(props: {
 export function AtlasApprovals() {
   const { persona } = usePersona();
   const [plans, setPlans] = useState<PlanRow[] | null>(null);
+  // Per-plan busy marker — isolated from SSE-driven list refresh so a mid-flight
+  // action's spinner survives the rows being replaced.
+  const [busyId, setBusyId] = useState<string | null>(null);
   const [selected, setSelected] = useState<PlanRow | null>(null);
   const [report, setReport] = useState<SentinelReport | null>(null);
   const [signAction, setSignAction] = useState<'APPROVE' | 'AUTHORIZE' | null>(
@@ -394,6 +400,7 @@ export function AtlasApprovals() {
         | 'cancel',
     ) => {
       setBanner(null);
+      setBusyId(plan.id);
       try {
         await api.post(
           `/api/v1/plans/${plan.id}/${action}`,
@@ -419,6 +426,8 @@ export function AtlasApprovals() {
           const next = rows.find((r) => r.id === plan.id);
           if (next) await openPlan(next);
         }
+      } finally {
+        setBusyId(null);
       }
     },
     [load, openPlan],
@@ -428,6 +437,7 @@ export function AtlasApprovals() {
   const ackSignal = useCallback(
     async (plan: PlanRow, asRole: 'STATION_MASTER' | 'CONTROLLER') => {
       setBanner(null);
+      setBusyId(plan.id);
       try {
         await api.post(`/api/v1/plans/${plan.id}/acknowledge-signal`, {
           as_role: asRole,
@@ -443,6 +453,8 @@ export function AtlasApprovals() {
       } catch (e) {
         const { message } = parseError(e);
         setBanner(message);
+      } finally {
+        setBusyId(null);
       }
     },
     [load, openPlan],
@@ -616,7 +628,7 @@ export function AtlasApprovals() {
                       type="button"
                       data-action="true"
                       onClick={() => void ackSignal(p, 'STATION_MASTER')}
-                      disabled={!canAckSm}
+                      disabled={!canAckSm || busyId === p.id}
                       title={
                         canAckSm
                           ? 'Record SM acknowledgment'
@@ -624,13 +636,23 @@ export function AtlasApprovals() {
                       }
                       className="atlas-btn-secondary atlas-btn text-xs"
                     >
-                      Acknowledge — Station Master
+                      {busyId === p.id ? (
+                        <>
+                          <Spinner
+                            size={12}
+                            className="mr-1.5 inline align-[-2px]"
+                          />
+                          Acknowledging…
+                        </>
+                      ) : (
+                        'Acknowledge — Station Master'
+                      )}
                     </button>
                     <button
                       type="button"
                       data-action="true"
                       onClick={() => void ackSignal(p, 'CONTROLLER')}
-                      disabled={!canAckCtl}
+                      disabled={!canAckCtl || busyId === p.id}
                       title={
                         canAckCtl
                           ? 'Record Controller acknowledgment'
@@ -638,7 +660,17 @@ export function AtlasApprovals() {
                       }
                       className="atlas-btn-secondary atlas-btn text-xs"
                     >
-                      Acknowledge — Controller
+                      {busyId === p.id ? (
+                        <>
+                          <Spinner
+                            size={12}
+                            className="mr-1.5 inline align-[-2px]"
+                          />
+                          Acknowledging…
+                        </>
+                      ) : (
+                        'Acknowledge — Controller'
+                      )}
                     </button>
                   </div>
                 </li>
@@ -656,7 +688,11 @@ export function AtlasApprovals() {
             </span>
           </div>
           {plans === null ? (
-            <p className="p-5 text-sm text-muted-foreground">Loading plans…</p>
+            <div className="grid gap-3 p-5">
+              <SkeletonCard rows={3} />
+              <SkeletonCard rows={3} />
+              <SkeletonCard rows={3} />
+            </div>
           ) : queue.length === 0 ? (
             <div className="atlas-empty-state m-5">
               No plans awaiting decision right now. Run a solve from Block
@@ -825,10 +861,21 @@ export function AtlasApprovals() {
                     type="button"
                     data-action="true"
                     onClick={() => void lifecycleAction(selected, 'transmit')}
+                    disabled={busyId === selected.id}
                     className="atlas-btn-primary atlas-btn text-sm"
                     title="T−2h structural re-check → COA outbox (TRANSMITTED_COA only on ack)"
                   >
-                    Transmit to COA
+                    {busyId === selected.id ? (
+                      <>
+                        <Spinner
+                          size={12}
+                          className="mr-1.5 inline align-[-2px]"
+                        />
+                        Transmitting…
+                      </>
+                    ) : (
+                      'Transmit to COA'
+                    )}
                   </button>
                 ) : null}
                 {canActivate &&
@@ -837,9 +884,20 @@ export function AtlasApprovals() {
                     type="button"
                     data-action="true"
                     onClick={() => void lifecycleAction(selected, 'activate')}
+                    disabled={busyId === selected.id}
                     className="atlas-btn-primary atlas-btn text-sm"
                   >
-                    Activate Block
+                    {busyId === selected.id ? (
+                      <>
+                        <Spinner
+                          size={12}
+                          className="mr-1.5 inline align-[-2px]"
+                        />
+                        Activating…
+                      </>
+                    ) : (
+                      'Activate Block'
+                    )}
                   </button>
                 ) : null}
                 {canFitness && selected.approval_status === 'ACTIVE_GRANTED' ? (
@@ -849,10 +907,21 @@ export function AtlasApprovals() {
                     onClick={() =>
                       void lifecycleAction(selected, 'complete-fitness')
                     }
+                    disabled={busyId === selected.id}
                     className="atlas-btn-primary atlas-btn text-sm"
                     title="Engineer / SM certify track fitness after the block"
                   >
-                    Certify Track Fitness
+                    {busyId === selected.id ? (
+                      <>
+                        <Spinner
+                          size={12}
+                          className="mr-1.5 inline align-[-2px]"
+                        />
+                        Certifying…
+                      </>
+                    ) : (
+                      'Certify Track Fitness'
+                    )}
                   </button>
                 ) : null}
                 {canArchive &&
@@ -861,9 +930,20 @@ export function AtlasApprovals() {
                     type="button"
                     data-action="true"
                     onClick={() => void lifecycleAction(selected, 'archive')}
+                    disabled={busyId === selected.id}
                     className="atlas-btn-primary atlas-btn text-sm"
                   >
-                    Seal &amp; Archive
+                    {busyId === selected.id ? (
+                      <>
+                        <Spinner
+                          size={12}
+                          className="mr-1.5 inline align-[-2px]"
+                        />
+                        Sealing…
+                      </>
+                    ) : (
+                      'Seal &amp; Archive'
+                    )}
                   </button>
                 ) : null}
                 {canCancel &&
@@ -880,9 +960,20 @@ export function AtlasApprovals() {
                     type="button"
                     data-action="true"
                     onClick={() => void lifecycleAction(selected, 'cancel')}
+                    disabled={busyId === selected.id}
                     className="atlas-btn-danger atlas-btn text-sm"
                   >
-                    Cancel Plan
+                    {busyId === selected.id ? (
+                      <>
+                        <Spinner
+                          size={12}
+                          className="mr-1.5 inline align-[-2px]"
+                        />
+                        Cancelling…
+                      </>
+                    ) : (
+                      'Cancel Plan'
+                    )}
                   </button>
                 ) : null}
               </div>

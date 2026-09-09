@@ -25,7 +25,7 @@ const SEARCHABLE = [
 export function Header({ onMenu }: { onMenu?: () => void }) {
   const [time, setTime] = useState('');
   const { persona } = usePersona();
-  const { connected, stale } = useLive();
+  const { status, stale, connected } = useLive();
   const [isDesktop, setIsDesktop] = useState(false);
   useEffect(() => {
     const mq = window.matchMedia('(min-width: 1024px)');
@@ -36,9 +36,11 @@ export function Header({ onMenu }: { onMenu?: () => void }) {
   }, []);
   const streamState = stale
     ? 'STREAM STALE'
-    : connected
-      ? 'STREAM LIVE'
-      : 'STREAM OFFLINE';
+    : status === 'connecting'
+      ? 'STREAM CONNECTING…'
+      : connected
+        ? 'STREAM LIVE'
+        : 'STREAM OFFLINE';
   const pathname = usePathname();
   const router = useRouter();
   const [query, setQuery] = useState('');
@@ -175,9 +177,11 @@ export function Header({ onMenu }: { onMenu?: () => void }) {
             'atlas-badge',
             stale
               ? 'border-[color:var(--atlas-danger-ring)] text-[color:var(--atlas-danger)]'
-              : connected
-                ? 'border-[color:var(--atlas-success-ring)] text-[color:var(--atlas-success)]'
-                : 'border-border text-muted-foreground',
+              : status === 'connecting'
+                ? 'atlas-badge-connecting'
+                : connected
+                  ? 'border-[color:var(--atlas-success-ring)] text-[color:var(--atlas-success)]'
+                  : 'border-border text-muted-foreground',
           )}
           title="Live SSE stream health — the only health signal the frontend can honestly assert"
         >
