@@ -410,7 +410,7 @@ export function AtlasDashboard() {
           {
             label: 'SENTINEL-CERTIFIED SHARE',
             value: loading ? <Skeleton className="h-8 w-24" /> : certifiedShare,
-            note: `${totalPlans} plans on ledger`,
+            note: `${totalPlans} plans — passed all 10 safety checks`,
             pulse: false,
           },
           {

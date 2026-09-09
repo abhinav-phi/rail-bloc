@@ -295,7 +295,11 @@ function SignDialog(props: {
             onClick={() => void submit()}
             className="atlas-btn-primary atlas-btn text-sm"
           >
-            {busy ? 'Signing…' : isDrm ? 'Authorize & Seal' : 'Approve'}
+            {busy
+              ? 'Signing…'
+              : isDrm
+                ? 'Authorize as DRM'
+                : 'Approve as Sr. DOM'}
           </button>
         </div>
       </div>
