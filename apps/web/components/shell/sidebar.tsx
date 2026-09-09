@@ -16,6 +16,7 @@ import {
   Spline,
   CalendarRange,
   Siren,
+  LogOut,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -203,13 +204,16 @@ export function Sidebar({
           </div>
           <button
             type="button"
+            aria-label="Log out of control room"
             onClick={() => {
+              if (!isDesktop) onClose();
               logout();
               router.push('/login');
             }}
-            className="atlas-btn-secondary atlas-btn w-full text-xs"
+            className="atlas-btn-secondary atlas-btn inline-flex w-full items-center justify-center gap-2 text-xs"
           >
-            EXIT
+            <LogOut size={14} aria-hidden="true" />
+            Log out
           </button>
         </div>
       </aside>

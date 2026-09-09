@@ -3,10 +3,55 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import { Check, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePersona } from '@/context/persona-context';
 import { useLive } from '@/lib/live';
 import { ThemeToggle } from '@/components/shell/theme-toggle';
+import { Spinner } from '@/components/shared/loading';
+
+/** The 7 seeded demo personas (mirror of the login-page list; password is the
+ * shared DEMO_PASSWORD, documented on the login screen). */
+const DEMO_PERSONAS = [
+  {
+    name: 'R. K. Sharma',
+    role: 'Sr. DOM',
+    username: 'srdom_dli',
+    division: 'DLI',
+  },
+  { name: 'Sunita Verma', role: 'DRM', username: 'drm_dli', division: 'DLI' },
+  {
+    name: 'A. P. Singh',
+    role: 'Controller',
+    username: 'controller_dli',
+    division: 'DLI',
+  },
+  {
+    name: 'Meena Nair',
+    role: 'Engineer',
+    username: 'engineer_dli',
+    division: 'DLI',
+  },
+  {
+    name: 'H. Khan',
+    role: 'Station Master',
+    username: 'sm_dli',
+    division: 'DLI',
+  },
+  {
+    name: 'V. Krishnan',
+    role: 'Auditor',
+    username: 'auditor',
+    division: 'DLI',
+  },
+  {
+    name: 'System Administrator',
+    role: 'ADMIN',
+    username: 'admin',
+    division: 'DLI',
+  },
+] as const;
 
 const SEARCHABLE = [
   { href: '/dashboard', label: 'Operations Overview', num: '01' },
@@ -24,8 +69,26 @@ const SEARCHABLE = [
  * Ledger + Emergency (the real P0 flow), theme toggle, operator chip. */
 export function Header({ onMenu }: { onMenu?: () => void }) {
   const [time, setTime] = useState('');
-  const { persona } = usePersona();
+  const { persona, login } = usePersona();
   const { status, stale, connected } = useLive();
+  const [switching, setSwitching] = useState(false);
+  const [switchError, setSwitchError] = useState(false);
+
+  /** Real API login with the shared demo password — never fake persona state
+   * (Rules §5). Failure keeps the current session untouched. */
+  const switchPersona = async (username: string) => {
+    if (switching) return;
+    setSwitching(true);
+    setSwitchError(false);
+    try {
+      await login({ username, password: 'railbloc' });
+      setSwitchError(false);
+    } catch {
+      setSwitchError(true); // old persona/session stays intact
+    } finally {
+      setSwitching(false);
+    }
+  };
   const [isDesktop, setIsDesktop] = useState(false);
   useEffect(() => {
     const mq = window.matchMedia('(min-width: 1024px)');
@@ -203,22 +266,81 @@ export function Header({ onMenu }: { onMenu?: () => void }) {
           Emergency
         </Link>
         <ThemeToggle />
-        <div className="flex items-center gap-2 border-l border-border pl-3">
-          <span
-            aria-hidden="true"
-            className="inline-flex h-7 w-7 items-center justify-center rounded-sm border border-brass/40 bg-brass/10 text-xs font-bold text-brass"
+        <DropdownMenu.Root>
+          <DropdownMenu.Trigger
+            className="flex items-center gap-2 border-l border-border pl-3 outline-none"
+            aria-label="Switch demo persona"
           >
-            {(persona?.name ?? 'G').slice(0, 1)}
-          </span>
-          <div className="hidden text-xs leading-tight sm:block">
-            <div className="font-semibold text-foreground">
-              {persona ? persona.name : 'Guest'}
+            <span
+              aria-hidden="true"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-sm border border-brass/40 bg-brass/10 text-xs font-bold text-brass"
+            >
+              {switching ? (
+                <Spinner size={12} />
+              ) : (
+                (persona?.name ?? 'G').slice(0, 1)
+              )}
+            </span>
+            <div className="hidden text-left text-xs leading-tight sm:block">
+              <div className="font-semibold text-foreground">
+                {switching ? 'Switching…' : persona ? persona.name : 'Guest'}
+              </div>
+              <div className="font-mono text-[10px] text-muted-foreground">
+                {persona ? persona.role : '—'}
+              </div>
             </div>
-            <div className="font-mono text-[10px] text-muted-foreground">
-              {persona ? persona.role : '—'}
-            </div>
-          </div>
-        </div>
+            <ChevronDown
+              size={14}
+              className="text-muted-foreground"
+              aria-hidden="true"
+            />
+          </DropdownMenu.Trigger>
+          <DropdownMenu.Portal>
+            <DropdownMenu.Content
+              side="bottom"
+              align="end"
+              sideOffset={6}
+              className="z-[90] min-w-[220px] rounded-sm border border-border bg-card py-1 shadow-lg"
+            >
+              <p className="px-3 py-1.5 font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground">
+                Switch persona · demo
+              </p>
+              {DEMO_PERSONAS.map((p) => {
+                const current = persona?.id === p.username;
+                return (
+                  <DropdownMenu.Item
+                    key={p.username}
+                    disabled={switching || current}
+                    onSelect={() => void switchPersona(p.username)}
+                    className={cn(
+                      'flex cursor-pointer items-center justify-between gap-3 px-3 py-1.5 text-xs outline-none',
+                      'data-[highlighted]:bg-brass/10',
+                      current && 'text-brass',
+                    )}
+                  >
+                    <span className="min-w-0">
+                      <span className="block font-semibold text-foreground">
+                        {p.name}
+                      </span>
+                      <span className="block font-mono text-[10px] text-muted-foreground">
+                        {p.role} · {p.division}
+                      </span>
+                    </span>
+                    {current ? (
+                      <Check size={14} className="text-brass" />
+                    ) : null}
+                  </DropdownMenu.Item>
+                );
+              })}
+              {switchError ? (
+                <p className="border-t border-border px-3 py-2 text-[11px] text-[color:var(--atlas-danger)]">
+                  Backend unreachable — still signed in as{' '}
+                  {persona?.name ?? 'Guest'}.
+                </p>
+              ) : null}
+            </DropdownMenu.Content>
+          </DropdownMenu.Portal>
+        </DropdownMenu.Root>
       </div>
     </header>
   );

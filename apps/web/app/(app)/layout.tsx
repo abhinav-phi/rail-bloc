@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { getToken } from '@/lib/api';
-import { PersonaProvider } from '@/context/persona-context';
+import { PersonaProvider, usePersona } from '@/context/persona-context';
 import { SSEProvider } from '@/context/sse-context';
 import { SolverProvider } from '@/context/solver-context';
 import { Header } from '@/components/shell/header';
@@ -58,12 +58,23 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <PersonaProvider>
       <AuthGate>
-        <SSEProvider>
-          <SolverProvider>
-            <ConsoleShell>{children}</ConsoleShell>
-          </SolverProvider>
-        </SSEProvider>
+        <PersonaKeyedShell>{children}</PersonaKeyedShell>
       </AuthGate>
     </PersonaProvider>
+  );
+}
+
+/** Re-keyed by persona.id: a role switch (header dropdown) remounts the whole
+ * post-auth shell — SSE mints a fresh ticket (lib/live connects once on
+ * mount), role-gated page data refetches, header chip and sidebar footer
+ * update together. No logout/login dance in the demo. */
+function PersonaKeyedShell({ children }: { children: React.ReactNode }) {
+  const { persona } = usePersona();
+  return (
+    <SSEProvider key={persona?.id}>
+      <SolverProvider key={persona?.id}>
+        <ConsoleShell key={persona?.id}>{children}</ConsoleShell>
+      </SolverProvider>
+    </SSEProvider>
   );
 }

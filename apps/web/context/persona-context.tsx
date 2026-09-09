@@ -9,14 +9,6 @@ interface PersonaContextState {
   isAuthenticated: boolean;
   /** Real API login with username/password. Falls back to demo mode if backend unavailable. */
   login: (credentials: { username: string; password: string }) => Promise<void>;
-  /** Demo-persona login — sets persona directly without hitting the API. */
-  loginAsDemo: (demo: {
-    id: string;
-    name: string;
-    role: string;
-    division: string;
-    badge: string;
-  }) => void;
   logout: () => void;
 }
 
@@ -95,24 +87,6 @@ export function PersonaProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  /** Demo-persona login — no API call, sets persona directly. */
-  const loginAsDemo = (demo: {
-    id: string;
-    name: string;
-    role: string;
-    division: string;
-    badge: string;
-  }) => {
-    setPersona({
-      id: demo.id,
-      name: demo.name,
-      role: toPersonaRole(demo.role),
-      division: demo.division,
-      divisionId: demo.division.replace(/\s+Division$/, ''),
-      badge: demo.badge,
-    });
-  };
-
   const logout = () => {
     clearToken();
     setPersona(null);
@@ -124,7 +98,6 @@ export function PersonaProvider({ children }: { children: React.ReactNode }) {
         persona,
         isAuthenticated: !!persona,
         login,
-        loginAsDemo,
         logout,
       }}
     >
