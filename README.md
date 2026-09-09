@@ -294,9 +294,11 @@ docker compose exec postgres psql -U rail_admin -d railbloc_db \
 
 ## Current Roadmap & Implementation Status
 
-Implemented and **verified** (evidence: `Tracker.md §4`): DDL+triggers (incl. post-build ledger concurrency fix DB-001b) · generators/seeder · interval CP-SAT solver · Sentinel 10-check module · Plan Lifecycle · Approval Service · Emergency Service · COA outbox bridge · Atlas console (Next.js, typecheck + vitest green) · fixed-seed benchmark harness (measured cell recorded) · ML calibration (ECE 0.0331) · **full Docker Compose stack booted end-to-end (all services healthy, migrate+seed+API+worker+beat+web) · broker-driven solve completed (CP-SAT OPTIMAL, plan + rosters + ledger event persisted, 8.2 s wall) · 76 automated tests green against live PostgreSQL 16 + PostGIS + Redis 7.2 (also enforced in CI on every PR)**.
+Implemented and **verified** (evidence: `Tracker.md §4`): DDL+triggers (incl. post-build ledger concurrency fix DB-001b) · generators/seeder · interval CP-SAT solver · Sentinel 10-check module · Plan Lifecycle · Approval Service · Emergency Service · COA outbox bridge · Atlas console (Next.js, typecheck + vitest green) · fixed-seed benchmark harness (measured cell recorded) · ML calibration (ECE 0.0331) · **full Docker Compose stack booted end-to-end (all services healthy, migrate+seed+API+worker+beat+web) · broker-driven solve completed (CP-SAT OPTIMAL, plan + rosters + ledger event persisted, 8.2 s wall) · 76 automated tests green against live PostgreSQL 16 + PostGIS + Redis 7.2 on 2026-09-05 (suite now at 77 — see Tracker §4; also enforced in CI on every PR)**.
 
-Open verifications (honest `[ ]`/`[/]` in Tracker): browser FPS profiling · frontend runtime smoke is covered by the vitest suite, deeper interaction coverage lands with the Atlas redesign in progress.
+**Deployed and live (2026-09-09, evidence: `docs/DEPLOYMENT.md`):** public demo at `railbloc.vercel.app` → Railway (api + worker + beat, ML-ON) → Aiven PostgreSQL 18.6/PostGIS 3.6.4 + Upstash Redis; a public-URL solve committed **53 plans (25 SENTINEL_PASSED + 28 DRAFT)**; SSE live-feed frames verified through the Vercel rewrite; ledger `chain_ok` 64/64; cron-job health monitoring with failure alerts.
+
+Open verifications (honest `[ ]`/`[/]` in Tracker): p95 solve-time across N runs (single-run figures only) · dedicated mobile-terminal mock flow (TASK-039) · deeper frontend interaction coverage beyond the vitest core suite.
 
 Representative checklist:
 
@@ -307,8 +309,9 @@ Representative checklist:
 - [x] Approval Service (distinct approver, idempotency, division scope)
 - [x] Emergency Service (coalescing, PROVISIONAL, Controller ack)
 - [x] Benchmark harness (fixed seeds, documented B1 tuning) — measured cell recorded
-- [ ] First full-stack containerized boot + broker-driven solve drill
-- [ ] Fault-injection clean rerun + browser FPS profiling
+- [x] First full-stack containerized boot + broker-driven solve drill *(measured 2026-09-05: 7 services healthy, CP-SAT OPTIMAL 8.2 s — Tracker checklist)*
+- [x] Fault-injection clean rerun *(2026-09-05: 76/76 incl. fault suite, TASK-057)* + browser FPS profiling *(2026-09-05: median ≈145 fps, PERF-003 — dev-hardware figure, re-cite per environment)*
+- [x] Public deployment live with a real solve, SSE streaming, and ledger verification *(2026-09-09 — `docs/DEPLOYMENT.md`)*
 
 _Benchmark figures quoted anywhere are simulated-scenario measurements from the cited harness run — Design Targets until more cells accumulate. See `Tracker.md` for granular evidence._
 

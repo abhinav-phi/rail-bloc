@@ -29,4 +29,13 @@
 **A:** Per-user PBKDF2 salts (600k) + transparent legacy re-salting, login rate-limit 5/min, JWT `jti` + Redis revocation, SSE one-time tickets (URL me JWT kabhi nahi), Redis requirepass, RBAC + division scoping, idempotency keys. Full triage: CONTRIBUTING.md.
 
 ## Q10. "Reproducible kaise hai?"
-**A:** Seeds fixed (42/44/52/53), benchmark protocol published (B1 tuning on held-out 900+ split), CI har PR pe 76-test suite chalata hai real PG/PostGIS+Redis pe. `docker compose up --build` kisi bhi machine pe same state produce karta hai — migrate 0.78s, seed 1.26s.
+**A:** Seeds fixed (42/44/52/53), benchmark protocol published (B1 tuning on held-out 900+ split), CI har PR pe 77-test suite chalata hai real PG/PostGIS+Redis pe. `docker compose up --build` kisi bhi machine pe same state produce karta hai — migrate 0.78s, seed 1.26s.
+
+## Q11. "CORS `allow_origins=["*"]` wildcard hai — production me kyun?"
+**A:** "Conscious demo tradeoff, aur honest jawab ye hai: hamara production topology me frontend aur backend **same-origin nahi hain** — Vercel pe static export hai, backend Railway pe alag domain pe, aur `/api/*` Vercel rewrite ke through jata hai jo server-side hota hai. Wildcard isliye rakha ki demo host badle (Vercel preview URL, Railway URL swap) to kabhi CORS break na ho. **JWT auth har effectful route pe lagao hai** — CORS sirf browser read-access govern karta hai, aur humara data simulated hai (`[SIMULATED]` watermark globally). Real deployment me ye ek-line change hai: `allow_origins` ko exact Vercel domain pe pin karna, aur wo TechSpec me listed hai as hardening."
+
+## Q12. "Tumhara `.env.example` me JWT_SECRET plain-text hai. Demo secrets?"
+**A:** "`.env.example` variable **documentation** hai — live deployment us file se boot nahi hota. Deployed Railway services me `JWT_SECRET` freshly generated 64-hex value hai jo kisi file me committed nahi (per-service env vars). `SEED_PASSWORD=railbloc` jaan-boojh ke demo hai — 7 public personas simulated data ke liye, taaki judges khud login kar sakein; login rate-limited hai (5/min). 480-min token expiry demo session length hai. Kisi bhi real credential ki exposure nahi hai — DB hosted hai restricted credentials ke saath, aur poora ledger tamper-evident hai."
+
+## Q13. "145 FPS claim — mera laptop pe chal ke dikha do."
+**A:** "Ye figure honestly scoped hai: median **≈145 fps** measured on **dev-class hardware** (in-app Chromium, 1280×720, 1075 rAF samples — PERF-003, 2026-09-05), 60 fps NFR target exceed karta hai. Re-verification note bhi humne publish kiya: background tabs me Chromium rAF sampling throttle hota hai, isliye dobara capture pe idle-cadence record hua — load figure first measurement se hai. Judge hardware pe number alag ho sakta hai — **claim smoothness hai, specific FPS nahi**: chart pan/zoom stalls ke bina chalta hai, 23 real train paths + striped shadow blocks ke saath. Aapke laptop pe bhi wahi smoothness milegi — number benchmark hardware ka hai."
