@@ -93,7 +93,9 @@ export function AtlasCorridorMap() {
     blocks: true,
     ohe: true,
   });
-  const [basemap, setBasemap] = useState<'off' | 'streets' | 'satellite'>('off');
+  const [basemap, setBasemap] = useState<'off' | 'streets' | 'satellite'>(
+    'off',
+  );
   const [basemapError, setBasemapError] = useState(false);
   const [popup, setPopup] = useState<{
     title: string;
@@ -716,7 +718,11 @@ export function AtlasCorridorMap() {
                 onChange={() => setBasemapMode(mode)}
                 className="accent-brass"
               />
-              {mode === 'off' ? 'Off' : mode === 'streets' ? 'Streets' : 'Satellite'}
+              {mode === 'off'
+                ? 'Off'
+                : mode === 'streets'
+                  ? 'Streets'
+                  : 'Satellite'}
             </label>
           ))}
         </span>
