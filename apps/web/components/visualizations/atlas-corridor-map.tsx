@@ -80,6 +80,9 @@ export function AtlasCorridorMap() {
   // state twin of mapReadyRef — marker effects re-run when the map finishes loading
   const [mapReady, setMapReady] = useState(false);
   const clickBoundRef = useRef(false);
+  // init effect builds applyBundle (closes over the created map); the data
+  // effect invokes it through this ref whenever bundle/mapReady change.
+  const applyBundleRef = useRef<((data: GeoBundle) => void) | null>(null);
   const replayT0Ref = useRef(Date.now());
   const markersRef = useRef<{ marker: unknown }[]>([]);
   const [bundle, setBundle] = useState<GeoBundle | null>(null);
@@ -432,6 +435,7 @@ export function AtlasCorridorMap() {
       map.on('load', () => {
         if (bundle) applyBundle(bundle);
       });
+      applyBundleRef.current = applyBundle;
     })();
 
     return () => {
@@ -457,6 +461,10 @@ export function AtlasCorridorMap() {
         getLayer: (id: string) => unknown;
       } | null;
       if (!map) return;
+
+      // Sources + line layers first (idempotent: add-once then setData), so
+      // line paints every time bundle/mapReady change.
+      applyBundleRef.current?.(bundle);
 
       // wipe previous markers (markers live in the DOM, not the style)
       for (const m of markersRef.current) {
