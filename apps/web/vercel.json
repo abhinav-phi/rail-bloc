@@ -6,7 +6,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://railbloc-api.duckdns.org/api/:path*"
+      "destination": "https://api-production-7dc0.up.railway.app/api/:path*"
     },
     {
       "source": "/_next/static/:path*",

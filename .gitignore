@@ -27,3 +27,10 @@ frontend(share by teammates for design purpose)/
 
 # Strix security scan outputs (local pentest runs)
 strix_runs/
+
+# Submission-phase working files (never commit)
+.emergent-review/
+vande-bharat-train-orange_*
+strix_runs/
+apps/assets/
+railway.json
