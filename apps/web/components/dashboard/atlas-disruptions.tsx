@@ -28,6 +28,13 @@ interface Incident {
   created_at?: string;
 }
 
+/** Geo bundle shapes (subset of /plans/geo — verified live 2026-09-06). */
+interface GeoSectionFeature {
+  type: 'Feature';
+  properties: { id: string; code: string; [k: string]: unknown };
+  geometry: { type: string; coordinates: unknown };
+}
+
 interface SectionRow {
   section_code: string;
   division: string;
@@ -51,8 +58,10 @@ const BREAKDOWN_LABELS: Record<string, string> = {
 };
 
 /** Seed-fixed corridor sections (data/generators/corridor_gen.py, seed 42).
- * The live DB is seeded from this exact set, so a client-side list is honest;
- * value stays the section CODE (the drill API accepts it), never a UUID. */
+ * DISPLAY ORDER ONLY — the drill API takes section UUIDs (WHERE
+ * block_sections.id), so the select's value is resolved code→UUID through the
+ * /plans/geo bundle at call time. Buttons stay disabled until that map is
+ * ready; no constants-only path can ever hit the API. */
 const CORRIDOR_SECTIONS = [
   'NDLS-GZB-UP',
   'NDLS-GZB-DN',
@@ -118,6 +127,9 @@ export function AtlasDisruptions() {
   const [incidents, setIncidents] = useState<Incident[] | null>(null);
   const [ackBusy, setAckBusy] = useState<string | null>(null);
   const [sectionId, setSectionId] = useState<string>('');
+  /** code → section UUID, built from /plans/geo. Drill calls need UUIDs
+   * (emergency queries use WHERE block_sections.id); codes are display-only. */
+  const [codeToUuid, setCodeToUuid] = useState<Record<string, string>>({});
   const [type, setType] =
     useState<(typeof BREAKDOWN_TYPES)[number]>('TRACK_FRACTURE');
   const [duration, setDuration] = useState(90);
@@ -129,6 +141,13 @@ export function AtlasDisruptions() {
 
   const isController =
     persona?.role === 'CHIEF_CONTROLLER' || persona?.role === 'ADMIN';
+
+  /** Selected code → UUID. Null while /plans/geo is loading or the code is
+   * unknown — gates both drill buttons (no constants-only 400 path). */
+  const resolvedSectionUuid = sectionId
+    ? (codeToUuid[sectionId] ?? null)
+    : null;
+  const sectionsReady = Boolean(resolvedSectionUuid);
 
   const ackIncident = useCallback(async (incidentId: string) => {
     setAckBusy(incidentId);
@@ -156,14 +175,18 @@ export function AtlasDisruptions() {
 
   const load = useCallback(async () => {
     try {
-      const rows = await api.get<SectionRow[]>(
-        '/api/v1/plans/geo?division=DLI',
+      const geo = await api.get<{ sections: GeoSectionFeature[] }>(
+        '/api/v1/plans/geo',
       );
-      // geo returns corridor geometry; fall back to a static section list if shape differs
-      const secs = Array.isArray(rows) ? [] : [];
-      void secs;
+      const map: Record<string, string> = {};
+      for (const f of geo.sections ?? []) {
+        map[f.properties.code] = f.properties.id;
+      }
+      setCodeToUuid(map);
     } catch {
-      /* geo may be auditor-scoped — the drill works from any section id */
+      // Without the geo map there is NO valid section_id for the drill —
+      // buttons stay disabled (Loading sections…) rather than risking a 400.
+      setCodeToUuid({});
     }
     try {
       const inc = await api.get<Incident[]>('/api/v1/emergency/incidents');
@@ -183,7 +206,7 @@ export function AtlasDisruptions() {
     setAcknowledged(false);
     try {
       const r = await api.get<BlastRadius>(
-        `/api/v1/emergency/blast-radius?section_id=${encodeURIComponent(sectionId)}&estimated_duration_mins=${duration}`,
+        `/api/v1/emergency/blast-radius?section_id=${encodeURIComponent(resolvedSectionUuid ?? '')}&estimated_duration_mins=${duration}`,
       );
       setBlast(r);
     } catch (e) {
@@ -199,11 +222,12 @@ export function AtlasDisruptions() {
         incident_id?: string;
         coalesced_into?: string;
       }>('/api/v1/emergency/breakdown', {
-        section_id: sectionId,
+        section_id: resolvedSectionUuid ?? '',
         breakdown_type: type,
         estimated_duration_mins: duration,
         confirmation: acknowledged,
-        idempotency_key: `drill-${sectionId}-${Date.now()}`,
+        // per-click intent key (approvals pattern) — replays safe, no Date.now collision
+        idempotency_key: `drill-${crypto.randomUUID()}`,
       });
       setResult(
         `Drill started. Waiting for Controller approval below. (incident ${r.incident_id?.slice(0, 8) ?? 'queued'})`,
@@ -327,7 +351,8 @@ export function AtlasDisruptions() {
           <div className="mt-3 flex gap-2">
             <button
               type="button"
-              disabled={!sectionId}
+              disabled={!sectionId || !sectionsReady}
+              title={sectionsReady ? undefined : 'Loading sections…'}
               onClick={() => void previewBlast()}
               className="atlas-btn-secondary atlas-btn text-sm"
             >
@@ -336,10 +361,14 @@ export function AtlasDisruptions() {
             <button
               type="button"
               data-action="true"
-              disabled={!acknowledged || busy || !sectionId}
+              disabled={!acknowledged || busy || !sectionsReady}
               onClick={() => void fire()}
               className="atlas-btn-danger atlas-btn text-sm"
-              title="Gated on the blast-radius acknowledgment (API-001)"
+              title={
+                sectionsReady
+                  ? 'Gated on the blast-radius acknowledgment (API-001)'
+                  : 'Loading sections…'
+              }
             >
               {busy ? 'Firing…' : '2 · Start drill'}
             </button>
@@ -370,6 +399,7 @@ export function AtlasDisruptions() {
               <label className="mt-2 flex items-start gap-2 text-foreground">
                 <input
                   type="checkbox"
+                  data-testid="drill-ack"
                   checked={acknowledged}
                   onChange={(e) => setAcknowledged(e.target.checked)}
                   className="mt-0.5"

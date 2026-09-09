@@ -1,6 +1,6 @@
 import React from 'react';
 
-/** Vande Bharat T-18 trainset with RAIL-BLOC livery — hand-built vector in the
+/** T-18 trainset with RAIL-BLOC livery — hand-built vector in the
  * orange-grey livery sampled from the team's reference renders. Pure SVG:
  * crisp at any size, theme-adaptive, wheels carry the .atlas-wheel class so
  * the hero can spin them in sync with the entry animation. */
