@@ -47,11 +47,21 @@ def cluster(schedule: dict[str, int], demands: dict[str, DemandInput], params: S
             works = [ScheduledWork(d, _dt(s, base), _dt(s + int(d.min_duration_mins), base)) for s, d in cl]
             primary = max(cl, key=lambda x: (x[1].urgency_score, x[1].min_duration_mins))[1]
             sample = cl[0][1]
+            primary_work = next(w for w in works if w.demand.id == primary.id)
+            # A shadow block is claimed only when the emitted geometry actually
+            # satisfies Sentinel's MILP-C3 containment: every non-primary work
+            # fits inside the primary work's window. Co-timed multi-department
+            # works that merely overlap are NOT a shadow bundle — claiming one
+            # without containment guarantees a C3 rejection (model/validator
+            # mismatch, live-proven on the Railway deployment 2026-09-09).
+            is_shadow_block = len({w.demand.department for w in works}) >= 2 and all(
+                w is primary_work or (w.start >= primary_work.start and w.end <= primary_work.end)
+                for w in works)
             candidates.append(PlanCandidate(
                 section_id=sample.section_id, section_code=sample.section_code, division=sample.division,
                 start_time=min(w.start for w in works), end_time=max(w.end for w in works),
                 primary_demand_id=primary.id, works=works,
-                is_shadow_block=len({w.demand.department for w in works}) >= 2,
+                is_shadow_block=is_shadow_block,
                 plan_horizon=horizon, incident_id=incident_id))
     return candidates
 

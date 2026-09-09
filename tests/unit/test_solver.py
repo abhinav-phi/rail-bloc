@@ -4,8 +4,8 @@ from datetime import UTC, datetime, timedelta
 from data.generators.corridor_gen import corridor
 from data.generators.demand_gen import gen_demands
 from data.generators.traffic_gen import gen_freight, gen_timetable
-from packages.core.models import DemandInput, TrainPathInput
-from packages.optima.solver import solve
+from packages.core.models import DemandInput, SolverParams, TrainPathInput
+from packages.optima.solver import cluster, solve
 
 T0 = datetime(2026, 1, 5, tzinfo=UTC)
 
@@ -144,3 +144,35 @@ def test_machine_disjunction_uses_supplied_transit_speed():
     assert result.status in ("OPTIMAL", "FEASIBLE")
     assert result.scheduled_count == 2
     assert result.machine_violations == []
+
+def test_cluster_shadow_flag_requires_true_containment():
+    """MILP-C3 model/validator mismatch (Railway 2026-09-09): a multi-department
+    cluster whose works do NOT nest inside the primary window must NOT claim
+    is_shadow_block — Sentinel rejects such claims deterministically."""
+    base = datetime(2026, 9, 15, 0, 0, tzinfo=UTC)
+
+    def dem(did, dept, dur):
+        return DemandInput(
+            id=did, section_id="S1", section_code="BPL-ET", division="DLI",
+            section_start_km=0.0, section_end_km=10.0, department=dept,
+            activity_code="X", min_duration_mins=dur, earliest_start=base,
+            latest_deadline=base + timedelta(hours=10), urgency_score=5.0,
+            machinery=[],
+        )
+
+    params = SolverParams(max_time_seconds=1.0, num_workers=1,
+                          headway_high_priority_mins=15, headway_default_mins=5,
+                          freight_hard_confidence=0.60, bundling_gap_mins=0)
+    # Two departments, overlapping but non-nesting windows (snt1 [180,210]
+    # escapes eng1's [0,200]; 180 < 200 so bundling_gap 0 keeps one cluster).
+    sched = {"eng1": 0, "snt1": 180}
+    demands = {"eng1": dem("eng1", "ENGINEERING", 200), "snt1": dem("snt1", "SIGNAL_TELECOM", 30)}
+    out = cluster(sched, demands, params, base, "WEEKLY")
+    assert len(out) == 1
+    assert out[0].is_shadow_block is False  # snt1 escapes eng1's window
+
+    # Now nesting: shorter S&T work fully inside the engineering window.
+    sched2 = {"eng1": 0, "snt1": 10}
+    demands2 = {"eng1": dem("eng1", "ENGINEERING", 200), "snt1": dem("snt1", "SIGNAL_TELECOM", 30)}
+    out2 = cluster(sched2, demands2, params, base, "WEEKLY")
+    assert out2[0].is_shadow_block is True  # contained -> shadow claim is valid
