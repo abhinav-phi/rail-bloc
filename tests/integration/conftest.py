@@ -21,7 +21,7 @@ os.environ.setdefault("REDIS_URL", "redis://:rail_redis_password@localhost:6379/
 
 def _db_up() -> bool:
     try:
-        eng = create_engine(DSN, connect_args={"connect_timeout": 3})
+        eng = create_engine(DSN, connect_args={"connect_timeout": 10})
         with eng.connect() as c:
             c.execute(text("SELECT 1"))
         eng.dispose()
