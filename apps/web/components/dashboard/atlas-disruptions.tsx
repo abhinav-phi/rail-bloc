@@ -42,6 +42,76 @@ const BREAKDOWN_TYPES = [
   'OTHER',
 ] as const;
 
+/** Human labels for the API codes — the payload always carries the code. */
+const BREAKDOWN_LABELS: Record<string, string> = {
+  TRACK_FRACTURE: 'Track crack',
+  OHE_BREAKDOWN: 'Power line fault',
+  SIGNAL_FAILURE: 'Signal failure',
+  OTHER: 'Other',
+};
+
+/** Seed-fixed corridor sections (data/generators/corridor_gen.py, seed 42).
+ * The live DB is seeded from this exact set, so a client-side list is honest;
+ * value stays the section CODE (the drill API accepts it), never a UUID. */
+const CORRIDOR_SECTIONS = [
+  'NDLS-GZB-UP',
+  'NDLS-GZB-DN',
+  'GZB-ALJN-UP',
+  'GZB-ALJN-DN',
+  'GZB-ALJN-3L',
+  'ALJN-TDL-UP',
+  'ALJN-TDL-DN',
+  'TDL-ETW-UP',
+  'TDL-ETW-DN',
+  'TDL-ETW-3L',
+  'ETW-CNB-UP',
+  'ETW-CNB-DN',
+];
+
+/** Short corridor label for copy — 'GZB-ALJN-UP' → 'GZB–ALJN'. */
+function shortCorridor(code: string): string {
+  const parts = code.replace(/-(UP|DN|3L)$/, '').split('-');
+  return parts.join('–');
+}
+
+/** Drill form stores the section code; some older payloads may carry a UUID.
+ * For display we map back to the corridor label when possible. */
+function codeOf(sectionId: string): string {
+  if (CORRIDOR_SECTIONS.includes(sectionId)) return sectionId;
+  return sectionId.slice(0, 8) || '—';
+}
+
+/** Defensive human summary from whatever blast fields arrive. Never crashes on
+ * a shape change — worst case 'N items affected'. */
+function blastSummary(blast: BlastRadius, corridor: string): string {
+  try {
+    const affected = Array.isArray(blast.affected) ? blast.affected : [];
+    if (affected.length === 0 && !blast.affected) {
+      // unknown shape: count any array-looking member
+      const arrays = Object.values(blast).filter((v) => Array.isArray(v));
+      if (arrays.length) {
+        const n = (arrays as unknown[][]).reduce(
+          (acc: number, a) => acc + a.length,
+          0,
+        );
+        return `${n} items affected on corridor ${corridor}.`;
+      }
+    }
+    const held = affected.filter(
+      (x) =>
+        typeof x === 'object' && x !== null && 'train_number' in (x as object),
+    ).length;
+    const paused = affected.length - held;
+    const corridorPart = `corridor ${corridor}`;
+    if (held || paused) {
+      return `${held || 0} trains held · ${paused || 0} plans paused · ${corridorPart}.`;
+    }
+    return `${affected.length} items affected on ${corridorPart}.`;
+  } catch {
+    return 'Impact check complete — review the technical preview below.';
+  }
+}
+
 export function AtlasDisruptions() {
   const { persona } = usePersona();
   const [sections, setSections] = useState<SectionRow[] | null>(null);
@@ -75,7 +145,7 @@ export function AtlasDisruptions() {
           ) ?? prev,
       );
       setResult(
-        'Incident acknowledged — the PROVISIONAL plan is now authoritative and can be transmitted.',
+        'Approved. The diversion plan is now authoritative and can be transmitted.',
       );
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -136,7 +206,7 @@ export function AtlasDisruptions() {
         idempotency_key: `drill-${sectionId}-${Date.now()}`,
       });
       setResult(
-        `PROVISIONAL drill created (incident ${r.incident_id?.slice(0, 8) ?? 'queued'}). Controller acknowledgment gate is active.`,
+        `Drill started. Waiting for Controller approval below. (incident ${r.incident_id?.slice(0, 8) ?? 'queued'})`,
       );
       await load();
     } catch (e) {
@@ -152,47 +222,67 @@ export function AtlasDisruptions() {
         <div className="min-w-0">
           <p className="atlas-section-label mb-2">08 / DISRUPTIONS</p>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            Disruptions — P0 Emergency Drill
+            Emergency drill
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Blast-radius preview → explicit confirmation → PROVISIONAL plan with
-            Sentinel&apos;s synchronous structural re-check (≤45 s, SAFE-003) →
-            Controller acknowledgment gate.
+            Check impact → confirm → Controller approves. Takes under a minute.
+          </p>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            P0 drill: blast-radius preview → explicit confirmation → PROVISIONAL
+            plan with Sentinel&apos;s synchronous structural re-check (≤45 s,
+            SAFE-003) → Controller acknowledgment gate.
           </p>
         </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="flex items-center gap-2">
           <Radio
             size={14}
+            aria-hidden="true"
             className={cn(
-              persona?.role === 'CHIEF_CONTROLLER'
-                ? 'text-[color:var(--atlas-danger)]'
-                : '',
+              isController
+                ? 'text-[color:var(--atlas-success)]'
+                : 'text-[color:var(--atlas-warning)]',
             )}
           />
-          {isController
-            ? 'Controller role — drill unlocked'
-            : 'CONTROLLER role required to fire (demo persona: A. P. Singh)'}
+          <span
+            className={cn(
+              'atlas-badge',
+              isController
+                ? 'border-[color:var(--atlas-success-ring)] bg-[color:var(--atlas-success-bg)] text-[color:var(--atlas-success)]'
+                : 'border-[color:var(--atlas-warning-ring)] bg-[color:var(--atlas-warning-bg)] text-[color:var(--atlas-warning)]',
+            )}
+          >
+            {isController
+              ? 'You are Controller — drill unlocked'
+              : 'Switch to Controller to fire'}
+          </span>
         </div>
       </header>
 
       <div className="grid gap-5 lg:grid-cols-2">
         {/* Drill form */}
         <div className="atlas-card p-5">
-          <h2 className="atlas-card-title mb-4">Report a P0 breakdown</h2>
+          <h2 className="atlas-card-title mb-4">Report a breakdown</h2>
 
           <label
             className="mb-1 block text-xs font-medium text-foreground"
             htmlFor="sec"
           >
-            Section ID (from Block Planning hash row / corridor)
+            Section
           </label>
-          <input
+          <select
             id="sec"
-            className="w-full rounded-lg border border-border bg-card px-3 py-2 font-mono text-xs text-foreground"
-            placeholder="section UUID"
+            className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground"
             value={sectionId}
             onChange={(e) => setSectionId(e.target.value)}
-          />
+          >
+            <option value="">Pick a section</option>
+            {CORRIDOR_SECTIONS.map((code) => (
+              <option key={code} value={code}>
+                {shortCorridor(code)}
+                {CORRIDOR_SECTIONS.indexOf(code) === 0 ? '' : ''}
+              </option>
+            ))}
+          </select>
 
           <div className="mt-3 grid grid-cols-2 gap-3">
             <div>
@@ -200,7 +290,7 @@ export function AtlasDisruptions() {
                 className="mb-1 block text-xs font-medium text-foreground"
                 htmlFor="type"
               >
-                Type
+                What broke
               </label>
               <select
                 id="type"
@@ -210,7 +300,7 @@ export function AtlasDisruptions() {
               >
                 {BREAKDOWN_TYPES.map((t) => (
                   <option key={t} value={t}>
-                    {t.replaceAll('_', ' ')}
+                    {BREAKDOWN_LABELS[t] ?? t}
                   </option>
                 ))}
               </select>
@@ -220,7 +310,7 @@ export function AtlasDisruptions() {
                 className="mb-1 block text-xs font-medium text-foreground"
                 htmlFor="dur"
               >
-                Duration (mins)
+                Needed time (minutes)
               </label>
               <input
                 id="dur"
@@ -241,7 +331,7 @@ export function AtlasDisruptions() {
               onClick={() => void previewBlast()}
               className="atlas-btn-secondary atlas-btn text-sm"
             >
-              Preview blast radius
+              1 · Check impact
             </button>
             <button
               type="button"
@@ -251,19 +341,32 @@ export function AtlasDisruptions() {
               className="atlas-btn-danger atlas-btn text-sm"
               title="Gated on the blast-radius acknowledgment (API-001)"
             >
-              {busy ? 'Firing…' : 'Fire drill'}
+              {busy ? 'Firing…' : '2 · Start drill'}
             </button>
           </div>
 
           {/* Blast-radius preview + acknowledgment gate (API-001) */}
           {blast ? (
-            <div className="mt-4 rounded-lg border border-[color:var(--atlas-warning-ring)] bg-[color:var(--atlas-warning-bg)] p-3 text-xs/40">
+            <div className="mt-4 rounded-lg border border-[color:var(--atlas-warning-ring)] bg-[color:var(--atlas-warning-bg)] p-3 text-xs">
               <p className="mb-1 font-semibold text-[color:var(--atlas-warning)]">
-                Blast radius preview (synchronous, read-only)
+                Impact check (synchronous, read-only)
               </p>
-              <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-all text-[11px] text-muted-foreground">
-                {JSON.stringify(blast, null, 1)}
-              </pre>
+              <p className="text-sm font-medium text-foreground">
+                {blastSummary(blast, shortCorridor(codeOf(sectionId)))}
+              </p>
+              <details className="mt-2">
+                <summary className="cursor-pointer text-[11px] text-muted-foreground">
+                  Technical preview
+                </summary>
+                <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-all text-[11px] text-muted-foreground">
+                  {JSON.stringify(blast, null, 1)}
+                </pre>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Firing supersedes affected plans and generates a PROVISIONAL
+                  diversion plan — never treated as authoritative until the
+                  Controller acknowledges.
+                </p>
+              </details>
               <label className="mt-2 flex items-start gap-2 text-foreground">
                 <input
                   type="checkbox"
@@ -272,10 +375,8 @@ export function AtlasDisruptions() {
                   className="mt-0.5"
                 />
                 <span>
-                  I acknowledge the affected corridor preview above — firing
-                  will supersede affected plans and generate a PROVISIONAL
-                  diversion plan (never treated as authoritative until the
-                  Controller acknowledges).
+                  I checked the impact above. Starting pauses the affected
+                  plans.
                 </span>
               </label>
             </div>
@@ -329,8 +430,11 @@ export function AtlasDisruptions() {
               {incidents.slice(0, 20).map((i) => (
                 <li key={i.id} className="px-4 py-3 text-sm">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono text-xs text-foreground">
-                      {i.incident_type}
+                    <span className="text-xs font-medium text-foreground">
+                      {BREAKDOWN_LABELS[i.incident_type] ?? i.incident_type}
+                      <span className="ml-2 font-mono text-[10px] text-muted-foreground">
+                        {i.incident_type}
+                      </span>
                     </span>
                     <span
                       className={cn(
@@ -341,15 +445,22 @@ export function AtlasDisruptions() {
                       )}
                     >
                       {i.controller_acknowledged
-                        ? 'acknowledged'
-                        : 'awaiting Controller ack'}
+                        ? 'approved'
+                        : 'Waiting for approval'}
                     </span>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
                     section {i.section_id.slice(0, 8)}… ·{' '}
                     {i.estimated_duration_mins} min · reported by{' '}
                     {i.reported_by}
-                    {i.coalesced_into_incident_id ? ' · coalesced' : ''}
+                    {i.coalesced_into_incident_id ? (
+                      <span
+                        title={`grouped into ${i.coalesced_into_incident_id}`}
+                      >
+                        {' '}
+                        · Grouped with another report
+                      </span>
+                    ) : null}
                   </p>
                   {!i.controller_acknowledged ? (
                     <button
@@ -365,8 +476,8 @@ export function AtlasDisruptions() {
                       className="atlas-btn-primary atlas-btn mt-2 text-xs"
                     >
                       {ackBusy === i.id
-                        ? 'Acknowledging…'
-                        : 'Acknowledge Incident — Controller'}
+                        ? 'Approving…'
+                        : 'Approve as Controller'}
                     </button>
                   ) : null}
                 </li>
@@ -376,9 +487,9 @@ export function AtlasDisruptions() {
         </div>
       </div>
 
-      {/* Weather — G&SR-3 fail-closed storytelling (audit RANK 9) */}
+      {/* Weather — G&SR-3 fail-closed storytelling (audit RANK 9), compact for scan speed */}
       <div className="mt-5">
-        <AtlasWeather />
+        <AtlasWeather compact />
       </div>
     </div>
   );
