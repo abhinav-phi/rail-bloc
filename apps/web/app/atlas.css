@@ -587,3 +587,63 @@ html.atlas-light .vb-speed-line {
      entry/decel still belongs to .vb-train-wrap. */
   animation: atlas-wheelspin 1s linear infinite;
 }
+
+/* ===== Phase-3 corridor map: station + train markers (HTML, offline-safe) ===== */
+.atlas-station {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+.atlas-station-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid hsl(var(--brass));
+  box-shadow: 0 0 0 2px rgba(11, 17, 30, 0.7);
+}
+.atlas-station-dot.atlas-station-blocked {
+  border-color: #f06b72;
+  box-shadow:
+    0 0 0 2px rgba(240, 107, 114, 0.35),
+    0 0 0 1px rgba(11, 17, 30, 0.7);
+}
+.atlas-station-label {
+  font-family: var(--font-jetbrains), ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: #e2e8f0;
+  text-shadow:
+    0 0 2px #0b111e,
+    0 0 4px #0b111e;
+}
+.atlas-train-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1.5px solid #0b111e;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
+  cursor: default;
+}
+.atlas-train-dot.atlas-train-pulse {
+  animation: atlas-train-pulse 1.6s ease-in-out infinite;
+}
+@keyframes atlas-train-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 0 rgba(240, 107, 114, 0.55),
+      0 0 6px rgba(0, 0, 0, 0.6);
+  }
+  50% {
+    box-shadow:
+      0 0 0 7px rgba(240, 107, 114, 0),
+      0 0 6px rgba(0, 0, 0, 0.6);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .atlas-train-dot.atlas-train-pulse {
+    animation: none !important;
+  }
+}

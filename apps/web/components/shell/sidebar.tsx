@@ -6,17 +6,43 @@ import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useLive } from '@/lib/live';
 import { usePersona } from '@/context/persona-context';
-import { X } from 'lucide-react';
+import {
+  X,
+  LayoutDashboard,
+  CalendarClock,
+  CheckCircle2,
+  ScrollText,
+  Map as MapIcon,
+  Spline,
+  CalendarRange,
+  Siren,
+  type LucideIcon,
+} from 'lucide-react';
 
-const navItems = [
-  { href: '/dashboard', num: '01', label: 'Operations' },
-  { href: '/planner/weekly', num: '02', label: 'Weekly planner' },
-  { href: '/approvals', num: '03', label: 'Approvals' },
-  { href: '/audit-ledger', num: '04', label: 'Audit ledger' },
-  { href: '/corridor-map', num: '05', label: 'Corridor map' },
-  { href: '/string-chart', num: '06', label: 'String chart' },
-  { href: '/planner/26-week', num: '07', label: '26-week horizon' },
-  { href: '/disruptions', num: '08', label: 'Disruptions' },
+const navItems: {
+  href: string;
+  num: '01' | '02' | '03' | '04' | '05' | '06' | '07' | '08';
+  label: string;
+  icon: LucideIcon;
+}[] = [
+  { href: '/dashboard', num: '01', label: 'Operations', icon: LayoutDashboard },
+  {
+    href: '/planner/weekly',
+    num: '02',
+    label: 'Weekly planner',
+    icon: CalendarClock,
+  },
+  { href: '/approvals', num: '03', label: 'Approvals', icon: CheckCircle2 },
+  { href: '/audit-ledger', num: '04', label: 'Audit ledger', icon: ScrollText },
+  { href: '/corridor-map', num: '05', label: 'Corridor map', icon: MapIcon },
+  { href: '/string-chart', num: '06', label: 'String chart', icon: Spline },
+  {
+    href: '/planner/26-week',
+    num: '07',
+    label: '26-week horizon',
+    icon: CalendarRange,
+  },
+  { href: '/disruptions', num: '08', label: 'Disruptions', icon: Siren },
 ];
 
 /** CONNECTING / LIVE / STALE pill — real SSE heartbeat (wiring unchanged). */
@@ -134,14 +160,22 @@ export function Sidebar({
                 href={item.href}
                 onClick={onClose}
                 className={cn(
-                  'atlas-nav-item',
+                  'atlas-nav-item group',
                   isActive && 'atlas-nav-item-active',
                 )}
                 aria-current={isActive ? 'page' : undefined}
+                aria-label={`${item.num} ${item.label}`}
               >
-                <span className="font-mono text-[10px] text-muted-foreground">
-                  {item.num}
-                </span>
+                {React.createElement(item.icon, {
+                  size: 16,
+                  'aria-hidden': true,
+                  className: cn(
+                    'shrink-0',
+                    isActive
+                      ? 'text-brass'
+                      : 'text-muted-foreground group-hover:text-foreground',
+                  ),
+                })}
                 <span className="text-[13px]">{item.label}</span>
               </Link>
             );
