@@ -57,6 +57,46 @@ def conn(engine):
         yield c
 
 
+# Demands created by non-FLT integration tests (app001/safe002/e2e/ack use these
+# marker prefixes; faults tests own FLT*/E2E-* through their own flt_cleanup).
+_TEST_DEMANDS = """
+    SELECT id FROM demands.block_demands
+     WHERE external_ref_id LIKE 'APP001-%'
+        OR external_ref_id LIKE 'SAFE002-%'
+        OR external_ref_id LIKE 'E2E-%'
+        OR external_ref_id LIKE 'IDEM-%'
+        OR external_ref_id LIKE 'TX-%'
+        OR external_ref_id LIKE 'ACK-%'"""
+_TEST_PLANS = f"""
+    SELECT p.id FROM optimization.block_plans p
+     WHERE p.section_id IN (SELECT id FROM infrastructure.block_sections
+                             WHERE section_code = 'NDLS-GZB-UP')
+        OR p.primary_demand_id IN ({_TEST_DEMANDS})"""
+
+
+@pytest.fixture(autouse=True)
+def integration_cleanup(engine):
+    """TASK (flake fix): app001/safe002/e2e leave AUTHORIZED/SENTINEL plans
+    behind. On a persistent DB (Aiven) the next run's plan collides via
+    excl_active_overlap — the constraint working, not a product bug. This
+    autouse fixture removes those artifacts after every integration test so
+    repeat runs are order-independent. Mirrors test_faults.flt_cleanup. Never
+    touches seed data, demo plans, or the ledger (append-only, untouched)."""
+    yield
+    with engine.begin() as c:
+        c.execute(text(f"DELETE FROM operations.signal_acknowledgments WHERE plan_id IN ({_TEST_PLANS})"))
+        c.execute(text(f"DELETE FROM optimization.coa_outbox WHERE plan_id IN ({_TEST_PLANS})"))
+        c.execute(text(f"DELETE FROM optimization.machine_rosters WHERE plan_id IN ({_TEST_PLANS})"))
+        c.execute(text(
+            f"DELETE FROM optimization.plan_shadow_demands WHERE plan_id IN ({_TEST_PLANS})"
+            f" OR demand_id IN ({_TEST_DEMANDS})"))
+        c.execute(text(f"DELETE FROM optimization.plan_sections WHERE plan_id IN ({_TEST_PLANS})"))
+        c.execute(text(
+            f"UPDATE optimization.block_plans SET supersedes_id = NULL WHERE supersedes_id IN ({_TEST_PLANS})"))
+        c.execute(text(f"DELETE FROM optimization.block_plans WHERE id IN ({_TEST_PLANS})"))
+        c.execute(text(f"DELETE FROM demands.block_demands WHERE id IN ({_TEST_DEMANDS})"))
+
+
 @pytest.fixture()
 def client():
     from fastapi.testclient import TestClient

@@ -27,7 +27,7 @@ async def solve(body: SolveIn, actor: Actor = Depends(require_roles("SR_DOM", "A
     r = aioredis.from_url(settings.redis_url)
     lock = f"solve:{body.division}:{body.horizon}"
     try:
-        if not await r.set(lock, actor.username, nx=True, ex=300):
+        if not await r.set(lock, actor.username, nx=True, ex=90):
             raise HTTPException(409, "a solve for this division/horizon is already running")
     finally:
         await r.aclose()
