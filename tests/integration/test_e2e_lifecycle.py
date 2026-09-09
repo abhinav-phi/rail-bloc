@@ -250,14 +250,15 @@ def test_emergency_drill_provisional_and_ack_gate(client, engine):
         # The provisional plan is anchored to now (~90 min) and G&SR-5 checks
         # headway against every hard path — whether a seeded train happens to
         # sit there depends on the run's time of day, which made this test
-        # flaky. Clear interfering paths on this section for the drill window.
-        # The emergency re-plan solves across the whole blast radius (incident +
-        # neighbor sections, all seeded SUBMITTED demands), so the winning
-        # candidate can be on ANY section and its G&SR-5 headway verdict
-        # depended on the run's wall clock vs the fixed daily seed schedule.
-        # Clear every train path — CI starts from a fresh database per run and
-        # no other test in this file depends on seeded trains.
-        conn.execute(text("DELETE FROM operations.train_paths"))
+        # flaky. Clear interfering paths for the drill horizon. SCOPED (was
+        # table-wide): only paths overlapping [now-2h, now+3d]. On CI's fresh
+        # database nothing matches (identical behavior); on a persistent DB the
+        # seeded timetable outside the drill window survives (live Aiven lost
+        # its 276 seeded paths to the unscoped delete, 2026-09-09).
+        conn.execute(text(
+            "DELETE FROM operations.train_paths "
+            "WHERE tstzrange(scheduled_entry, scheduled_exit) && "
+            "tstzrange(now() - interval '2 hours', now() + interval '3 days')"))
         dem = conn.execute(text(
             """INSERT INTO demands.block_demands
                (external_source, external_ref_id, department, section_id, activity_code,
