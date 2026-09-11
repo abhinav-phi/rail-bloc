@@ -86,7 +86,13 @@ export function AtlasStringChart() {
     return Array.from(new Set(trains.map((t) => t.section_code))).sort();
   }, [trains]);
 
-  const activeSection = section || sections[0] || '';
+  /** First paint always opens on Gzb–Aligarh Down (demo section); any
+   * dropdown pick overrides it thereafter. Falls back to the first seeded
+   * section if the demo one is absent from the data. */
+  const preferredSection = sections.includes('GZB-ALJN-DN')
+    ? 'GZB-ALJN-DN'
+    : sections[0];
+  const activeSection = section || preferredSection || '';
 
   const sectionTrains = useMemo(
     () => (trains ?? []).filter((t) => t.section_code === activeSection),
