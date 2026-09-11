@@ -34,3 +34,7 @@ vande-bharat-train-orange_*
 strix_runs/
 apps/assets/
 railway.json
+
+# local dev scratch (never commit)
+.zcode/
+docker-compose.override.yml
