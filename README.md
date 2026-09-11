@@ -1,13 +1,17 @@
 # RAIL-BLOC
 
+![RAIL-BLOC banner](assets/logos/banner_with_bg.jpeg)
+
 > AI-powered, mathematically bounded block scheduling optimization platform for Indian Railways maintenance planning — unifying Civil, TRD, and Signal demands into safety-verified shadow blocks with two-tier human authorization before dispatch.
 
 ![SIH](https://img.shields.io/badge/SIH-26027-emerald.svg?style=flat-square)
 ![Python](https://img.shields.io/badge/Python-3.11-blue.svg?style=flat-square)
-![React](https://img.shields.io/badge/React-18.3-61dafb.svg?style=flat-square)
+![Next.js](https://img.shields.io/badge/Next.js-13.5-black?style=flat-square&logo=nextdotjs&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16%20%2B%20PostGIS-336791.svg?style=flat-square)
 ![OR-Tools](https://img.shields.io/badge/CP--SAT-OR--Tools-orange.svg?style=flat-square)
 ![License](https://img.shields.io/badge/License-Apache--2.0-blue.svg?style=flat-square)
+
+**[🎥 Demo Video](https://youtu.be/JATyKKmkJBI)** · **[Pitch Deck — Drive](https://drive.google.com/file/d/1qfgUEQA6ZH0lPdPvUzN7G3Nw-ggC9uNH/view)** · **[Pitch Deck — Dropbox](https://www.dropbox.com/scl/fi/bwvbh2e9r8q3r20hlyzbr/Insomnia_SIH2026_Presentation.pptx?rlkey=mgfx2flirivrgjbz7fhjqxbyf&st=yz7atabh&dl=0)**
 
 **[Quick Start](#getting-started)** · **[Documentation Index](#documentation-index)** · **[API Reference](#api-reference)** · **[Contributing](CONTRIBUTING.md)** · **[Operator Runbook](MANUAL_STEPS.md)** · **[Master Summary](docs/Summary.md)**
 
@@ -23,6 +27,9 @@
 - **Organization / Department:** Ministry of Railways
 - **Category:** Software
 - **Theme:** Transportation & Logistics
+- **Demo Video:** [youtu.be/JATyKKmkJBI](https://youtu.be/JATyKKmkJBI)
+- **Pitch Deck:** [Google Drive](https://drive.google.com/file/d/1qfgUEQA6ZH0lPdPvUzN7G3Nw-ggC9uNH/view) · [Dropbox](https://www.dropbox.com/scl/fi/bwvbh2e9r8q3r20hlyzbr/Insomnia_SIH2026_Presentation.pptx?rlkey=mgfx2flirivrgjbz7fhjqxbyf&st=yz7atabh&dl=0)
+- **Live Prototype:** [railbloc.vercel.app](https://railbloc.vercel.app)
 
 ---
 
@@ -30,7 +37,7 @@
 
 | Member  | Role                                        |
 | ------- | ------------------------------------------- |
-| Abhinav | Team Lead · Full-stack & Solver Integration |
+| Abhinav | Full-stack & Solver Integration             |
 | Bharat  | Backend & Data Engineering                  |
 | Tijil   | Frontend & UI/UX                            |
 | Priyam  | ML & Forecasting                            |
@@ -46,6 +53,7 @@ _(Roles are indicative of primary contribution areas — the team is cross-funct
 - [Project Information](#project-information)
 - [Team](#team)
 - [About & Problem Statement](#about--problem-statement)
+- [Proposed Solution](#proposed-solution)
 - [Key Features](#key-features)
 - [System Architecture](#system-architecture)
 - [Tech Stack](#tech-stack)
@@ -65,6 +73,18 @@ _(Roles are indicative of primary contribution areas — the team is cross-funct
 ## About & Problem Statement
 
 Indian Railways runs one of the world's most saturated networks, yet Civil, TRD and Signal departments still submit maintenance block demands independently through BDMS — producing piecemeal closures, idle machine fleets, freight detention and passenger delays. RAIL-BLOC unifies those demands into interval-based CP-SAT schedules bundled as cross-department shadow blocks, enforces G&SR safety rules via a deterministic 10-check Sentinel, and requires distinct Sr. DOM → DRM authorization before anything reaches COA. The governing principle throughout: **ML estimates; CP-SAT decides; Sentinel verifies; humans authorize; COA executes.**
+
+## Proposed Solution
+
+RAIL-BLOC is an AI-assisted, constraint-verified block planning system built on one governing principle — **the solver never vouches for itself.** Five cooperating stages form a single auditable pipeline (a modular monolith, ADR-001 — no microservices, no blockchain, no RL):
+
+1. **Nexus — ingestion (fail-closed).** TMS/TDMS/SMMS/WTT/FOIS/IMD demands arrive behind per-source machine credentials; staleness TTLs and plausibility contradictions reject bad data with diagnostics instead of guessing.
+2. **Optima — optimization.** One interval-based CP-SAT formulation (ADR-005) schedules all departments' demands jointly, bundling Civil + TRD + S&T works into shared closure windows ("shadow blocks"). ML degradation and freight models only tune objective coefficients — advisory input never decides feasibility.
+3. **Sentinel — independent verification.** Ten deterministic checks (G&SR-1…5, MILP-C1…C5), computed without any network or ML dependency, re-derive constraints from source data; a plan is valid only while its sealed `content_hash` still matches.
+4. **Plan Lifecycle — human authorization.** A hash-bound approval chain in which two distinct humans sign in sequence — Sr. DOM approves, DRM authorizes (enforced by a DB constraint, never the same account twice) — and COA transmission happens only on acknowledgment.
+5. **Chronicle — evidence.** Every event appends to a SHA-256 hash-chained ledger inside PostgreSQL: INSERT-only, guard-triggered, rollback-gap-safe, and live-verifiable at `/ledger/verify`.
+
+The Atlas console wraps this pipeline in a role-scoped control room — corridor map, string chart, approvals desk, emergency drill and audit view, each persona seeing exactly its own responsibilities. The result for the same corridor that today suffers piecemeal closures: fewer window closures per unit of maintenance, less work-on-work interference, a machine-checked safety verdict before any human signature, and a tamper-evident trail behind every decision.
 
 ## Key Features
 
@@ -329,13 +349,35 @@ Realistic extensions of the current prototype:
 
 Redesigned "control room" UI (dark brass instrument theme, primary; a railway-skyblue light variant toggles from the header):
 
-| | |
-|---|---|
-| ![Landing](assets/screenshots/01-landing.png) | ![Dashboard](assets/screenshots/02-dashboard.png) |
-| ![Block Planning](assets/screenshots/03-block-planning.png) | ![Approvals](assets/screenshots/04-approvals.png) |
-| ![Audit Ledger](assets/screenshots/05-audit-ledger.png) | ![Corridor Map](assets/screenshots/06-corridor-map.png) |
-| ![String Chart](assets/screenshots/07-string-chart.png) | ![26-Week Horizon](assets/screenshots/08-26-week.png) |
-| ![Login](assets/screenshots/09-login.png) | |
+### Entry
+
+| Public landing — hero, decision pipeline, chronicle chain | Login — persona selection, real JWT flow (7 seeded operators) |
+|:--:|:--:|
+| ![RAIL-BLOC landing page](assets/screenshots/01-landing.png) | ![Login — pick an operator persona](assets/screenshots/02-login.png) |
+
+### Operations
+
+| Operations Overview — KPIs, 7-day block grid, pipeline health, incident feed | Weekly planner — multi-horizon queue, solve trigger, hash-bound plan rows |
+|:--:|:--:|
+| ![Operations overview dashboard](assets/screenshots/03-dashboard.png) | ![Weekly planner work queue](assets/screenshots/04-block-planning.png) |
+
+| Corridor Map — sections, active blocks, OHE boundaries (`/plans/geo`) | Corridor Map — zoomed live-block detail |
+|:--:|:--:|
+| ![Corridor map — network overview](<assets/screenshots/07-corridor-map - 1.png>) | ![Corridor map — block detail](<assets/screenshots/07-corridor-map - 2.png>) |
+
+| String Chart — time–distance, train paths vs maintenance windows | 26-Week Horizon — possession heatmap (CIVIL / TRD / SNT) |
+|:--:|:--:|
+| ![Time–distance string chart](assets/screenshots/08-string-chart.png) | ![26-week possession horizon](assets/screenshots/09-26-week.png) |
+
+### Assurance & control
+
+| Approval Workflow — Sr. DOM → DRM lifecycle, G&SR-2 acks, Sentinel report | Audit Ledger — hash-chain verdict, event rows (auditor persona) |
+|:--:|:--:|
+| ![Approval workflow desk](assets/screenshots/05-approvals.png) | ![Audit ledger chain verification](assets/screenshots/06-audit-ledger.png) |
+
+| Disruptions — P0 drill, blast-radius preview, Controller ack gate | |
+|:--:|:--:|
+| ![Emergency disruptions desk](assets/screenshots/10-disruptions.png) | |
 
 ## Contributing & Development Guidelines
 
