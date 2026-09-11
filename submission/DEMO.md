@@ -1,21 +1,15 @@
 # Demo Video — RAIL-BLOC
 
-> **STATUS: PLACEHOLDER** — the demo video is being recorded. This file will be
-> updated with the final accessible link before submission.
+**▶ Demo video:** <https://youtu.be/JATyKKmkJBI>
+(viewable without requesting permission)
 
-## Demo video link
+## What the video shows (~4 min)
 
-`<PASTE_YOUTUBE_OR_GOOGLE_DRIVE_LINK_HERE>`
+1. **The problem** — Civil / TRD / S&T each book the same track windows independently through BDMS, by hand: piecemeal closures, idle machines, freight detention.
+2. **Our solution** — one pipeline: unified demands (Nexus) → CP-SAT shadow-block optimization (Optima) → 10-check independent safety verification (Sentinel) → two-signature human authorization (Sr. DOM → DRM) → tamper-evident ledger (Chronicle). ML is advisory-only.
+3. **Why it's better** — manual and greedy baselines can produce schedules but zero machine-certifiable plans; on our simulated benchmark RAIL-BLOC certifies 126/130 and cuts freight detention by two-thirds (fixed seeds, cited harness runs).
+4. **Full live product walkthrough** — login (7 role-scoped personas) → control-room dashboard → multi-horizon planner → approval desk with a real Sr. DOM → DRM signing sequence → corridor map (live SSE) → string chart → emergency blast-radius preview → auditor ledger chain re-verification.
 
-(The link must be viewable without requesting permission.)
-
-## What the video shows (follows docs/DEMO_SCRIPT.md)
-
-1. **Problem introduction** — decentralized, manual maintenance block planning across Engineering, TRD and S&T departments.
-2. **Proposed solution** — RAIL-BLOC unifies demands (Nexus), optimizes block schedules (Optima, CP-SAT), verifies safety (Sentinel, 10 checks), and seals every decision (Chronicle).
-3. **Main features / workflow** — multi-horizon block planning, approval chain with distinct approvers (Sr. DOM → DRM → COA), tamper-evident audit ledger.
-4. **Working prototype** — live walkthrough of the control room: dashboard, block planning + solve, approval workflow, corridor map, string chart, audit ledger.
-5. **Safety & audit proof** — Sentinel 10/10 checks, hash-chain verification, emergency (P0) drill with provisional plan and acknowledgment gate.
-
-All data shown is simulated (fixed seeds) and carries the SIMULATED DATA
-watermark, per Rules.md §5.
+All data shown is simulated (fixed seeds 42–53) and carries the SIMULATED DATA
+watermark, per Rules.md §5. The prototype is live at
+<https://railbloc.vercel.app> (simulated feeds).
