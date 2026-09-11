@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { PAGE_BY_HREF, canPage } from '@/lib/rbac';
 import { usePersona } from '@/context/persona-context';
 import { useSSE } from '@/context/sse-context';
 import {
@@ -106,6 +107,12 @@ export function Sidebar({
   const pathname = usePathname();
   const router = useRouter();
   const { persona, logout } = usePersona();
+  // Role-filtered nav (lib/rbac.ts mirrors backend require_roles): pages the
+  // operator's role can't reach are absent, not locked — a real control-room
+  // console would never render an audit desk for a Station Master.
+  const nav = navItems.filter((item) =>
+    canPage(persona?.role, PAGE_BY_HREF[item.href]!),
+  );
   // Desktop = sidebar always in-flow (relative); mobile = fixed drawer.
   // JS-driven (matchMedia) instead of lg: utilities — deterministic, no
   // transform-cascade surprises in the built sheet.
@@ -152,7 +159,7 @@ export function Sidebar({
         </div>
 
         <nav className="grid content-start gap-0.5 px-2.5 py-4">
-          {navItems.map((item) => {
+          {nav.map((item) => {
             const isActive =
               pathname === item.href || pathname?.startsWith(item.href + '/');
             return (

@@ -42,7 +42,9 @@ export type PersonaRole =
   | 'AUDITOR'
   | 'SR_DEN'
   | 'ENGINEER'
-  | 'SSE';
+  | 'SSE'
+  /** Hand-edited/foreign JWT role — least privilege (see lib/rbac.ts). */
+  | 'UNKNOWN';
 
 export interface Persona {
   id: string;

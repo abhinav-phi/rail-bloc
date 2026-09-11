@@ -34,7 +34,9 @@ function toPersonaRole(role: string): PersonaRole {
     SSE: 'SSE',
     'SSE Engineer': 'SSE',
   };
-  return map[role] ?? 'SR_DOM';
+  // Unknown roles fall to UNKNOWN (least privilege), never SR_DOM — an
+  // unrecognised JWT must not inherit the planner's full console.
+  return map[role] ?? 'UNKNOWN';
 }
 
 const DISPLAY_NAMES: Record<string, string> = {

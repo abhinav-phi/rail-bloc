@@ -1,7 +1,7 @@
 import React from 'react';
 import { act, render, screen, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
-import { parseJwt, setToken } from '@/lib/api';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { clearToken, parseJwt, setToken } from '@/lib/api';
 import { PersonaProvider } from '@/context/persona-context';
 import { ApprovalActionRow } from '@/components/approvals/approval-action-row';
 import { Spinner, Skeleton } from '@/components/shared/loading';
@@ -19,6 +19,49 @@ function makeToken(role: string, division: string): string {
   const enc = (value: object) =>
     Buffer.from(JSON.stringify(value)).toString('base64url');
   return `header.${enc(payload)}.signature`;
+}
+
+/** Sidebar under a persona whose JWT carries `role` — the session restore in
+ * PersonaProvider runs in an effect, so callers await an assertion instead of
+ * querying synchronously. */
+function renderSidebarAs(role: string) {
+  setToken(makeToken(role, 'DLI'));
+  render(
+    <PersonaProvider>
+      <SSEProvider>
+        <Sidebar open={false} onClose={() => {}} />
+      </SSEProvider>
+    </PersonaProvider>,
+  );
+}
+
+const ALL_NAV_LABELS = [
+  'Operations',
+  'Weekly planner',
+  'Approvals',
+  'Audit ledger',
+  'Corridor map',
+  'String chart',
+  '26-week horizon',
+  'Disruptions',
+];
+
+async function expectNavLabels({
+  shown,
+  hidden,
+}: {
+  shown: string[];
+  hidden: string[];
+}) {
+  for (const label of shown) {
+    await screen.findByText(label);
+  }
+  for (const label of hidden) {
+    expect(screen.queryByText(label)).toBeNull();
+  }
+  // Full-set lock: the nav contains exactly the shown labels.
+  const rendered = ALL_NAV_LABELS.filter((l) => screen.queryByText(l));
+  expect(rendered.sort()).toEqual([...shown].sort());
 }
 
 describe('frontend core behaviors', () => {
@@ -40,19 +83,57 @@ describe('frontend core behaviors', () => {
     ).toBeDisabled();
   });
 
-  it('shows sidebar navigation entries for standard operations pages', () => {
-    render(
-      <PersonaProvider>
-        <SSEProvider>
-          <Sidebar open={false} onClose={() => {}} />
-        </SSEProvider>
-      </PersonaProvider>,
-    );
+  // Role-gated nav (lib/rbac.ts mirrors backend require_roles): every test
+  // starts from a clean token so the persona restore can't leak across specs.
+  afterEach(() => clearToken());
 
-    // Rev-2.0 sidebar uses the Emergent console labels (numbered rail)
-    expect(screen.getByText('Operations')).toBeInTheDocument();
-    expect(screen.getByText('Approvals')).toBeInTheDocument();
-    expect(screen.getByText('Audit ledger')).toBeInTheDocument();
+  it('shows the full 8-page console to ADMIN', async () => {
+    renderSidebarAs('ADMIN');
+    await expectNavLabels({ shown: ALL_NAV_LABELS, hidden: [] });
+  });
+
+  it('hides Audit ledger from SR_DOM (planner seat, auditor owns the ledger)', async () => {
+    renderSidebarAs('SR_DOM');
+    await expectNavLabels({
+      shown: ALL_NAV_LABELS.filter((l) => l !== 'Audit ledger'),
+      hidden: ['Audit ledger'],
+    });
+  });
+
+  it('gives STATION_MASTER only field pages — no planner, no disruptions, no ledger', async () => {
+    renderSidebarAs('STATION_MASTER');
+    await expectNavLabels({
+      shown: ['Operations', 'Approvals', 'Corridor map', 'String chart'],
+      hidden: [],
+    });
+  });
+
+  it('AUDITOR console is ledger + overview + map only', async () => {
+    renderSidebarAs('AUDITOR');
+    await expectNavLabels({
+      shown: ['Operations', 'Audit ledger', 'Corridor map'],
+      hidden: [],
+    });
+  });
+
+  it('CONTROLLER sees the emergency desk but not the 26-week horizon', async () => {
+    renderSidebarAs('CONTROLLER');
+    await expectNavLabels({
+      shown: [
+        'Operations',
+        'Weekly planner',
+        'Approvals',
+        'Corridor map',
+        'String chart',
+        'Disruptions',
+      ],
+      hidden: [],
+    });
+  });
+
+  it('unknown JWT roles fall to least privilege (dashboard only)', async () => {
+    renderSidebarAs('SPACE_CAPTAIN');
+    await expectNavLabels({ shown: ['Operations'], hidden: [] });
   });
 
   it('marks live feed stale on reconnect failure', async () => {

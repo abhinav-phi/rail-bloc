@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { Check, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PAGE_BY_HREF, canPage } from '@/lib/rbac';
 import { usePersona } from '@/context/persona-context';
 import { useSSE } from '@/context/sse-context';
 import { ThemeToggle } from '@/components/shell/theme-toggle';
@@ -138,14 +139,20 @@ export function Header({ onMenu }: { onMenu?: () => void }) {
     return () => clearInterval(timer);
   }, []);
 
+  // ⌘K jump list is role-filtered like the sidebar — search must not offer a
+  // page the operator can't open (lib/rbac.ts mirrors backend gates).
+  const searchable = SEARCHABLE.filter((s) =>
+    canPage(persona?.role, PAGE_BY_HREF[s.href]!),
+  );
+
   const matches = query.trim()
-    ? SEARCHABLE.filter((s) =>
+    ? searchable.filter((s) =>
         s.label.toLowerCase().includes(query.trim().toLowerCase()),
       )
-    : SEARCHABLE;
+    : searchable;
 
   const pageLabel =
-    SEARCHABLE.find((s) => pathname === s.href)?.label ?? 'Control room';
+    searchable.find((s) => pathname === s.href)?.label ?? 'Control room';
 
   return (
     <header className="flex h-12 shrink-0 items-center gap-4 border-b border-border bg-card px-5">
@@ -253,18 +260,22 @@ export function Header({ onMenu }: { onMenu?: () => void }) {
         <div className="hidden font-mono text-xs tabular-nums text-muted-foreground sm:block">
           {time}
         </div>
-        <Link
-          href="/audit-ledger"
-          className="atlas-btn-secondary atlas-btn text-xs"
-        >
-          Ledger
-        </Link>
-        <Link
-          href="/disruptions"
-          className="atlas-btn-danger atlas-btn text-xs"
-        >
-          Emergency
-        </Link>
+        {canPage(persona?.role, 'ledger') ? (
+          <Link
+            href="/audit-ledger"
+            className="atlas-btn-secondary atlas-btn text-xs"
+          >
+            Ledger
+          </Link>
+        ) : null}
+        {canPage(persona?.role, 'disruptions') ? (
+          <Link
+            href="/disruptions"
+            className="atlas-btn-danger atlas-btn text-xs"
+          >
+            Emergency
+          </Link>
+        ) : null}
         <ThemeToggle />
         <DropdownMenu.Root>
           <DropdownMenu.Trigger

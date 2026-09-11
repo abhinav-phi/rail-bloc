@@ -5,6 +5,7 @@ import { api } from '@/lib/api';
 import { usePersona } from '@/context/persona-context';
 import { Play, RefreshCw, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { can } from '@/lib/rbac';
 import { Skeleton, SkeletonCard } from '@/components/shared/loading';
 
 /* ── Types (live /plans + /optimize contract) ───────────────────────── */
@@ -90,6 +91,8 @@ function dur(start: string, end: string): string {
 function SolveCard(props: {
   horizon: Horizon;
   division: string;
+  /** Backend gate: /optimize/solve is SR_DOM + ADMIN (lib/rbac.ts). */
+  canTrigger: boolean;
   onQueued: (taskId: string) => void;
 }) {
   const [busy, setBusy] = useState(false);
@@ -124,20 +127,26 @@ function SolveCard(props: {
           </div>
           <p className="mt-0.5 text-xs text-muted-foreground">{h.blurb}</p>
         </div>
-        <button
-          type="button"
-          data-action="true"
-          onClick={() => void trigger()}
-          disabled={busy}
-          className="atlas-btn-primary atlas-btn text-sm"
-        >
-          {busy ? (
-            <RefreshCw size={14} className="animate-spin" />
-          ) : (
-            <Play size={14} />
-          )}
-          {busy ? 'Queueing…' : `Run ${h.label.toLowerCase()} solve`}
-        </button>
+        {props.canTrigger ? (
+          <button
+            type="button"
+            data-action="true"
+            onClick={() => void trigger()}
+            disabled={busy}
+            className="atlas-btn-primary atlas-btn text-sm"
+          >
+            {busy ? (
+              <RefreshCw size={14} className="animate-spin" />
+            ) : (
+              <Play size={14} />
+            )}
+            {busy ? 'Queueing…' : `Run ${h.label.toLowerCase()} solve`}
+          </button>
+        ) : (
+          <span className="atlas-badge border-border text-muted-foreground">
+            Solver is triggered by Sr. DOM · read-only queue
+          </span>
+        )}
       </div>
       {error ? (
         <p
@@ -238,6 +247,7 @@ export function AtlasPlanner() {
       <SolveCard
         horizon={horizon}
         division={division}
+        canTrigger={can(persona?.role, 'solve')}
         onQueued={(taskId) => {
           setQueuedTask(taskId);
           setBaseline((plans ?? []).length);

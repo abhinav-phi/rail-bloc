@@ -6,6 +6,7 @@ import { usePersona } from '@/context/persona-context';
 import { AtlasWeather } from '@/components/dashboard/atlas-weather';
 import { AlertTriangle, CheckCircle2, Radio } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { can } from '@/lib/rbac';
 import { Skeleton } from '@/components/shared/loading';
 
 /* ── API shapes (verified against live backend 2026-09-05) ──────────── */
@@ -139,8 +140,12 @@ export function AtlasDisruptions() {
   const [result, setResult] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const isController =
-    persona?.role === 'CHIEF_CONTROLLER' || persona?.role === 'ADMIN';
+  // Backend: /emergency/breakdown + incident ack are CONTROLLER-only,
+  // blast-radius read adds SR_DOM/DRM/ENGINEER (lib/rbac.ts mirror). The old
+  // literal `role === 'CHIEF_CONTROLLER'` never matched — real JWTs carry
+  // CONTROLLER — so the drill was effectively ADMIN-only unlocked until now.
+  const isController = can(persona?.role, 'drill');
+  const canBlast = can(persona?.role, 'blast_radius');
 
   /** Selected code → UUID. Null while /plans/geo is loading or the code is
    * unknown — gates both drill buttons (no constants-only 400 path). */
@@ -277,7 +282,9 @@ export function AtlasDisruptions() {
           >
             {isController
               ? 'You are Controller — drill unlocked'
-              : 'Switch to Controller to fire'}
+              : canBlast
+                ? 'Impact preview only — firing is Controller-only'
+                : 'Switch to Controller to fire'}
           </span>
         </div>
       </header>
@@ -349,29 +356,33 @@ export function AtlasDisruptions() {
           </div>
 
           <div className="mt-3 flex gap-2">
-            <button
-              type="button"
-              disabled={!sectionId || !sectionsReady}
-              title={sectionsReady ? undefined : 'Loading sections…'}
-              onClick={() => void previewBlast()}
-              className="atlas-btn-secondary atlas-btn text-sm"
-            >
-              1 · Check impact
-            </button>
-            <button
-              type="button"
-              data-action="true"
-              disabled={!acknowledged || busy || !sectionsReady}
-              onClick={() => void fire()}
-              className="atlas-btn-danger atlas-btn text-sm"
-              title={
-                sectionsReady
-                  ? 'Gated on the blast-radius acknowledgment (API-001)'
-                  : 'Loading sections…'
-              }
-            >
-              {busy ? 'Firing…' : '2 · Start drill'}
-            </button>
+            {canBlast ? (
+              <button
+                type="button"
+                disabled={!sectionId || !sectionsReady}
+                title={sectionsReady ? undefined : 'Loading sections…'}
+                onClick={() => void previewBlast()}
+                className="atlas-btn-secondary atlas-btn text-sm"
+              >
+                1 · Check impact
+              </button>
+            ) : null}
+            {isController ? (
+              <button
+                type="button"
+                data-action="true"
+                disabled={!acknowledged || busy || !sectionsReady}
+                onClick={() => void fire()}
+                className="atlas-btn-danger atlas-btn text-sm"
+                title={
+                  sectionsReady
+                    ? 'Gated on the blast-radius acknowledgment (API-001)'
+                    : 'Loading sections…'
+                }
+              >
+                {busy ? 'Firing…' : '2 · Start drill'}
+              </button>
+            ) : null}
           </div>
 
           {/* Blast-radius preview + acknowledgment gate (API-001) */}
@@ -396,19 +407,21 @@ export function AtlasDisruptions() {
                   Controller acknowledges.
                 </p>
               </details>
-              <label className="mt-2 flex items-start gap-2 text-foreground">
-                <input
-                  type="checkbox"
-                  data-testid="drill-ack"
-                  checked={acknowledged}
-                  onChange={(e) => setAcknowledged(e.target.checked)}
-                  className="mt-0.5"
-                />
-                <span>
-                  I checked the impact above. Starting pauses the affected
-                  plans.
-                </span>
-              </label>
+              {isController ? (
+                <label className="mt-2 flex items-start gap-2 text-foreground">
+                  <input
+                    type="checkbox"
+                    data-testid="drill-ack"
+                    checked={acknowledged}
+                    onChange={(e) => setAcknowledged(e.target.checked)}
+                    className="mt-0.5"
+                  />
+                  <span>
+                    I checked the impact above. Starting pauses the affected
+                    plans.
+                  </span>
+                </label>
+              ) : null}
             </div>
           ) : null}
 
@@ -492,17 +505,13 @@ export function AtlasDisruptions() {
                       </span>
                     ) : null}
                   </p>
-                  {!i.controller_acknowledged ? (
+                  {!i.controller_acknowledged && isController ? (
                     <button
                       type="button"
                       data-action="true"
-                      disabled={!isController || ackBusy === i.id}
+                      disabled={ackBusy === i.id}
                       onClick={() => void ackIncident(i.id)}
-                      title={
-                        isController
-                          ? 'Record Controller acknowledgment — PROVISIONAL becomes authoritative'
-                          : 'CONTROLLER role required (demo: A. P. Singh)'
-                      }
+                      title="Record Controller acknowledgment — PROVISIONAL becomes authoritative"
                       className="atlas-btn-primary atlas-btn mt-2 text-xs"
                     >
                       {ackBusy === i.id

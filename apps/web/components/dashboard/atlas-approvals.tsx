@@ -5,6 +5,7 @@ import { api } from '@/lib/api';
 import { usePersona } from '@/context/persona-context';
 import { PenLine, ShieldCheck, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { can } from '@/lib/rbac';
 import { SkeletonCard, Spinner } from '@/components/shared/loading';
 
 /* ── API shapes (verified against live backend 2026-09-05) ──────────── */
@@ -324,23 +325,20 @@ export function AtlasApprovals() {
   const [banner, setBanner] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
+  // One table for the whole console (lib/rbac.ts mirrors require_roles in
+  // apps/api/routers/{approvals,plans}.py). CHIEF_CONTROLLER here was a dead
+  // check — real JWTs sign CONTROLLER — now folded by normalizeRole.
   const role = persona?.role;
-  const canApprove = role === 'SR_DOM' || role === 'ADMIN';
-  const canAuthorize = role === 'DRM' || role === 'ADMIN';
-  const canModify =
-    role === 'SR_DOM' || role === 'ENGINEER' || role === 'ADMIN';
-  const canTransmit =
-    role === 'CONTROLLER' || role === 'SR_DOM' || role === 'ADMIN';
-  const canActivate = role === 'CONTROLLER' || role === 'ADMIN';
-  const canFitness =
-    role === 'ENGINEER' ||
-    role === 'STATION_MASTER' ||
-    role === 'CONTROLLER' ||
-    role === 'ADMIN';
-  const canArchive = role === 'ADMIN' || role === 'AUDITOR';
-  const canCancel = role === 'SR_DOM' || role === 'DRM' || role === 'ADMIN';
-  const canAckSm = role === 'STATION_MASTER' || role === 'ADMIN';
-  const canAckCtl = role === 'CHIEF_CONTROLLER' || role === 'ADMIN';
+  const canApprove = can(role, 'approve_srdom');
+  const canAuthorize = can(role, 'authorize_drm');
+  const canModify = can(role, 'modify');
+  const canTransmit = can(role, 'transmit');
+  const canActivate = can(role, 'activate');
+  const canFitness = can(role, 'fitness');
+  const canArchive = can(role, 'archive');
+  const canCancel = can(role, 'cancel');
+  const canAckSm = can(role, 'ack_sm');
+  const canAckCtl = can(role, 'ack_ctl');
 
   const load = useCallback(async () => {
     const rows = await api.get<PlanRow[]>('/api/v1/plans?limit=500');
